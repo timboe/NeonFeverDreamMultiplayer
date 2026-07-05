@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/GameGrid.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/world/CameraController.gd" id="2"]
+
+[node name="World" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.57735, 0.408248, 0, 0.57735, 0.816497, -0.707107, -0.57735, 0.408248, 0, 0, 0)
+shadow_enabled = true
+
+[node name="GameGrid" type="Node3D" parent="."]
+script = ExtResource("1")
+
+[node name="CameraController" type="Node3D" parent="."]
+script = ExtResource("2")
+
+[node name="Camera3D" type="Camera3D" parent="CameraController"]
+current = true
+position = Vector3(0, 0, 20)
