@@ -55,3 +55,18 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 - `rpc_id(1, ...)` targets the server (peer 1 is always the server in ENet).
 - Host's GameGrid has `human_controllers` group (direct path), remote clients have none (RPC path).
 - `_sync_client_grid` only sends cells with non-empty owner arrays.
+
+## Lobby flow
+
+- When any REMOTE slot exists, "Start Lobby" loads `scenes/menu/Lobby.tscn` instead of going straight to World.
+- Lobby shows slot config, waits for all REMOTE peers to connect, then auto-starts World when `Server.peer_to_player.size()` equals the REMOTE slot count.
+- Host broadcasts `rpc("remote_start_game")` to all clients before transitioning; clients receive it via `Lobby.remote_start_game()` and load World.
+- Remote clients also load `Lobby.tscn` (not World.tscn) on connect, and wait for the host's RPC.
+- AI controllers check for `/root/World/GameGrid` existence and skip actions during lobby (the node doesn't exist yet).
+- Back button calls `Global.network_manager.stop()` + `queue_free()` and returns to MainMenu.
+- `NetworkManager.stop()` also closes the client ENet peer (`multiplayer.multiplayer_peer.close()`) in client mode — not just the server peer.
+
+## UI rules
+
+- Only one slot can be "Host (Local)" — selecting LOCAL on a second slot snaps the first LOCAL back to Remote.
+- Zero LOCAL slots is allowed (Spectator mode): the host can watch but has no HumanController, so host clicks route through RPC (Path C) but get dropped by Server (no `peer_to_player` entry for the host).

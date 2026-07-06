@@ -9,16 +9,16 @@ var server: Server
 var local_clients: Array[LocalClient] = []
 var config: GameConfig
 
-func start_server(config: GameConfig):
+func start_server(server_config: GameConfig):
 	# Called on the host machine. Creates an authoritative ENet server and
 	# spawns a LocalClient subtree for each LOCAL or AI slot.
 	# Local clients (HumanController / AIController) call server methods
 	# directly via Global.network_manager.server — no network hop.
 	# Remote clients connect via ENet and send toggle_cell as an RPC.
-	self.config = config
+	self.config = server_config
 	server = Server.new()
 	add_child(server)
-	server.start(config)
+	server.start(self.config)
 
 	# Initialize next_player_num so remote clients get the correct player number,
 	# accounting for LOCAL and AI slots that already claimed lower numbers.
@@ -73,3 +73,6 @@ func stop():
 		server.stop()
 		server.queue_free()
 		server = null
+	if multiplayer.multiplayer_peer:
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = null

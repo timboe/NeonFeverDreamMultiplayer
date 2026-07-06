@@ -23,6 +23,11 @@ func _on_timer():
 	var srv = Global.network_manager.server
 	if not srv:
 		return
+	# Don't act during lobby — the World scene and its GameGrid don't exist yet
+	if not srv.get_node_or_null("/root/World/GameGrid"):
+		timer.wait_time = 1.0 + randf() * 2.0
+		timer.start()
+		return
 	var x = randi() % 32
 	var z = randi() % 32
 	srv._handle_toggle_cell(client.player_number, x, z)
