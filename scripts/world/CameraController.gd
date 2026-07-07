@@ -1,41 +1,84 @@
+# Licensed under the MIT License.
+# Copyright (c) 2018-2020 Jaccomo Lorenz (Maujoe)
+
 extends Node3D
 class_name CameraController
 
 @onready var camera: Camera3D = $Camera3D
 
-var drag_start: Vector2
-var drag_origin: Vector3
-var zoom: float = 20.0
 
-func _ready():
-	rotation_degrees = Vector3(-35, 45, 0)
-	position = Vector3(16, 0, 16)
+# Intern variables.
+var _mouse_offset = Vector2()
+var _direction = Vector3(0.0, 0.0, 0.0)
+var _yaw = 0.0
+var _pitch = 0.0
+var _wheel_cache : int
+var _v : float
+
+const WHEEL_MOD : float = 20.0
+const PITCH_LIMIT := Vector2(deg_to_rad(-80), deg_to_rad(5))
+const Y_LIMIT := Vector2(Global.FLOOR_HEIGHT + 10.0, Global.FLOOR_HEIGHT + 60.0)
+const ACCLERATION = 5.0
+const MAX_SPEED = 2.0
+# Freelook settings
+var SENSITIVITY = 0.5
+var SMOOTHNESS = 0.5
 
 func _input(event):
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			if event.pressed:
-				drag_start = event.position
-				drag_origin = position
-			Input.set_default_cursor_shape(Input.CURSOR_DRAG if event.pressed else Input.CURSOR_ARROW)
+	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(2):
+		_mouse_offset = event.relative
+	if (event is InputEventMouseButton):
+		var wheel : float = WHEEL_MOD * (Input.get_action_strength("ui_zoom_out") - Input.get_action_strength("ui_zoom_in"))
+		if wheel != 0.0:
+			_wheel_cache = round(wheel)
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			zoom = max(5.0, zoom - 2.0)
-			_update_camera()
+func _poll():
+	_direction.x = Input.get_action_strength("ui_movement_right") - Input.get_action_strength("ui_movement_left")
+	_direction.z = Input.get_action_strength("ui_movement_backward") - Input.get_action_strength("ui_movement_forward")
+	
+	var zoom : float = Input.get_action_strength("ui_zoom_in") - Input.get_action_strength("ui_zoom_out")
+	if _wheel_cache != 0:
+		zoom += 1 * sign(_wheel_cache)
+		_wheel_cache -= 1 * sign(_wheel_cache)
+	zoom = clamp(zoom, -1, 1)
+	#print("zoom " , zoom , " translation.y " , translation.y)
+	if zoom != 0:
+		if zoom == -1 and camera.position.y == Y_LIMIT.y:
+			pass
+		elif zoom == 1 and camera.position.y == Y_LIMIT.x:
+			pass
+		else:
+			#if -1 and translation.y < Y_LIMIT.y) or (zoom == 1 and translation.y > Y_LIMIT.x):
+			var a = deg_to_rad(10 +  camera.rotation_degrees.x) # +5 as the max angle is actually 80 deg
+			var y_amount = sin(a)
+			var z_amount = cos(a)
+			_direction.y = (zoom * y_amount)
+			_direction.z -= (zoom * z_amount)
+	_direction = _direction.rotated(Vector3.UP, camera.rotation.y)
+	
+func _process(delta):
+	_poll()
+	_update_rotation(delta)
+	_update_movement(delta)
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			zoom = min(50.0, zoom + 2.0)
-			_update_camera()
+func _update_movement(delta):
+	if _direction == Vector3.ZERO:
+		_v = 0
+	else:
+		_v = min(MAX_SPEED, _v + (ACCLERATION * delta))
+	camera.global_translate(_direction * _v)
+	camera.position.y = clamp(camera.position.y, Y_LIMIT.x, Y_LIMIT.y)
+	_direction = Vector3()
 
-	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
-		var delta = (event.position - drag_start) * 0.02
-		var forward = -transform.basis.z
-		forward.y = 0
-		forward = forward.normalized()
-		var right = transform.basis.x
-		right.y = 0
-		right = right.normalized()
-		position = drag_origin + right * -delta.x + forward * -delta.y
+func _update_rotation(_delta):
+	var offset : Vector2 = _mouse_offset * SENSITIVITY
+	_mouse_offset = Vector2()
 
-func _update_camera():
-	camera.position = Vector3(0, 0, zoom)
+	_yaw = _yaw * SMOOTHNESS + offset.x * (1.0 - SMOOTHNESS)
+	_pitch = _pitch * SMOOTHNESS + offset.y * (1.0 - SMOOTHNESS)
+	_pitch = min(_pitch, 5.0) # Otherwise we can break through the clamp below
+
+	camera.rotate_y(deg_to_rad(-_yaw))
+	camera.rotate_object_local(Vector3(1,0,0), deg_to_rad(-_pitch))
+	camera.rotation.x = clamp(camera.rotation.x, PITCH_LIMIT.x, PITCH_LIMIT.y)
+	#print(rotation_degrees.x)

@@ -66,6 +66,16 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 - Back button calls `Global.network_manager.stop()` + `queue_free()` and returns to MainMenu.
 - `NetworkManager.stop()` also closes the client ENet peer (`multiplayer.multiplayer_peer.close()`) in client mode — not just the server peer.
 
+## Floor (decorative only, no multiplayer sync)
+
+- `scenes/world/floor/Floor.tscn` — 50×50 tile visual floor with animated mountains
+- `scripts/world/floor/GridMultiMesh.gd` — `MultiMeshInstance3D` driving vertex-displacement mountains via per-instance custom data (Color stores 4 height values per column)
+- `scripts/world/floor/Grid.gd` — procedural grid mesh generator (generation disabled, uses `res://meshes/grid.tres`)
+- `scripts/world/floor/Monument.gd` + `MonumentHelper.gd` — procedural monuments with pulsing beacon
+- Materials: `res://materials/floor/grid_faces.tres` (lit, `source_color`) and `grid_edges.tres` (unshaded cyan edges)
+- 5s timer triggers mountain morph via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`
+- No collision, no Area3D, no RPC involvement
+
 ## UI rules
 
 - Only one slot can be "Host (Local)" — selecting LOCAL on a second slot snaps the first LOCAL back to Remote.
