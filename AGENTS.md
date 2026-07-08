@@ -14,20 +14,32 @@
 - Host path: `Global.network_manager.server` (NOT a node path lookup — `get_node` fails due to dynamic parent).
 - Remote path: `Global.network_manager` exists but `.server` is null.
 
-### Toggle flow (3 paths, all converge on `GameGrid.apply_toggle`)
+### Unified command relay: `Global.send_command_me()` / `send_command()`
 
-1. **Host human click**: `GameGrid._input` → `_on_cell_clicked` → `human_controllers[0].send_toggle_cell` → `HumanController.send_toggle_cell` → `Server._handle_toggle_cell` → `GameGrid.apply_toggle`
-2. **AI**: `AIController._on_timer` → `Server._handle_toggle_cell` → `GameGrid.apply_toggle`
-3. **Remote client click**: `GameGrid._input` → `_on_cell_clicked` (no human_controllers) → `rpc_id(1, "toggle_cell")` → server's `GameGrid.toggle_cell` → `Global.network_manager.server._on_remote_toggle_cell` → `Server._handle_toggle_cell` → `GameGrid.apply_toggle`
+Every game action follows the same two-line pattern — no manual branching:
 
-After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owners)` to all remote peers.
+```gdscript
+# Any caller, host or remote, human or AI:
+Global.send_command_me("toggle_tile", [tile_id])
+Global.send_command(ai_pnum, "toggle_cell", [x, z])
+```
 
-## Grid state
+**Route**:
+```
+send_command_me / send_command
+  ├─ Server exists? → Server.handle_command(pnum, command, args)
+  │                     └─ reflection → _cmd_toggle_cell / _cmd_toggle_tile / ...
+  └─ No server (remote client)? → rpc_id(1, "_on_remote_command", ...)
+                                   └─ Server._on_remote_command()
+                                      └─ peer_to_player[caller] → handle_command(pnum, ...)
+```
 
-- 32×32 `grid_data[x][z]` arrays of player numbers (empty = unowned).
-- Visual: per-cell `GridCell` instances with `Label3D` showing current owners.
-- `set_owners(owners: Array)` drives the visual — no TileMap involved.
-- Initial sync: `Server._on_peer_connected` calls `_sync_client_grid` which sends `rpc_id(peer_id, "set_cell", ...)` for every non-empty cell.
+**Key points**:
+- `send_command_me` uses `Global.my_player_number` — safe for host (set by `NetworkManager` at LOCAL-slot creation) and remote (set by `NetworkManager.set_my_player_number` RPC)
+- `send_command(pnum, ...)` is for AI controllers that know their own player number
+- The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`
+- Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`. The `_cmd_` prefix acts as an allowlist — arbitrary method names like `queue_free` won't match.
+- No `human_controllers` group checks, no `rpc_id(1, ...)` scattered in game objects, no `HumanController` bridge methods. HumanController, GameGrid, and GridCell have been removed — replaced entirely by the tile system.
 
 ## Key classes
 
@@ -35,11 +47,10 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 |---|---|---|
 | `Global` | `autoload/Global.gd` | Singleton, holds `network_manager` ref |
 | `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates Server/LocalClients or ENet client |
-| `Server` | `scripts/core/network/Server.gd` | ENet server, peer→player mapping |
-| `GameGrid` | `scripts/world/GameGrid.gd` | Grid state + cell visuals |
-| `GridCell` | `scripts/world/GridCell.gd` | Single cell (MeshInstance3D + Label3D) |
-| `HumanController` | `scripts/core/network/HumanController.gd` | Host-side click bridge |
-| `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven toggle |
+| `Server` | `scripts/core/network/Server.gd` | ENet server, peer→player mapping, command dispatch |
+| `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon tile grid generation + multiplayer selection sync |
+| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual |
+| `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven tile toggle |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Slot config: LOCAL, REMOTE, AI, CLOSED |
 | `CameraController` | `scripts/world/CameraController.gd` | Middle-click drag, scroll zoom |
 
@@ -51,10 +62,9 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 ## Gotchas
 
 - `Server.next_player_num` is set by `NetworkManager.start_server()` before creating local clients — do not hard-code it.
-- `GameGrid.toggle_cell()` looks up Server via `Global.network_manager.server` (not a node path) — the node path lookup fails because NetworkManager is dynamically added to root.
 - `rpc_id(1, ...)` targets the server (peer 1 is always the server in ENet).
-- Host's GameGrid has `human_controllers` group (direct path), remote clients have none (RPC path).
-- `_sync_client_grid` only sends cells with non-empty owner arrays.
+- `TileManager.apply_toggle` validates `tile.state == RAISED` before toggling — tiles in FALLING/LOWERED/DISABLED are skipped.
+- `Global.my_player_number` is set at slot-creation time for the host human, or by `NetworkManager.set_my_player_number` RPC for remotes. If `my_player_number == -1`, the multi-selector fallback uses `selecting.min()`.
 
 ## Lobby flow
 
@@ -62,7 +72,7 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 - Lobby shows slot config, waits for all REMOTE peers to connect, then auto-starts World when `Server.peer_to_player.size()` equals the REMOTE slot count.
 - Host broadcasts `rpc("remote_start_game")` to all clients before transitioning; clients receive it via `Lobby.remote_start_game()` and load World.
 - Remote clients also load `Lobby.tscn` (not World.tscn) on connect, and wait for the host's RPC.
-- AI controllers check for `/root/World/GameGrid` existence and skip actions during lobby (the node doesn't exist yet).
+- AI controllers check for `/root/World/TileManager` existence and skip actions during lobby (the node doesn't exist yet).
 - Back button calls `Global.network_manager.stop()` + `queue_free()` and returns to MainMenu.
 - `NetworkManager.stop()` also closes the client ENet peer (`multiplayer.multiplayer_peer.close()`) in client mode — not just the server peer.
 
@@ -88,4 +98,4 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 ## UI rules
 
 - Only one slot can be "Host (Local)" — selecting LOCAL on a second slot snaps the first LOCAL back to Remote.
-- Zero LOCAL slots is allowed (Spectator mode): the host can watch but has no HumanController, so host clicks route through RPC (Path C) but get dropped by Server (no `peer_to_player` entry for the host).
+- Zero LOCAL slots is allowed (Spectator mode): the host can watch but has no AIController, so host clicks route through `send_command_me` but get dropped by Server (no `peer_to_player` entry for the host).

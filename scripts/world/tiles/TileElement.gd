@@ -6,7 +6,9 @@ var id := 0
 
 enum State {RAISED, SELECTED, FALLING, LOWERED, RISING, DISABLED}
 var state = State.RAISED
-var selected_by : Array
+var selected_by : Array # players who have a raise/lower command queued on the tile
+var under_aoe : Array # players for whome this tile falls under their AoE
+
 var particles_instance : GPUParticles3D
 
 var paths : Dictionary # dict of all pathable neighbours. Key=neighbour, Value=connecting monorail
@@ -15,7 +17,6 @@ var neighbours : Array # Array of all neighbours (including immutible ones)
 var active_tween : Tween
 #var building_manager
 
-var player : int # Who owns this floor
 var building # What is built here
 
 #var monorail_cap_mm : MultiMesh
@@ -32,10 +33,13 @@ var claim_strength : int = 0
 # Set to a vec3 if this tile is participating in the pathing. Note: in global coordinates
 var pathing_centre = null
 
+var _hovered := false
+
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
+const DEFAULT_COLOUR : Color = Color(1, 1, 1)
 const HOVER_COLOUR : Color = Color(0/255.0, 45/255.0, 227/255.0)
-const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0) # Not used directly
+const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
 const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
 const OWNED_COLOUR : Array = [
 	Color(1, 0, 0),
@@ -114,10 +118,10 @@ func can_be_lowered() -> bool:
 	#return false
 	
 func _ready():
-	player = -1
 	building = null
-	for _p in Global.MAX_PLAYERS:
+	for _p in Global.MAX_PLAYERS + 1:
 		selected_by.push_back(false)
+		under_aoe.push_back(false)
 	# See delayed_ready
 	
 func delayed_ready():
@@ -128,41 +132,26 @@ func delayed_ready():
 	input_event.connect(_on_StaticBody_input_event)
 	#building_manager = $"../../../../BuildingManager"
 
-func update_HOVER_color(is_hover : bool):
-	if state >= State.SELECTED:
-		return
+func update_selection_visual():
 	if tile_mm == null:
 		return
-	if is_hover:
-		set_tile_mm_emission(1.0)
-		set_tile_mm_color(HOVER_COLOUR)
-	else:
-		set_tile_mm_emission(0.0)
-
-		
-func update_selected(player_selecting):
 	if state >= State.FALLING:
 		return
-	if Global.SELECTING_MODE:
-		state = State.SELECTED
-		selected_by[player_selecting] = true
+	var selecting := []
+	for p in Global.MAX_PLAYERS:
+		if selected_by[p]:
+			selecting.append(p)
+
+	if selecting.is_empty():
+		set_tile_mm_emission(0.0)
+		set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
+	elif selecting.size() == 1:
+		set_tile_mm_color(OWNED_COLOUR[selecting[0]])
+		set_tile_mm_emission(1.0)
 	else:
-		selected_by[player_selecting] = false
-		var n_selected = 0
-		for p in Global.MAX_PLAYERS:
-			if selected_by[p]:
-				n_selected += 1
-		state = State.SELECTED if n_selected > 0 else State.RAISED
-	if active_tween and active_tween.is_valid():
-		active_tween.kill()
-	tween_active = false
-	if state == State.SELECTED:
-		if can_be_lowered():
-			do_deconstruct_start(FADE_TIME)
-		else:
-			set_tile_mm_color(SELECT_COLOUR)
-	else:
-		update_HOVER_color(true)
+		var pnum = Global.my_player_number
+		set_tile_mm_color(OWNED_COLOUR[pnum] if pnum in selecting else OWNED_COLOUR[selecting.min()])
+		set_tile_mm_emission(1.0)
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction
 func a_neighbour_just_fell():
@@ -322,17 +311,12 @@ func done_deconstruct():
 			#n.pulse_start(pulse_e, pulse_n)
 
 func _on_StaticBody_mouse_entered():
-	#if building_manager.is_placing():
-		#return building_manager.update_blueprint(self)
-	update_HOVER_color(true)
-	#Global.SELECTED_NODE = self
-	if Input.is_mouse_button_pressed(1):
-		update_selected(0)
+	_hovered = true
+	update_selection_visual()
 
 func _on_StaticBody_mouse_exited():
-	#if building_manager.is_placing():
-		#return
-	update_HOVER_color(false)
+	_hovered = false
+	update_selection_visual()
 	
 #func start_capture(by_whome):
 	#var time := CAPTURE_TIME * claim_strength
@@ -365,7 +349,7 @@ func _on_StaticBody_mouse_exited():
 func get_access_tiles():
 	var array : Array = []
 	for n in paths.keys():
-		if n.building == null and n.player == player:
+		if n.building == null:
 			assert(n.state == State.LOWERED)
 			array.push_back(n)
 	return array
@@ -382,12 +366,6 @@ func get_access_tiles_wall(for_player : int):
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx):
 	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
 		return
-	#if building_manager.is_placing():
-		#return building_manager.place_blueprint(self)
-#	print("Me ", get_id(), " " , self)
-#	for n in neighbours:
-#		print(" N ", n.get_id() , " " , n.state , " " , n)
-#	for thePath in paths.keys():
-#		print (" Path -> ", thePath.get_id())
-	Global.SELECTING_MODE = (state == State.RAISED)
-	update_selected(0) # Currently only user who can click things
+	if state != State.RAISED:
+		return
+	Global.send_command_me("toggle_tile", [id])
