@@ -76,6 +76,15 @@ After `apply_toggle`, `apply_cell_update` broadcasts `rpc("set_cell", x, z, owne
 - 5s timer triggers mountain morph via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`
 - No collision, no Area3D, no RPC involvement
 
+## Tile scripts (imported from Godot 3, converted)
+
+- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()` not `connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`, commented code updated too. `transform.origin.y = val`→copy-modify-set pattern.
+- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed.
+- `TileManager.tscn`: both `[node name="Tween"]` children removed.
+- `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`.
+- `Cairo.gd`: `GENERATE = false` with "do not regenerate" note.
+- `MonorailMultimesh.gd`: not yet reviewed.
+
 ## UI rules
 
 - Only one slot can be "Host (Local)" — selecting LOCAL on a second slot snaps the first LOCAL back to Remote.

@@ -8,7 +8,7 @@ const MOUNTAINS : int = 5
 
 const MCP : Array = [173, 892]
 
-const DESTROYED : Array = [
+const LOWERED : Array = [
 	109, 108, 174, 893, 953, 954,
 	641, 709, 714, 644, 712, 777, 782, 715, 716, 781, 786, 719, 645, 713, 718, 648
 ]
