@@ -24,6 +24,7 @@ uniform vec3 uv1_scale;
 uniform vec3 uv1_offset;
 uniform vec3 uv2_scale;
 uniform vec3 uv2_offset;
+uniform bool use_instance_color = false;
 
 void vertex() {
 	UV = UV * uv1_scale.xy + uv1_offset.xy;
@@ -39,7 +40,7 @@ void fragment() {
 	NORMAL_MAP = texture(texture_normal, base_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_scale;
 	vec3 emission_tex = texture(texture_emission, base_uv).rgb;
-	if (COLOR.a > 0.01) {
+	if (use_instance_color && COLOR.a > 0.01) {
 		EMISSION = (COLOR.rgb + emission_tex) * COLOR.a;
 	}
 	vec3 anisotropy_tex = texture(texture_flowmap, base_uv).rga;
@@ -67,3 +68,4 @@ shader_parameter/uv1_scale = Vector3(1, 1, 1)
 shader_parameter/uv1_offset = Vector3(0, 0, 0)
 shader_parameter/uv2_scale = Vector3(1, 1, 1)
 shader_parameter/uv2_offset = Vector3(0, 0, 0)
+shader_parameter/use_instance_color = false
