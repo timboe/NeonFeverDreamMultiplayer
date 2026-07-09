@@ -25,6 +25,11 @@ uniform vec3 uv1_offset;
 uniform vec3 uv2_scale;
 uniform vec3 uv2_offset;
 uniform bool use_instance_color = false;
+uniform vec4 band_color1 : source_color;
+uniform vec4 band_color2 : source_color;
+uniform vec4 band_color3 : source_color;
+uniform vec4 band_color4 : source_color;
+uniform float band_count = 4.0;
 
 void vertex() {
 	UV = UV * uv1_scale.xy + uv1_offset.xy;
@@ -34,6 +39,12 @@ void fragment() {
 	vec2 base_uv = UV;
 	vec4 albedo_tex = texture(texture_albedo, base_uv);
 	ALBEDO = albedo.rgb * albedo_tex.rgb;
+	// 45° diagonal bands from combined UV axes
+	float d = UV.x + UV.y;
+	float band_id = floor(d * band_count);
+	vec4 band_colors[4] = vec4[](band_color1, band_color2, band_color3, band_color4);
+	vec4 band_tint = band_colors[int(mod(band_id, band_count))];
+	ALBEDO *= band_tint.rgb;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
 	SPECULAR = specular;
@@ -69,3 +80,8 @@ shader_parameter/uv1_offset = Vector3(0, 0, 0)
 shader_parameter/uv2_scale = Vector3(1, 1, 1)
 shader_parameter/uv2_offset = Vector3(0, 0, 0)
 shader_parameter/use_instance_color = false
+shader_parameter/band_color1 = Color(1, 1, 1, 1)
+shader_parameter/band_color2 = Color(1, 1, 1, 1)
+shader_parameter/band_color3 = Color(1, 1, 1, 1)
+shader_parameter/band_color4 = Color(1, 1, 1, 1)
+shader_parameter/band_count = 4.0

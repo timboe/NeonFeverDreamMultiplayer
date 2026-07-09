@@ -11,9 +11,9 @@ uniform float MOUNTAIN_MAX_HEIGHT = 100.0;
 uniform float MOUNTAIN_MAX_COLOUR = 0.5;
 uniform vec4 TOP_COLOUR = vec4(1.0, 0.0, 1.0, 1.0);
 uniform bool SCROLL = false;
+uniform vec4 VERTEX_COLOR = vec4(0.0, 1.0, 1.0, 0.0);
 //
 const float THIRD = 1.0 / 3.0;
-const vec4 FIXED_COLOR = vec4(0.0, 1.0, 1.0, 0.0);
 
 void DO_MOUNTAIN(inout vec3 MVERTEX, inout vec4 MCOLOR, in vec4 MINSTANCE_CUSTOM) {
 	float height = 0.0;
@@ -53,7 +53,7 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = FIXED_COLOR.xyz;
+	ALBEDO = VERTEX_COLOR.xyz;
 }
 "
 
@@ -67,3 +67,4 @@ shader_parameter/MOUNTAIN_MAX_HEIGHT = 100.0
 shader_parameter/MOUNTAIN_MAX_COLOUR = 0.5
 shader_parameter/TOP_COLOUR = Vector4(1, 0, 1, 1)
 shader_parameter/SCROLL = false
+shader_parameter/VERTEX_COLOR = Vector4(0, 1, 1, 0)
