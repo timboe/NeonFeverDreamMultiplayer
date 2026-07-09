@@ -13,9 +13,6 @@ uniform float specular;
 uniform float metallic;
 uniform float roughness : hint_range(0, 1);
 uniform float point_size : hint_range(0, 128);
-uniform sampler2D texture_emission : source_color;
-uniform vec4 emission : source_color;
-uniform float emission_energy;
 uniform sampler2D texture_normal;
 uniform float normal_scale : hint_range(-16, 16);
 uniform float anisotropy_ratio : hint_range(0, 256);
@@ -31,8 +28,11 @@ uniform vec4 band_color3 : source_color;
 uniform vec4 band_color4 : source_color;
 uniform float band_count = 4.0;
 
+varying vec4 selecting_mask;
+
 void vertex() {
 	UV = UV * uv1_scale.xy + uv1_offset.xy;
+	selecting_mask = INSTANCE_CUSTOM;
 }
 
 void fragment() {
@@ -40,19 +40,36 @@ void fragment() {
 	vec4 albedo_tex = texture(texture_albedo, base_uv);
 	ALBEDO = albedo.rgb * albedo_tex.rgb;
 	// 45° diagonal bands from combined UV axes
+	// Color cycle is driven by per-instance selecting_mask (set from selected_by)
 	float d = UV.x + UV.y;
 	float band_id = floor(d * band_count);
-	vec4 band_colors[4] = vec4[](band_color1, band_color2, band_color3, band_color4);
-	vec4 band_tint = band_colors[int(mod(band_id, band_count))];
+	float active = step(0.01, selecting_mask.r) + step(0.01, selecting_mask.g) + step(0.01, selecting_mask.b) + step(0.01, selecting_mask.a);
+	float col_idx = mod(band_id, max(active, 1.0));
+	vec4 band_tint = vec4(1.0);
+	float seen = 0.0;
+	seen += step(0.01, selecting_mask.r);
+	if (col_idx + 0.5 < seen) { band_tint = band_color1; }
+	else {
+		seen += step(0.01, selecting_mask.g);
+		if (col_idx + 0.5 < seen) { band_tint = band_color2; }
+		else {
+			seen += step(0.01, selecting_mask.b);
+			if (col_idx + 0.5 < seen) { band_tint = band_color3; }
+			else {
+				seen += step(0.01, selecting_mask.a);
+				if (col_idx + 0.5 < seen) { band_tint = band_color4; }
+			}
+		}
+	}
 	ALBEDO *= band_tint.rgb;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
 	SPECULAR = specular;
 	NORMAL_MAP = texture(texture_normal, base_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_scale;
-	vec3 emission_tex = texture(texture_emission, base_uv).rgb;
+	// emission: COLOR.a driven by TileElement.set_tile_mm_emission (local-selected glow)
 	if (use_instance_color && COLOR.a > 0.01) {
-		EMISSION = (COLOR.rgb + emission_tex) * COLOR.a;
+		EMISSION = vec3(1.0) * COLOR.a;
 	}
 	vec3 anisotropy_tex = texture(texture_flowmap, base_uv).rga;
 	ANISOTROPY = anisotropy_ratio * anisotropy_tex.b;
@@ -69,8 +86,6 @@ shader_parameter/specular = 0.5
 shader_parameter/metallic = 1.0
 shader_parameter/roughness = 0.4
 shader_parameter/point_size = 1.0
-shader_parameter/emission = Color(1, 0, 0, 1)
-shader_parameter/emission_energy = 0.5
 shader_parameter/texture_normal = ExtResource("1")
 shader_parameter/normal_scale = 0.4
 shader_parameter/anisotropy_ratio = 0.2
@@ -80,8 +95,8 @@ shader_parameter/uv1_offset = Vector3(0, 0, 0)
 shader_parameter/uv2_scale = Vector3(1, 1, 1)
 shader_parameter/uv2_offset = Vector3(0, 0, 0)
 shader_parameter/use_instance_color = false
-shader_parameter/band_color1 = Color(1, 1, 1, 1)
-shader_parameter/band_color2 = Color(1, 1, 1, 1)
-shader_parameter/band_color3 = Color(1, 1, 1, 1)
-shader_parameter/band_color4 = Color(1, 1, 1, 1)
+shader_parameter/band_color1 = Color(1, 0, 0, 1)
+shader_parameter/band_color2 = Color(0, 0, 1, 1)
+shader_parameter/band_color3 = Color(1, 1, 0, 1)
+shader_parameter/band_color4 = Color(0, 1, 0, 1)
 shader_parameter/band_count = 4.0

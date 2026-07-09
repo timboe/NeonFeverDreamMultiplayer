@@ -12,6 +12,7 @@ uniform float MOUNTAIN_MAX_COLOUR = 0.5;
 uniform vec4 TOP_COLOUR = vec4(1.0, 0.0, 1.0, 1.0);
 uniform bool SCROLL = false;
 uniform vec4 VERTEX_COLOR = vec4(0.0, 1.0, 1.0, 0.0);
+uniform bool use_instance_color = false;
 //
 const float THIRD = 1.0 / 3.0;
 
@@ -53,7 +54,7 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = VERTEX_COLOR.xyz;
+	ALBEDO = use_instance_color ? COLOR.rgb : VERTEX_COLOR.xyz;
 }
 "
 
@@ -68,3 +69,4 @@ shader_parameter/MOUNTAIN_MAX_COLOUR = 0.5
 shader_parameter/TOP_COLOUR = Vector4(1, 0, 1, 1)
 shader_parameter/SCROLL = false
 shader_parameter/VERTEX_COLOR = Vector4(0, 1, 1, 0)
+shader_parameter/use_instance_color = false

@@ -86,6 +86,18 @@ send_command_me / send_command
 - 5s timer triggers mountain morph via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`
 - No collision, no Area3D, no RPC involvement
 
+## Per-instance visual data (MultiMesh)
+
+Each tile instance packs three independent visuals into `set_instance_color` and `set_instance_custom_data`:
+
+| Channel | Written by | Read by | Purpose |
+|---|---|---|---|
+| `INSTANCE_CUSTOM.rgba` | `set_tile_mm_selecting_mask` | `aluminium.tres` vertex→`selecting_mask` | Band stripes — which players claim this tile (soon `under_aoe`) |
+| `COLOR.rgb` | `set_tile_mm_color` | `grid_edges.tres` fragment → `ALBEDO` | Edge color — local hover indicator |
+| `COLOR.a` | `set_tile_mm_emission` | `aluminium.tres` fragment → `EMISSION` | White glow — local-selection highlight |
+
+All three are independent: `set_tile_mm_color` preserves `a`, `set_tile_mm_emission` preserves `rgb`, and `set_tile_mm_selecting_mask` writes custom data.
+
 ## Tile scripts (imported from Godot 3, converted)
 
 - `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()` not `connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`, commented code updated too. `transform.origin.y = val`→copy-modify-set pattern.

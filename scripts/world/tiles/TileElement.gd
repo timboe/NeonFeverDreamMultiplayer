@@ -38,15 +38,9 @@ var _hovered := false
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
 const DEFAULT_COLOUR : Color = Color(1, 1, 1)
-const HOVER_COLOUR : Color = Color(0/255.0, 45/255.0, 227/255.0)
-const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
-const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
-const OWNED_COLOUR : Array = [
-	Color(1, 0, 0),
-	Color(0, 0, 1),
-	Color(1, 1, 0),
-	Color(0, 1, 0),
-]
+const HOVER_COLOUR : Color = Color.YELLOW
+#const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
+#const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
 
 #const PULSE_TIME := 0.1 # Time in seconds to pulse for
 #const PULSE_DECAY := 0.001 # Amount to reduce pulse by per tile
@@ -142,16 +136,22 @@ func update_selection_visual():
 		if selected_by[p]:
 			selecting.append(p)
 
-	if selecting.is_empty():
-		set_tile_mm_emission(0.0)
-		set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
-	elif selecting.size() == 1:
-		set_tile_mm_color(OWNED_COLOUR[selecting[0]])
-		set_tile_mm_emission(1.0)
-	else:
-		var pnum = Global.my_player_number
-		set_tile_mm_color(OWNED_COLOUR[pnum] if pnum in selecting else OWNED_COLOUR[selecting.min()])
-		set_tile_mm_emission(1.0)
+	# INSTANCE_CUSTOM → aluminium band stripes (who has a claim)
+	var mask = Color(0, 0, 0, 0)
+	for p in selecting:
+		if p == 1:   mask.r = 1.0
+		elif p == 2: mask.g = 1.0
+		elif p == 3: mask.b = 1.0
+		elif p == 4: mask.a = 1.0
+	set_tile_mm_selecting_mask(mask)
+
+	# COLOR.rgb → grid_edges ALBEDO (local hover)
+	set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
+
+	# COLOR.a → aluminium EMISSION (local-selection glow)
+	var local_pnum = Global.my_player_number
+	var is_selected = local_pnum >= 0 and local_pnum < selected_by.size() and selected_by[local_pnum]
+	set_tile_mm_emission(0.4 if is_selected else 0.0)
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction
 func a_neighbour_just_fell():
@@ -223,6 +223,13 @@ func set_tile_mm_height(value : float):
 	t.origin.y = value
 	tile_mm.set_instance_transform(tile_mm_id, t)
 
+func set_tile_mm_selecting_mask(mask: Color):
+	if tile_mm == null:
+		return
+	var d = tile_mm.get_instance_custom_data(tile_mm_id)
+	d = mask
+	tile_mm.set_instance_custom_data(tile_mm_id, d)
+
 func get_tile_mm_color() -> Color:
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	return Color(c.r, c.g, c.b, 1.0)
@@ -254,8 +261,8 @@ func do_deconstruct_start(time : float):
 	if tween_active:
 		return
 	var t = create_tween()
-	t.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, time)\
-		.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
+	#t.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, time)\
+		#.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	t.tween_callback(do_deconstruct_a).set_delay(time)
 	active_tween = t
 	tween_active = true

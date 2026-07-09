@@ -19,7 +19,6 @@ var rand := RandomNumberGenerator.new()
 
 @onready var tile_script = preload("res://scripts/world/tiles/TileElement.gd")
 
-
 func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 	var mesh_instance = MeshInstance3D.new()
 	if not Engine.is_editor_hint(): physics_body_instance.set_id(tile_id)
@@ -297,7 +296,22 @@ func enabled_tiles_to_multimesh():
 	tile_mm.multimesh = MultiMesh.new()
 	tile_mm.multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	tile_mm.multimesh.use_colors = true
-	tile_mm.multimesh.mesh = cairo_enabled.mesh.duplicate()
+	tile_mm.multimesh.use_custom_data = true
+	var mesh_dup = cairo_enabled.mesh.duplicate()
+	# All these duplicates are not needed?
+	#var surface_mat = mesh_dup.surface_get_material(0)
+	#if surface_mat:
+		#var mat = surface_mat.duplicate()
+		#mat.set_shader_parameter(&"use_instance_color", true)
+		#mesh_dup.surface_set_material(0, mat)
+	#var edge_surface_mat = mesh_dup.surface_get_material(1)
+	#if edge_surface_mat:
+		#var edge_mat = edge_surface_mat.duplicate()
+		#edge_mat.set_shader_parameter(&"use_instance_color", true)
+		#mesh_dup.surface_set_material(1, edge_mat)
+	mesh_dup.surface_get_material(0).set_shader_parameter(&"use_instance_color", true)
+	mesh_dup.surface_get_material(1).set_shader_parameter(&"use_instance_color", true)
+	tile_mm.multimesh.mesh = mesh_dup
 	tile_mm.multimesh.instance_count = enabled.size()
 	var count = 0
 	for i in range(enabled.size()):
@@ -306,4 +320,5 @@ func enabled_tiles_to_multimesh():
 		enabled[i].tile_mm = tile_mm.multimesh
 		enabled[i].tile_mm_id = count
 		enabled[i].set_tile_mm_emission(0.0)
+		enabled[i].set_tile_mm_color(Color.CYAN)
 		count += 1
