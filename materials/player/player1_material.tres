@@ -1,29 +1,24 @@
-[gd_resource type="SpatialMaterial" load_steps=6 format=2]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://dash4m4mo826t"]
 
-[ext_resource path="res://test_materials/Metal012_2K_Color.jpg" type="Texture" id=1]
-[ext_resource path="res://test_materials/Metal012_2K_Normal.jpg" type="Texture" id=2]
-[ext_resource path="res://test_materials/Metal012_2K_Metalness.jpg" type="Texture" id=3]
-[ext_resource path="res://test_materials/Metal012_2K_Roughness.jpg" type="Texture" id=4]
-[ext_resource path="res://test_materials/Metal012_2K_Displacement.jpg" type="Texture" id=5]
+[ext_resource type="Texture2D" uid="uid://ba1mrr8br3loy" path="res://images/metal/Metal012_2K_Color.jpg" id="1"]
+[ext_resource type="Texture2D" uid="uid://butfn8nn8u06q" path="res://images/metal/Metal012_2K_Normal.jpg" id="2"]
+[ext_resource type="Texture2D" uid="uid://dylkgjeqs0lwr" path="res://images/metal/Metal012_2K_Metalness.jpg" id="3"]
+[ext_resource type="Texture2D" uid="uid://c3qjtjsnq27p1" path="res://images/metal/Metal012_2K_Roughness.jpg" id="4"]
+[ext_resource type="Texture2D" uid="uid://dv4ofepypikvm" path="res://images/metal/Metal012_2K_Displacement.jpg" id="5"]
 
 [resource]
-albedo_color = Color( 1, 0, 1, 1 )
-albedo_texture = ExtResource( 1 )
-metallic_texture = ExtResource( 3 )
+albedo_color = Color(1, 0, 1, 1)
+albedo_texture = ExtResource("1")
+metallic_texture = ExtResource("3")
 metallic_texture_channel = 4
-roughness_texture = ExtResource( 4 )
+roughness_texture = ExtResource("4")
 roughness_texture_channel = 4
 emission_enabled = true
-emission = Color( 0.196078, 0, 1, 1 )
-emission_energy = 0.5
-emission_operator = 0
-emission_on_uv2 = false
+emission = Color(0.196078, 0, 1, 1)
+emission_energy_multiplier = 0.5
 normal_enabled = true
-normal_scale = 1.0
-normal_texture = ExtResource( 2 )
-depth_enabled = true
-depth_scale = 0.05
-depth_deep_parallax = false
-depth_flip_tangent = false
-depth_flip_binormal = false
-depth_texture = ExtResource( 5 )
+normal_texture = ExtResource("2")
+heightmap_enabled = true
+heightmap_scale = 0.05
+heightmap_texture = ExtResource("5")
+heightmap_flip_texture = true

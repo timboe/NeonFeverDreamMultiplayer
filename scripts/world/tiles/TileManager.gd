@@ -178,11 +178,20 @@ func set_neighbours():
 func apply_loaded_level():
 	for tile in get_tree().get_nodes_in_group("tiles"):
 		if tile.get_id() in Global.LEVEL.MCP:
-			#building_manager.place_building(tile, building_manager.Type.MCP) # need to add player parameter as well
+			var player_number = (Global.LEVEL.MCP.find(tile.get_id()) + 1)
+			var mcp_type = %BuildingManager.Type.MCP_1
+			match player_number:
+				1: mcp_type = %BuildingManager.Type.MCP_1
+				2: mcp_type = %BuildingManager.Type.MCP_2
+				3: mcp_type = %BuildingManager.Type.MCP_3
+				4: mcp_type = %BuildingManager.Type.MCP_4
+				_: printerr("Unknown player number ", player_number)
+			%BuildingManager.place_building(tile, player_number, mcp_type)
 			pass
 		elif tile.get_id() in Global.LEVEL.LOWERED:
 			tile.set_lowered()
 
+# Register click on tile to select. Toggle selection for pnum
 func apply_toggle(pnum: int, tile_id: int):
 	if not tile_dictionary.has(tile_id):
 		print("TileManager.apply_toggle: unknown tile_id ", tile_id)
@@ -195,6 +204,7 @@ func apply_toggle(pnum: int, tile_id: int):
 	tile.update_selection_visual()
 	rpc("set_tile_selection", tile_id, tile.selected_by.duplicate())
 
+# Register click on tile to select. Distribute change to clients
 @rpc("authority", "call_remote", "reliable")
 func set_tile_selection(tile_id: int, selected_by: Array):
 	if not tile_dictionary.has(tile_id):

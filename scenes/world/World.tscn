@@ -1,9 +1,13 @@
 [gd_scene format=3 uid="uid://0r3qt538yy8"]
 
 [ext_resource type="Environment" uid="uid://qo24ms5a3285" path="res://scenes/world/WorldEnvironment.tres" id="1_gbddb"]
-[ext_resource type="Script" uid="uid://cj6vmp6fj61u3" path="res://scripts/world/CameraController.gd" id="2"]
+[ext_resource type="Script" uid="uid://cj6vmp6fj61u3" path="res://scripts/world/camera/CameraRTS.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://cnucsxwycsib" path="res://scenes/world/floor/Floor.tscn" id="2_6eebf"]
+[ext_resource type="PackedScene" uid="uid://cp05lr438pv0l" path="res://scenes/world/buildings/BuildingManager.tscn" id="4_i1jm3"]
 [ext_resource type="PackedScene" uid="uid://be7arljxe4ohx" path="res://scenes/world/tiles/TileManager.tscn" id="4_qxiha"]
+[ext_resource type="Script" uid="uid://bgrswk647snuu" path="res://scripts/world/buildings/BuildingManager.gd" id="5_252at"]
+[ext_resource type="Script" uid="uid://bd3u1fgrfgqha" path="res://scripts/world/camera/CameraManager.gd" id="6_qh0kd"]
+[ext_resource type="Script" uid="uid://c3i58cfvskf37" path="res://scripts/world/camera/OmniLight.gd" id="7_252at"]
 
 [node name="World" type="Node3D" unique_id=943865623]
 
@@ -15,14 +19,32 @@ transform = Transform3D(-4.37114e-08, -0.34201998, 0.93969274, 0, 0.9396922, 0.3
 light_color = Color(1, 1, 0, 1)
 light_angular_distance = 10.0
 shadow_enabled = true
+sky_mode = 2
 
 [node name="Floor" parent="." unique_id=1643165362 instance=ExtResource("2_6eebf")]
 
 [node name="TileManager" parent="." unique_id=347718040 instance=ExtResource("4_qxiha")]
+unique_name_in_owner = true
 
-[node name="CameraController" type="Node3D" parent="." unique_id=1537047151]
-script = ExtResource("2")
+[node name="BuildingManager" parent="." unique_id=825272559 instance=ExtResource("4_i1jm3")]
+unique_name_in_owner = true
+script = ExtResource("5_252at")
 
-[node name="Camera3D" type="Camera3D" parent="CameraController" unique_id=1826987205]
+[node name="CameraManager" type="Node3D" parent="." unique_id=1537047151]
+unique_name_in_owner = true
+script = ExtResource("6_qh0kd")
+
+[node name="CameraRTS" type="Camera3D" parent="CameraManager" unique_id=1826987205]
+unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
 current = true
+script = ExtResource("2")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="CameraManager" unique_id=352719806]
+light_color = Color(0.7490196, 1, 1, 1)
+light_energy = 0.5
+light_specular = 0.1
+omni_range = 50.0
+omni_attenuation = 0.7
+omni_shadow_mode = 0
+script = ExtResource("7_252at")

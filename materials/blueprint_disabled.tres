@@ -1,0 +1,65 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cw7afwu5y4iio"]
+
+[sub_resource type="Shader" id="1"]
+code = "shader_type spatial;
+render_mode blend_mix, depth_draw_always, cull_back;
+uniform vec4 albedo : source_color;
+uniform vec4 grid : source_color;
+uniform sampler2D texture_albedo : source_color;
+uniform float specular;
+uniform float metallic;
+uniform float roughness : hint_range(0, 1);
+uniform float point_size : hint_range(0, 128);
+uniform vec4 emission : source_color;
+uniform float emission_energy;
+uniform float refraction : hint_range(-16, 16);
+uniform vec4 refraction_texture_channel;
+uniform vec3 uv1_scale;
+uniform vec3 uv1_offset;
+uniform vec3 uv2_scale;
+uniform vec3 uv2_offset;
+uniform sampler2D SCREEN_TEXTURE : hint_screen_texture, filter_linear_mipmap;
+
+void vertex() {
+	UV = UV * uv1_scale.xy + uv1_offset.xy;
+}
+
+void fragment() {
+	vec2 base_uv = UV;
+	vec4 albedo_tex = texture(texture_albedo, base_uv);
+
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+
+	vec3 ref_normal = NORMAL;
+	vec2 ref_ofs = SCREEN_UV - ref_normal.xy * refraction;
+	float ref_amount = 1.0 - albedo.a * albedo_tex.a;
+	EMISSION += textureLod(SCREEN_TEXTURE, ref_ofs, ROUGHNESS * 8.0).rgb * ref_amount;
+	ALPHA = 1.0;
+	if (mod(SCREEN_UV.x * VIEWPORT_SIZE.x / 10.0, 1.0) < 0.1 || mod(SCREEN_UV.y * VIEWPORT_SIZE.y / 10.0, 1.0) < 0.1) {
+		ALBEDO = grid.rgb * (1.0 - ref_amount / 5.0);
+		EMISSION = grid.rgb * emission_energy * 2.0;
+	} else {
+		ALBEDO = albedo.rgb * (1.0 - ref_amount);
+		EMISSION = emission.rgb * emission_energy;
+	}
+}
+"
+
+[resource]
+render_priority = 0
+shader = SubResource("1")
+shader_parameter/albedo = Color(0.6392157, 0, 1, 0.5019608)
+shader_parameter/grid = Color(1, 0, 0, 1)
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 0.0
+shader_parameter/roughness = 0.0
+shader_parameter/point_size = 0.0
+shader_parameter/emission = Color(1, 0.56078434, 0, 1)
+shader_parameter/emission_energy = 0.15
+shader_parameter/refraction = 0.0
+shader_parameter/refraction_texture_channel = Vector4(0, 0, 0, 0)
+shader_parameter/uv1_scale = Vector3(0, 0, 0)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/uv2_scale = Vector3(0, 0, 0)
+shader_parameter/uv2_offset = Vector3(0, 0, 0)

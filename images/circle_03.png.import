@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ba1mrr8br3loy"
-path.s3tc="res://.godot/imported/Metal012_2K_Color.jpg-8672bd117457b81758a16bc2538a1f3a.s3tc.ctex"
+uid="uid://cmkiwu35depya"
+path.s3tc="res://.godot/imported/circle_03.png-d1f08b8940f19bda625b53ebd0f30433.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://images/metal/Metal012_2K_Color.jpg"
-dest_files=["res://.godot/imported/Metal012_2K_Color.jpg-8672bd117457b81758a16bc2538a1f3a.s3tc.ctex"]
+source_file="res://images/circle_03.png"
+dest_files=["res://.godot/imported/circle_03.png-d1f08b8940f19bda625b53ebd0f30433.s3tc.ctex"]
 
 [params]
 

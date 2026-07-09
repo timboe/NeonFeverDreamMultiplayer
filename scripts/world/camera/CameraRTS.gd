@@ -43,18 +43,18 @@ func _poll():
 	zoom = clamp(zoom, -1, 1)
 	#print("zoom " , zoom , " translation.y " , translation.y)
 	if zoom != 0:
-		if zoom == -1 and camera.position.y == Y_LIMIT.y:
+		if zoom == -1 and position.y == Y_LIMIT.y:
 			pass
-		elif zoom == 1 and camera.position.y == Y_LIMIT.x:
+		elif zoom == 1 and position.y == Y_LIMIT.x:
 			pass
 		else:
 			#if -1 and translation.y < Y_LIMIT.y) or (zoom == 1 and translation.y > Y_LIMIT.x):
-			var a = deg_to_rad(10 +  camera.rotation_degrees.x) # +5 as the max angle is actually 80 deg
+			var a = deg_to_rad(10 +  rotation_degrees.x) # +5 as the max angle is actually 80 deg
 			var y_amount = sin(a)
 			var z_amount = cos(a)
 			_direction.y = (zoom * y_amount)
 			_direction.z -= (zoom * z_amount)
-	_direction = _direction.rotated(Vector3.UP, camera.rotation.y)
+	_direction = _direction.rotated(Vector3.UP, rotation.y)
 	
 func _process(delta):
 	_poll()
@@ -66,8 +66,8 @@ func _update_movement(delta):
 		_v = 0
 	else:
 		_v = min(MAX_SPEED, _v + (ACCLERATION * delta))
-	camera.global_translate(_direction * _v)
-	camera.position.y = clamp(camera.position.y, Y_LIMIT.x, Y_LIMIT.y)
+	global_translate(_direction * _v)
+	position.y = clamp(position.y, Y_LIMIT.x, Y_LIMIT.y)
 	_direction = Vector3()
 
 func _update_rotation(_delta):
@@ -78,7 +78,7 @@ func _update_rotation(_delta):
 	_pitch = _pitch * SMOOTHNESS + offset.y * (1.0 - SMOOTHNESS)
 	_pitch = min(_pitch, 5.0) # Otherwise we can break through the clamp below
 
-	camera.rotate_y(deg_to_rad(-_yaw))
-	camera.rotate_object_local(Vector3(1,0,0), deg_to_rad(-_pitch))
-	camera.rotation.x = clamp(camera.rotation.x, PITCH_LIMIT.x, PITCH_LIMIT.y)
+	rotate_y(deg_to_rad(-_yaw))
+	rotate_object_local(Vector3(1,0,0), deg_to_rad(-_pitch))
+	rotation.x = clamp(rotation.x, PITCH_LIMIT.x, PITCH_LIMIT.y)
 	#print(rotation_degrees.x)

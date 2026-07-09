@@ -5,7 +5,10 @@ class_name TileElement
 var id := 0
 
 enum State {RAISED, SELECTED, FALLING, LOWERED, RISING, DISABLED}
+
 var state = State.RAISED
+
+# Multiplayer synchronised
 var selected_by : Array # players who have a raise/lower command queued on the tile
 var under_aoe : Array # players for whome this tile falls under their AoE
 
@@ -37,7 +40,7 @@ var _hovered := false
 
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
-const DEFAULT_COLOUR : Color = Color(1, 1, 1)
+const DEFAULT_COLOUR : Color = Color.WHITE
 const HOVER_COLOUR : Color = Color.YELLOW
 #const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
 #const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
@@ -149,8 +152,7 @@ func update_selection_visual():
 	set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
 
 	# COLOR.a → aluminium EMISSION (local-selection glow)
-	var local_pnum = Global.my_player_number
-	var is_selected = local_pnum >= 0 and local_pnum < selected_by.size() and selected_by[local_pnum]
+	var is_selected = selected_by[Global.my_player_number]
 	set_tile_mm_emission(0.4 if is_selected else 0.0)
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction

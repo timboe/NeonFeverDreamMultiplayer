@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://64ywqdxbkakh"]
+
+[ext_resource type="Script" uid="uid://do5ayabbkcssm" path="res://scripts/world/units/Zoomba.gd" id="1"]
+[ext_resource type="CapsuleMesh" uid="uid://i8kulhkm1fdb" path="res://meshes/eye.tres" id="2"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player0_material.tres" id="4"]
+[ext_resource type="PackedScene" uid="uid://b1d53jlc4oj3s" path="res://scenes/world/buildings/Zapper.tscn" id="5"]
+
+[sub_resource type="Animation" id="1"]
+resource_name = "Rock"
+length = 2.0
+loop_mode = 1
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_rrta4"]
+_data = {
+&"Rock": SubResource("1")
+}
+
+[sub_resource type="StandardMaterial3D" id="2"]
+albedo_color = Color(0, 0, 0, 1)
+roughness = 0.0
+
+[sub_resource type="SphereMesh" id="3"]
+material = SubResource("2")
+radius = 0.05
+height = 0.1
+
+[sub_resource type="SphereMesh" id="4"]
+radius = 2.0
+
+[node name="Zoomba" type="Node3D" unique_id=685679189]
+script = ExtResource("1")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1630434465]
+callback_mode_process = 0
+libraries/ = SubResource("AnimationLibrary_rrta4")
+autoplay = &"Rock"
+
+[node name="Zapper" parent="." unique_id=517194518 instance=ExtResource("5")]
+transform = Transform3D(-1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0, 1, -2, 0.75, 0)
+
+[node name="Body" type="Node3D" parent="." unique_id=511339381]
+
+[node name="Ball" type="MeshInstance3D" parent="Body" unique_id=571781637]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.9, 1, 0.5)
+mesh = SubResource("3")
+
+[node name="Ball2" type="MeshInstance3D" parent="Body" unique_id=1254382306]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.9, 1, -0.5)
+mesh = SubResource("3")
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Body" unique_id=304969192]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody" unique_id=54414695]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+mesh = SubResource("4")
+material = ExtResource("4")
+
+[node name="CSGBox" type="CSGBox3D" parent="Body/CSGBody" unique_id=1716086790]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+operation = 2
+size = Vector3(4, 1, 4)
+
+[node name="CSGMeshEye" type="CSGMesh3D" parent="Body/CSGBody" unique_id=1721446052]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.8, 0, -0.5)
+operation = 2
+mesh = ExtResource("2")
+
+[node name="CSGMeshEye2" type="CSGMesh3D" parent="Body/CSGBody" unique_id=1822136606]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.8, 0, 0.5)
+operation = 2
+mesh = ExtResource("2")
