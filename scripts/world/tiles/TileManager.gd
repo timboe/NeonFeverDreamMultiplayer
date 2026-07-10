@@ -279,7 +279,7 @@ func apply_initial_zoomba():
 			if n.state == TileElement.State.LOWERED: # Find a vaid initial link
 				done = true
 				tile.building.spawn_start_loc = n
-				tile.building.add_zoomba()
+				%UnitManager.spawn_zoomba(tile.building)
 				#var mr : Monorail = tile.paths[n]
 				#mr.set_constructed(zoomba, true) # Sets as constucted by player
 				break

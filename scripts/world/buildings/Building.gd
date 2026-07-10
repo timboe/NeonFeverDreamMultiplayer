@@ -9,11 +9,10 @@ var player_owner : int
 var default_mat = preload("res://materials/player/player0_material.tres")
 var updated_mat
 
-enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTION}
+enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTIOfN}
 var state : int
 var type
 
-const PULSE_INITIAL := 0.1
 const SPAWN_TIME : float = 5.0
 const CONSTRUCTION_TIME : float = 5.0
 const CAPTURE_TIME : float = 10.0
@@ -97,21 +96,11 @@ func set_constructed_b():
 	set_visible(true)
 	my_blueprint.queue_free()
 	
-#TODO - move to MCP?
-func add_zoomba():
-	var zoomba = $"../UnitManager/UnitFactory/Zoomba".duplicate()
-	#actor_manager.add_child(zoomba)
-	zoomba.initialise(spawn_start_loc, player_owner)
-	var t = create_tween()
-	t.tween_property(zoomba, "position:y", zoomba.position.y, SPAWN_TIME)
-	t.tween_callback(zoomba_callback.bind(zoomba)).set_delay(SPAWN_TIME)
-	spawn_particles.emitting = true
-	#return zoomba
+##NOTE: Moved to UnitManager as spawn_zoomba
+#func add_zoomba():
 
-#TODO - move to MCP?
-func zoomba_callback(z):
-	spawn_particles.emitting = false
-	z.idle_callback()
+##NOTE: Moved to UnitManager
+#func zoomba_callback(z):
 	
 #func start_capture(by_whome):
 	#var t = create_tween()

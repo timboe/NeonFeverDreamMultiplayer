@@ -50,7 +50,6 @@ func toggle_debug():
 
 func add_tile(tile : TileElement):
 	astar.add_point( tile.get_id(), tile.pathing_centre )
-	print("add tile ", tile.pathing_centre)
 
 func disconnect_tiles(a : TileElement, b : TileElement):
 	astar.disconnect_points(a.get_id(), b.get_id())
@@ -60,7 +59,6 @@ func are_tiles_connected(a : TileElement, b : TileElement) -> bool:
 
 func connect_tiles(from : TileElement, to : TileElement, bidirectional : bool):
 	astar.connect_points(from.get_id(), to.get_id(), bidirectional) 
-	print("connect ", get_point(from.get_id()) , " to " , get_point(to.get_id()) )
 
 func pathfind(from : TileElement, to : TileElement) -> PackedInt64Array:
 	return astar.get_id_path(from.get_id(), to.get_id())

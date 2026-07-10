@@ -10,35 +10,32 @@ const QUICK_ROTATE_TIME := 0.2
 const SCRAM : int = 10
 
 var job
-var player : int
-var location : TileElement
+var building : Building
 var previous_location : TileElement
 var path : PackedInt64Array = []
 var progress : int
 var scram_count : int = 0
 
-@onready var tween : Tween = $"../Tween"
+var pathing_manager
 #@onready var job_manager : JobManager = $"../../JobManager"
-#@onready var pathing_manager : Node = $"../../TileManager/PathingManager"
 
 # Used for rotation
 var quat_from : Quaternion
 var quat_to : Quaternion
 
 #var mr_class = load("res://scripts/Monorail.gd")
-var cairo_class = load("res://scripts/world/tiles/Cairo.gd")
+const CairoScript = preload("res://scripts/world/tiles/Cairo.gd")
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	job = null
 	$Zapper.visible = false
 
-func initialise(loc : TileElement, pl : int):
+func initialise(b : Building):
 	add_to_group("zoombas")
-	location = loc
-	player = pl
-	global_transform.origin = location.pathing_centre
-	var updated_mat = load("res://materials/player" + str(player) + "_material.tres")
+	building = b
+	global_transform.origin = building.spawn_start_loc.global_transform.origin
+	var updated_mat = load("res://materials/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
 	
 func scram():
@@ -56,7 +53,7 @@ func scram():
 
 #func check_pathing_valid() -> bool:
 	#if path.size() == 0:
-		#path = pathing_manager.pathfind(player, location, job["place"])
+		#path = pathing_manager.pathfind(location, job["place"])
 		#progress = 1 # 0 is our starting location
 		##print("player " , player , " from " , location , " to " , job["place"] , " size " , path.size())
 		#if path.size() < 2:
@@ -85,7 +82,7 @@ func scram():
 	#progress += 1
 	#move("pathing_callback")
 
-#func abandon_job(var have_active_callback : bool = true):
+#func abandon_job(have_active_callback : bool = true):
 	#assert(state == State.PATHING or state == State.WORKING)
 	#assert(job != null)
 	#match state:
@@ -94,7 +91,7 @@ func scram():
 		#State.WORKING:
 			#return abandon_job_while_working(have_active_callback)
 		#
-#func abandon_job_while_pathing(var have_active_callback : bool):
+#func abandon_job_while_pathing(have_active_callback : bool):
 	#state = State.IDLE
 	#var id = job["id"]
 	#print("ABANDONING JOB WHILE PATHING ", job)
@@ -104,7 +101,7 @@ func scram():
 	#if not have_active_callback:
 		#idle_callback()
 		#
-#func abandon_job_while_working(var have_active_callback : bool):
+#func abandon_job_while_working(have_active_callback : bool):
 	#assert(have_active_callback == true)
 	#$Zapper.visible = false
 	#match job["type"]:
@@ -178,22 +175,22 @@ func scram():
 	#match job["type"]:
 		#JobManager.JobType.CONSTRUCT_MONORAIL:
 			## Get the monorail segment which connects this tile to the target
-			#$Zapper.cast_to.y = cairo_class.UNIT
+			#$Zapper.target_position.y = CairoScript.UNIT
 			#var mr = job["place"].paths[ job["target"] ]
 			#assert(mr.state == mr_class.State.INITIAL)
 			#mr.start_construction(self)
 		#JobManager.JobType.CONSTRUCT_BUILDING:
-			#$Zapper.cast_to.y = cairo_class.UNIT
+			#$Zapper.target_position.y = CairoScript.UNIT
 			#var building = job["target"].building
 			#assert(building != null)
 			#building.start_construction(self)
 		#JobManager.JobType.CLAIM_TILE:
-			#$Zapper.cast_to.y = cairo_class.UNIT / 2.0
+			#$Zapper.target_position.y = CairoScript.UNIT / 2.0
 			#var tile = job["place"]
 			#assert(tile.player != player)
 			#tile.start_capture(self)
 		#JobManager.JobType.CLAIM_BUILDING:
-			#$Zapper.cast_to.y = cairo_class.UNIT
+			#$Zapper.target_position.y = CairoScript.UNIT
 			#var building = job["target"].building
 			#assert(building != null)
 			#assert(job["place"].player == player)
@@ -206,10 +203,9 @@ func scram():
 	#if job["target"] == null:
 		 #return
 	#setup_rotation(job["target"], null)
-	#tween.interpolate_method(self, "quat_transform", 0.0, 1.0, QUICK_ROTATE_TIME)
-	#tween.start()
+	#create_tween().tween_method(quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
 #
-#func job_finished(var work_was_done : bool):
+#func job_finished(work_was_done : bool):
 	#assert((work_was_done and state == State.WORKING) or (not work_was_done and state == State.PATHING))
 	#assert(job != null)
 	#state = State.IDLE
@@ -232,7 +228,7 @@ func scram():
 	#for to_test in location.paths.keys():
 		#var mr = location.paths[to_test]
 		#if mr.get_passable(player, location, to_test):
-			#possible_destinations.push_back(to_test)
+			#possible_destinations.append(to_test)
 			#
 	## Special consderations if scraming
 	#if scram_count > 0:
@@ -240,29 +236,29 @@ func scram():
 		#var enemy_tiles := []
 		#for d in possible_destinations:
 			#if d.player != player:
-				#enemy_tiles.push_back( d )
+				#enemy_tiles.append(d)
 		#if possible_destinations.size() - enemy_tiles.size() > 0: # If at lease one way out isn't to enemy land
 			#for e in enemy_tiles:
 				#var loc = possible_destinations.find( e )
-				#possible_destinations.remove( loc )
+				#possible_destinations.remove_at(loc)
 			#
 	## Avoid backtracking, if possible
 	#var backtrack = possible_destinations.find(previous_location)
 	#if possible_destinations.size() > 1 and backtrack != -1:
-		#possible_destinations.remove( backtrack )
+		#possible_destinations.remove_at(backtrack)
 	## Remember current tile, for the next backtrack check
 	#previous_location = location
 	## Assign new location if available
 #
 	#if possible_destinations.size() > 0:
-		#location = possible_destinations[ GlobalVars.rand.randi() % possible_destinations.size() ]
+		#location = possible_destinations[ Global.rand.randi() % possible_destinations.size() ]
 #
 	## Go to new location. In extreme cases may be the same tile (possible_destinations.size() == 0)
 	#move("idle_callback")
 	##print("Zoomba idle ", previous_location.get_id(), " to " , location.get_id(), " possible dests " , possible_destinations.size())
 #
-#func setup_rotation(var target, var look_at_from_target):
-	#quat_from = Quat(transform.basis)
+#func setup_rotation(target, look_at_from_target):
+	#quat_from = Quaternion(transform.basis)
 	#var cache_rot = transform.basis
 	#if look_at_from_target != null:
 		## If final move, look towards where the job is
@@ -275,10 +271,10 @@ func scram():
 		##if transform.origin.distance_to( location.pathing_centre ) > 1e-3:
 		#look_at(target.pathing_centre, Vector3.UP)
 	#rotation.y -= PI/2.0
-	#quat_to = Quat(transform.basis)
+	#quat_to = Quaternion(transform.basis)
 	#transform.basis = cache_rot
 #
-#func move(var callback):
+#func move(callback):
 	#setup_rotation(location, null if job == null else job["target"])
 	#var time = MOVE_TIME 
 	#if scram_count > 0:
@@ -286,11 +282,11 @@ func scram():
 	#elif state == State.IDLE:
 		#time *= 2.0 
 	## else - pathing, time *= 1.0
-	#tween.interpolate_method(self, "quat_transform", 0.0, 1.0,time/2.0)
-	#tween.interpolate_property(self, "translation", null, location.pathing_centre, time)
-	#tween.interpolate_callback(self, time, callback)
-	#tween.start()
+	#var t = create_tween()
+	#t.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
+	#t.tween_property(self, "position", location.pathing_centre, time)
+	#t.tween_callback(callback).set_delay(time)
 #
-#func quat_transform(var amount : float):
+#func quat_transform(amount : float):
 	#var mid = quat_from.slerp(quat_to, amount)
 	#transform.basis = Basis(mid)
