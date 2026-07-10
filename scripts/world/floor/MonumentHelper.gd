@@ -29,14 +29,14 @@ static func add_vertex_alt(mesh_tool : SurfaceTool, edge_tool : SurfaceTool, y :
 	add_vertex(mesh_tool, edge_tool, Vector3(v2.x, y, v2.y))
 
 static func add_face(mesh_tool : SurfaceTool, edge_tool : SurfaceTool, height : float,
-	bl : Vector2, tl : Vector2,
-	tr : Vector2, br : Vector2):
+	BL : Vector2, TL : Vector2,
+	TR : Vector2, BR : Vector2):
 	
 	mesh_tool.add_uv(Vector2(0, 0))
-	add_vertex(mesh_tool, edge_tool, Vector3(bl.x, 0, bl.y))
+	add_vertex(mesh_tool, edge_tool, Vector3(BL.x, 0, BL.y))
 	mesh_tool.add_uv(Vector2(0, 1))
-	add_vertex(mesh_tool, edge_tool, Vector3(tl.x, height, tl.y))
+	add_vertex(mesh_tool, edge_tool, Vector3(TL.x, height, TL.y))
 	mesh_tool.add_uv(Vector2(1, 1))
-	add_vertex(mesh_tool, edge_tool, Vector3(tr.x, height, tr.y))
+	add_vertex(mesh_tool, edge_tool, Vector3(TR.x, height, TR.y))
 	mesh_tool.add_uv(Vector2(1, 0))
-	add_vertex(mesh_tool, edge_tool, Vector3(br.x, 0, br.y))
+	add_vertex(mesh_tool, edge_tool, Vector3(BR.x, 0, BR.y))

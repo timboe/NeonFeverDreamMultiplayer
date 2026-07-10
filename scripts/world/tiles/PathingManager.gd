@@ -2,33 +2,71 @@ extends Node
 
 class_name PathingManager
 
-@onready var astar : Array 
+var astar : AStar3D 
+
+var debug_enabled := true
+var debug_mesh: ImmediateMesh
+var debug_mesh_instance: MeshInstance3D
 
 func _ready():
-	# The 0-MAX_PLAYERS networks are used to track the monorail network (with 
-	# per-player one-way instructions included)
-	# The +1 network is used to track the destroyed tiles network
-	for _i in range(Global.MAX_PLAYERS + 1):
-		astar.push_back( AStar3D.new() )
+	astar = AStar3D.new()
+	if debug_enabled:
+		_setup_debug()
+
+func _setup_debug():
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	debug_mesh = ImmediateMesh.new()
+	debug_mesh_instance = MeshInstance3D.new()
+	debug_mesh_instance.mesh = debug_mesh
+	debug_mesh_instance.material_override = mat
+	add_child(debug_mesh_instance)
+
+func _process(_delta):
+	if not debug_enabled or not debug_mesh:
+		return
+	debug_mesh.clear_surfaces()
+	debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	debug_mesh.surface_set_color(Color.RED)
+	for id in astar.get_point_ids():
+		var from_pos := astar.get_point_position(id)
+		for conn_id in astar.get_point_connections(id):
+			if id < conn_id:
+				debug_mesh.surface_add_vertex(from_pos)
+				debug_mesh.surface_add_vertex(astar.get_point_position(conn_id))
+	debug_mesh.surface_end()
+
+func toggle_debug():
+	debug_enabled = not debug_enabled
+	set_process(debug_enabled)
+	if debug_enabled:
+		_setup_debug()
+	else:
+		if debug_mesh_instance:
+			debug_mesh_instance.queue_free()
+			debug_mesh_instance = null
+			debug_mesh = null
 
 func add_tile(tile : TileElement):
-	for i in range(Global.MAX_PLAYERS + 1):
-		astar[i].add_point( tile.get_id(), tile.pathing_centre )
+	astar.add_point( tile.get_id(), tile.pathing_centre )
+	print("add tile ", tile.pathing_centre)
 
-func disconnect_tiles(player : int, a : TileElement, b : TileElement):
-	astar[player].disconnect_points(a.get_id(), b.get_id())
+func disconnect_tiles(a : TileElement, b : TileElement):
+	astar.disconnect_points(a.get_id(), b.get_id())
 
-func are_tiles_connected(player : int, a : TileElement, b : TileElement) -> bool:
-	return (pathfind(player, a, b).size() > 0)
+func are_tiles_connected(a : TileElement, b : TileElement) -> bool:
+	return (pathfind(a, b).size() > 0)
 
-func connect_tiles(player : int, from : TileElement, to : TileElement, bidirectional : bool):
-	astar[player].connect_points(from.get_id(), to.get_id(), bidirectional) 
+func connect_tiles(from : TileElement, to : TileElement, bidirectional : bool):
+	astar.connect_points(from.get_id(), to.get_id(), bidirectional) 
+	print("connect ", get_point(from.get_id()) , " to " , get_point(to.get_id()) )
 
-func pathfind(player, from : TileElement, to : TileElement) -> PackedInt64Array:
-	return astar[player].get_id_path(from.get_id(), to.get_id())
+func pathfind(from : TileElement, to : TileElement) -> PackedInt64Array:
+	return astar.get_id_path(from.get_id(), to.get_id())
 
 func get_point(id : int) -> Vector3:
-	return astar[0].get_point_position(id) # we could have used any of the instances
+	return astar.get_point_position(id)
 	
 func get_tile(id : int) -> TileElement:
-	return $"../../TileManager".tile_dictionary[id]
+	return %TileManager.tile_dictionary[id]

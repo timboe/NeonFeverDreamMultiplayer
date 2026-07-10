@@ -40,8 +40,10 @@ func set_blueprint(b):
 	#update_monorail()
 	state = State.BLUEPRINT
 
-#func set_spawn_start_loc(s):
-	#spawn_start_loc = s
+# Location where new units rise out of the floor
+func set_spawn_start_loc(s):
+	spawn_start_loc = s
+	# TODO - location spawn particles
 	#spawn_particles = $"../../CameraManager/SpawnParticles".duplicate()
 	#$"../".add_child(spawn_particles)
 	#spawn_particles.transform.origin = spawn_start_loc.pathing_centre
@@ -94,20 +96,22 @@ func set_constructed_b():
 	# Now with cloud cover
 	set_visible(true)
 	my_blueprint.queue_free()
-		
-#func add_zoomba():
-	#var zoomba = $"../../ObjectFactory/Zoomba".duplicate()
+	
+#TODO - move to MCP?
+func add_zoomba():
+	var zoomba = $"../UnitManager/UnitFactory/Zoomba".duplicate()
 	#actor_manager.add_child(zoomba)
-	#zoomba.initialise(spawn_start_loc, location.player)
-	#var t = create_tween()
-	#t.tween_property(zoomba, "position:y", zoomba.position.y, SPAWN_TIME)
-	#t.tween_callback(zoomba_callback.bind(zoomba)).set_delay(SPAWN_TIME)
-	#spawn_particles.emitting = true
+	zoomba.initialise(spawn_start_loc, player_owner)
+	var t = create_tween()
+	t.tween_property(zoomba, "position:y", zoomba.position.y, SPAWN_TIME)
+	t.tween_callback(zoomba_callback.bind(zoomba)).set_delay(SPAWN_TIME)
+	spawn_particles.emitting = true
 	#return zoomba
-#
-#func zoomba_callback(z):
-	#spawn_particles.emitting = false
-	#z.idle_callback()
+
+#TODO - move to MCP?
+func zoomba_callback(z):
+	spawn_particles.emitting = false
+	z.idle_callback()
 	
 #func start_capture(by_whome):
 	#var t = create_tween()
@@ -130,7 +134,7 @@ func set_constructed_b():
 		#else:
 			#queue_construction_jobs(-1) # I might have been captured before I was constructed
 	
-func queue_construction_jobs(placement_player : int):
+func queue_construction_jobs(_placement_player : int):
 	pass
 	# TODO
 	#assert(state == State.BLUEPRINT)

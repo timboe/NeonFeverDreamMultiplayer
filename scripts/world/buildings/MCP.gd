@@ -17,8 +17,8 @@ func _ready():
 	to_rotate.push_back($MCPFaceBottom)
 
 func _process(delta):
-	for tr in to_rotate:
-		tr.rotate_object_local(Vector3.UP, delta * A_VELOCITY)
+	for to_rot in to_rotate:
+		to_rot.rotate_object_local(Vector3.UP, delta * A_VELOCITY)
 
 func get_tick_energy() -> float:
 	return BASE_GENERATION

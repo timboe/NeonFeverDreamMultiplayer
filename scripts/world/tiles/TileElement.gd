@@ -37,6 +37,7 @@ var claim_strength : int = 0
 var pathing_centre = null
 
 var _hovered := false
+var pathing_manager
 
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
@@ -71,8 +72,8 @@ func set_lowered():
 	# Note: We don't have access to the paths variable yet
 	# as this is called also during the level setup
 	for n in neighbours:
-		if n.state == State.LOWERED and %PathingManager:
-			%PathingManager.connect_tiles(Global.MAX_PLAYERS, self, n, true)
+		if n.state == State.LOWERED:
+			pathing_manager.connect_tiles(self, n, true)
 	
 func get_state() -> int:
 	return state

@@ -10,8 +10,8 @@ const HEIGHT := FULL_Y - EMPTY_Y
 const CAPACITY := 100.0 * 60.0
 var capacity_mod := 0.0
 
-var _contains_val: int
-var contains: int:
+var _contains_val: float
+var contains: float:
 	get: return _contains_val
 	set(value): _contains_val = value
 

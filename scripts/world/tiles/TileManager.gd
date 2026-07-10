@@ -135,7 +135,7 @@ func _physics_process(_delta):
 	enabled_tiles_to_multimesh()
 	apply_loaded_level()
 	#add_monorail()
-	#apply_initial_monorail_and_zoomba()
+	apply_initial_zoomba()
 
 func set_neighbours():
 	for tile in get_tree().get_nodes_in_group("tiles"):
@@ -167,8 +167,9 @@ func set_neighbours():
 		t = tile.get_global_transform() * t
 		t.origin.y = 0
 		tile.pathing_centre = t.origin
+		tile.pathing_manager = $PathingManager
 		$PathingManager.add_tile(tile)
-		t.origin.y = -0.6 # -0.6 to hide
+		#t.origin.y = -0.6 # to hide - no longer need to hide as not using monorail
 		#if cap != null:
 			#cap_mm.multimesh.set_instance_transform(cap_count, t)
 			#tile.monorail_cap_id = cap_count
@@ -192,24 +193,24 @@ func apply_loaded_level():
 			tile.set_lowered()
 
 # Register click on tile to select. Toggle selection for pnum
-func apply_toggle(pnum: int, tile_id: int):
-	if not tile_dictionary.has(tile_id):
-		print("TileManager.apply_toggle: unknown tile_id ", tile_id)
+func apply_toggle(pnum: int, toggle_tile_id: int):
+	if not tile_dictionary.has(toggle_tile_id):
+		print("TileManager.apply_toggle: unknown tile_id ", toggle_tile_id)
 		return
-	var tile: TileElement = tile_dictionary[tile_id]
+	var tile: TileElement = tile_dictionary[toggle_tile_id]
 	if tile.state != TileElement.State.RAISED:
-		print("TileManager.apply_toggle: tile ", tile_id, " is not RAISED (state=", tile.state, ")")
+		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is not RAISED (state=", tile.state, ")")
 		return
 	tile.selected_by[pnum] = not tile.selected_by[pnum]
 	tile.update_selection_visual()
-	rpc("set_tile_selection", tile_id, tile.selected_by.duplicate())
+	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 
 # Register click on tile to select. Distribute change to clients
 @rpc("authority", "call_remote", "reliable")
-func set_tile_selection(tile_id: int, selected_by: Array):
-	if not tile_dictionary.has(tile_id):
+func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
+	if not tile_dictionary.has(update_tile_id):
 		return
-	var tile: TileElement = tile_dictionary[tile_id]
+	var tile: TileElement = tile_dictionary[update_tile_id]
 	tile.selected_by = selected_by
 	tile.update_selection_visual()
 
@@ -267,27 +268,25 @@ func set_tile_selection(tile_id: int, selected_by: Array):
 	#assert(mr_count <= total_monorails)
 	#monorail_mm.multimesh.set_visible_instance_count(mr_count)
 
-
-#func apply_initial_monorail_and_zoomba():
+#TODO - used to also do monorail, bring this back...?
+func apply_initial_zoomba():
 	#print(monorail_mm.monorail_dict[10], " ", monorail_mm.monorail_dict[10].monorail_id)
 	#print(monorail_mm.monorail_dict[11], " ", monorail_mm.monorail_dict[11].monorail_id)
-	#for id in Global.LEVEL.MCP:
-		#var player = Global.LEVEL.MCP.find( id )
-		#var tile : TileElement = tile_dictionary[id] # Get ID of MCP tile
-		#tile.player = player
-		#var done := false
-		#for n in tile.neighbours:
-			#if n.state == TileElement.State.DESTROYED: # Find a vaid initial link
-				#done = true
-				#tile.building.spawn_start_loc = n
-				#var zoomba = tile.building.add_zoomba()
+	for id in Global.LEVEL.MCP:
+		var tile : TileElement = tile_dictionary[id] # Get ID of MCP tile
+		var done := false
+		for n in tile.neighbours:
+			if n.state == TileElement.State.LOWERED: # Find a vaid initial link
+				done = true
+				tile.building.spawn_start_loc = n
+				tile.building.add_zoomba()
 				#var mr : Monorail = tile.paths[n]
 				#mr.set_constructed(zoomba, true) # Sets as constucted by player
-				#break
+				break
 		#tile.building.update_monorail()
-		#if not done:
-			#print("Could not connect MCP to starting tile!")
-			#assert(false)
+		if not done:
+			print("Could not connect MCP to starting tile!")
+			assert(false)
 
 func disabled_tiles_to_multimesh():
 	var disabled := get_tree().get_nodes_in_group("disabled")
