@@ -11,3 +11,17 @@ static var BUILDING_AOE : Dictionary = {
 	BuildingManager.Type.BEACON: 2,
 	BuildingManager.Type.NEST: 2,
 }
+
+static var UNIT_SPEED : Dictionary = {
+	UnitManager.Type.ZOOMBA: 1.0,
+	UnitManager.Type.TANK: 1.0,
+	UnitManager.Type.AERIAL_PATROL: 1.0,
+	UnitManager.Type.AERIAL_SCOUT: 1.0,
+	UnitManager.Type.VIRUS: 1.0,
+}
+
+static var HOME_TERRITORY_UNITS : Array = [
+	UnitManager.Type.ZOOMBA,
+	UnitManager.Type.TANK,
+	UnitManager.Type.AERIAL_PATROL,
+]

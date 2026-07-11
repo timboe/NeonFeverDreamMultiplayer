@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://gnuq7frg6asq" path="res://scenes/world/units/UnitManager.tscn" id="6_yr1n6"]
 [ext_resource type="Script" uid="uid://c3i58cfvskf37" path="res://scripts/world/camera/OmniLight.gd" id="7_252at"]
 [ext_resource type="Script" uid="uid://bjdjfiocjvvij" path="res://scripts/world/units/UnitManager.gd" id="7_l5ull"]
+[ext_resource type="Script" uid="uid://c7fxwvdnwg7js" path="res://scripts/world/units/JobManager.gd" id="8_16fjv"]
 
 [node name="World" type="Node3D" unique_id=943865623]
 
@@ -35,6 +36,9 @@ unique_name_in_owner = true
 [node name="UnitManager" parent="." unique_id=1175523443 instance=ExtResource("6_yr1n6")]
 unique_name_in_owner = true
 script = ExtResource("7_l5ull")
+
+[node name="JobManager" type="Node3D" parent="." unique_id=304354839]
+script = ExtResource("8_16fjv")
 
 [node name="CameraManager" type="Node3D" parent="." unique_id=1537047151]
 unique_name_in_owner = true

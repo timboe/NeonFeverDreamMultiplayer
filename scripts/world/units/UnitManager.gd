@@ -2,7 +2,7 @@ extends Node3D
 
 class_name UnitManager
 
-enum Type {NONE, ZOOMBA, TANK, AERIAL, VIRUS}
+enum Type {NONE, ZOOMBA, TANK, AERIAL_PATROL, AERIAL_SCOUT, VIRUS}
 
 # Multiplayer synchronised
 var unit_dictionary : Dictionary
@@ -32,5 +32,5 @@ func add_to_dict_and_scene(u : Unit):
 func new_unit_callback(new_unit):
 	print("new unit created at ", new_unit.position)
 	#spawn_particles.emitting = false
-	# TODO - after job system
-	#z.idle_callback()
+	if multiplayer.is_server():
+		new_unit.idle_callback()

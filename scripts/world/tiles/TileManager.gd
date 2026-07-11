@@ -216,6 +216,10 @@ func recompute_aoe():
 				if not visited.has(n):
 					visited[n] = true
 					queue.append({tile = n, depth = depth + 1})
+	for t in tiles(): # Un-select anythign no longer under AoE
+		for s in t.selected_by:
+			if s not in t.aoe:
+				t.selected_by.erase(s)
 	for t in touched:
 		t.update_selection_and_aoe_visual()
 
@@ -233,7 +237,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int):
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 
-# Register click on tile to select. Distribute change to clients
+# TODO - "selected by" is only needed on the original client and server - not all other nodes. Delete this?
 @rpc("authority", "call_remote", "reliable")
 func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	if not tile_dictionary.has(update_tile_id):

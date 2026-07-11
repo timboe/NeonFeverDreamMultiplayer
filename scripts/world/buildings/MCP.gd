@@ -20,7 +20,13 @@ func _process(delta):
 	for to_rot in to_rotate:
 		to_rot.rotate_object_local(Vector3.UP, delta * A_VELOCITY)
 
-func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):
+func initialise(tile : TileElement, pnum : int):
+	var t : BuildingManager.Type
+	match name:
+		"MCP_1": t = BuildingManager.Type.MCP_1
+		"MCP_2": t = BuildingManager.Type.MCP_2
+		"MCP_3": t = BuildingManager.Type.MCP_3
+		"MCP_4": t = BuildingManager.Type.MCP_4
 	initialise_base(tile, pnum, t)
 	add_to_group("generator")
 	add_to_group("mcp")

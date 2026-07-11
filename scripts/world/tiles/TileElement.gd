@@ -12,7 +12,9 @@ var aoe : Array # players for whome this tile falls under their AoE
 
 var particles_instance : GPUParticles3D
 
-var paths : Dictionary # dict of all pathable neighbours. Key=neighbour, Value=connecting monorail
+# Why do we need paths? Use pathfinding instead 
+#var paths : Dictionary # dict of all pathable neighbours. Key=neighbour, Value=connecting monorail
+
 var neighbours : Array # Array of all neighbours (including immutible ones)
 
 var active_tween : Tween
@@ -69,7 +71,7 @@ func toggle_selected_by(player_n : int):
 		return
 	if player_n in selected_by:
 		selected_by.erase(player_n)
-	else:
+	elif player_n in aoe:
 		selected_by.append(player_n)
 	
 func set_lowered():
@@ -94,12 +96,12 @@ func set_id(i: int):
 func get_id():
 	return id
 	
-func links_to(target : StaticBody3D, mr, my_child : bool):
-	assert(neighbours.has(target))
-	paths[target] = mr
-	if my_child:
-		mr.set_connections(self, target)
-		target.links_to(self, mr, false) # Add reciprocal link
+#func links_to(target : StaticBody3D, mr, my_child : bool):
+	#assert(neighbours.has(target))
+	#paths[target] = mr
+	#if my_child:
+		#mr.set_connections(self, target)
+		#target.links_to(self, mr, false) # Add reciprocal link
 	
 func add_neighbour(n : StaticBody3D):
 	if !neighbours.has(n):
@@ -300,11 +302,12 @@ func do_deconstruct_b():
 	particles_instance.emitting = true
 
 func done_deconstruct():
-	set_lowered()
-	for n in paths.keys():
-		n.a_neighbour_just_fell()
-	#assign_monorail_jobs_on_demolish()
-	particles_instance.queue_free()
+	pass
+	#set_lowered()
+	#for n in paths.keys():
+		#n.a_neighbour_just_fell()
+	##assign_monorail_jobs_on_demolish()
+	#particles_instance.queue_free()
 	
 #func pulse_start(pulse_e, pulse_n):
 	#pulse_count = pulse_n
@@ -363,21 +366,16 @@ func _on_StaticBody_mouse_exited():
 	#by_whome.job_finished(true)
 
 # From one lowered tile to another	
-func get_access_tiles():
+func get_access_tiles(require_aoe : int = 0) -> Array:
 	var array : Array = []
-	for n in paths.keys():
-		if n.building == null:
-			assert(n.state == TileManager.State.LOWERED)
-			array.push_back(n)
-	return array
-	
-# For a particular player to build a barrier
-func get_access_tiles_wall(for_player : int):
-	var array : Array = []
-	for n in paths.keys():
-		if n.building == null and n.player == for_player:
-			assert(n.state == TileManager.State.LOWERED)
-			array.push_back(n)
+	for n in neighbours:
+		if n.building != null:
+			continue
+		if n.state != TileManager.State.LOWERED:
+			continue
+		if require_aoe and require_aoe not in n.aoe:
+			continue
+		array.push_back(n)
 	return array
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx):

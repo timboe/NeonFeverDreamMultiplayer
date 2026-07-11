@@ -103,7 +103,7 @@ func place_blueprint(tile : TileElement):
 # Note: Does NOT call recompute_aoe. Call this once done with place_building
 func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	var b = new_building_instance(t)
-	b.initialise(tile, pnum, t)
+	b.initialise(tile, pnum)
 	add_to_dict_and_scene(b)
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:

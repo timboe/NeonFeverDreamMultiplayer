@@ -2,32 +2,25 @@ extends Unit
 
 class_name Zoomba
 
-const MOVE_TIME := 1.0
 const QUICK_ROTATE_TIME := 0.2
 const SCRAM : int = 10
 
-var job
-var previous_location : TileElement
-var path : PackedInt64Array = []
 var progress : int
 var scram_count : int = 0
 
 var pathing_manager
 #@onready var job_manager : JobManager = $"../../JobManager"
 
-# Used for rotation
-var quat_from : Quaternion
-var quat_to : Quaternion
+
 
 #var mr_class = load("res://scripts/Monorail.gd")
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	job = null
 	$Zapper.visible = false
 
 func initialise(b : Building):
-	initialise_base(b)
+	initialise_base(b, UnitManager.Type.ZOOMBA)
 	add_to_group("zoomba")
 	var updated_mat = load("res://materials/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
@@ -38,12 +31,7 @@ func scram():
 	#if state != State.IDLE:
 		#abandon_job(true)
 		
-#func assign(new_job : Dictionary):
-	#assert(job == null)
-	#assert(state == State.IDLE)
-	#assert(new_job["player"] == player)
-	#state = State.PATHING
-	#job = new_job
+
 
 #func check_pathing_valid() -> bool:
 	#if path.size() == 0:
@@ -210,77 +198,8 @@ func scram():
 	#job_manager.assign_jobs()
 	#idle_callback()
 	#
-#func idle_callback():
-	#if job != null:
-		#assert(scram_count == 0)
-		#path.resize(0)
-		#pathing_callback()
-		#return
-		#
-	## Get possible ways out of this tile
-	#var possible_destinations := []
-	#for to_test in location.paths.keys():
-		#var mr = location.paths[to_test]
-		#if mr.get_passable(player, location, to_test):
-			#possible_destinations.append(to_test)
-			#
-	## Special consderations if scraming
-	#if scram_count > 0:
-		#scram_count -= 1
-		#var enemy_tiles := []
-		#for d in possible_destinations:
-			#if d.player != player:
-				#enemy_tiles.append(d)
-		#if possible_destinations.size() - enemy_tiles.size() > 0: # If at lease one way out isn't to enemy land
-			#for e in enemy_tiles:
-				#var loc = possible_destinations.find( e )
-				#possible_destinations.remove_at(loc)
-			#
-	## Avoid backtracking, if possible
-	#var backtrack = possible_destinations.find(previous_location)
-	#if possible_destinations.size() > 1 and backtrack != -1:
-		#possible_destinations.remove_at(backtrack)
-	## Remember current tile, for the next backtrack check
-	#previous_location = location
-	## Assign new location if available
+
 #
-	#if possible_destinations.size() > 0:
-		#location = possible_destinations[ Global.rand.randi() % possible_destinations.size() ]
+
+
 #
-	## Go to new location. In extreme cases may be the same tile (possible_destinations.size() == 0)
-	#move("idle_callback")
-	##print("Zoomba idle ", previous_location.get_id(), " to " , location.get_id(), " possible dests " , possible_destinations.size())
-#
-#func setup_rotation(target, look_at_from_target):
-	#quat_from = Quaternion(transform.basis)
-	#var cache_rot = transform.basis
-	#if look_at_from_target != null:
-		## If final move, look towards where the job is
-		#var cache_origin = transform.origin
-		#transform.origin = target.pathing_centre
-		#look_at(look_at_from_target.pathing_centre, Vector3.UP)
-		#transform.origin = cache_origin
-	#else:
-		## Note: Sometimes, if stuck, we path to our own tile
-		##if transform.origin.distance_to( location.pathing_centre ) > 1e-3:
-		#look_at(target.pathing_centre, Vector3.UP)
-	#rotation.y -= PI/2.0
-	#quat_to = Quaternion(transform.basis)
-	#transform.basis = cache_rot
-#
-#func move(callback):
-	#setup_rotation(location, null if job == null else job["target"])
-	#var time = MOVE_TIME 
-	#if scram_count > 0:
-		#time *=  0.5
-	#elif state == State.IDLE:
-		#time *= 2.0 
-	## else - pathing, time *= 1.0
-	#var t = create_tween()
-	#t.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
-	#t.tween_property(self, "position", location.pathing_centre, time)
-	#t.tween_callback(callback).set_delay(time)
-#
-#func quat_transform(amount : float):
-	#var mid = quat_from.slerp(quat_to, amount)
-	#transform.basis = Basis(mid)

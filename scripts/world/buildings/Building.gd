@@ -37,6 +37,7 @@ func initialise_base(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	transform = tile.get_global_transform()
 	transform.origin.y = 0
 	add_to_group("building")
+	add_to_group("building_player"+str(pnum))
 
 func set_blueprint(b):
 	my_blueprint = b
