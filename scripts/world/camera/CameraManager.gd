@@ -60,7 +60,7 @@ enum CameraStatus {OVERHEAD, TO_FPS, FPS, TO_OVERHEAD}
 #
 #func _input(event):
 	#if event.is_action_pressed("scram"): # Temp - delete this
-		#for zoomba in get_tree().get_nodes_in_group("zoombas"):
+		#for zoomba in get_tree().get_nodes_in_group("zoomba"):
 			#zoomba.scram()
 	#if event.is_action_pressed("zoomba"): # Temp - delete this
 		#for mcp in get_tree().get_nodes_in_group("mcp"):

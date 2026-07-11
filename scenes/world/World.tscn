@@ -25,12 +25,12 @@ sky_mode = 2
 
 [node name="Floor" parent="." unique_id=1643165362 instance=ExtResource("2_6eebf")]
 
-[node name="TileManager" parent="." unique_id=347718040 instance=ExtResource("4_qxiha")]
-unique_name_in_owner = true
-
 [node name="BuildingManager" parent="." unique_id=825272559 instance=ExtResource("4_i1jm3")]
 unique_name_in_owner = true
 script = ExtResource("5_252at")
+
+[node name="TileManager" parent="." unique_id=347718040 instance=ExtResource("4_qxiha")]
+unique_name_in_owner = true
 
 [node name="UnitManager" parent="." unique_id=1175523443 instance=ExtResource("6_yr1n6")]
 unique_name_in_owner = true

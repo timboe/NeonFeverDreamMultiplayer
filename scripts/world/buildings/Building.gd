@@ -2,16 +2,16 @@ extends StaticBody3D
 
 class_name Building
 
-var id : int
-var location : TileElement
-var player_owner : int
+var id : int # My ID within the BuildingManager dict. TODO - not needed?
+var location : TileElement # My tile, bi-directional linked
+var player_owner : int # Building owner. Cannot be infered from tile
 
 var default_mat = preload("res://materials/player/player0_material.tres")
 var updated_mat
 
 enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTIOfN}
 var state : int
-var type
+var type : BuildingManager.Type
 
 const SPAWN_TIME : float = 5.0
 const CONSTRUCTION_TIME : float = 5.0
@@ -28,6 +28,16 @@ var my_blueprint:
 
 var _build_tween: Tween
 
+func initialise_base(tile : TileElement, pnum : int, t : BuildingManager.Type):
+	type = t
+	location = tile # Two way link
+	tile.set_building(self)  # Two way link
+	player_owner = pnum
+	state = State.BLUEPRINT
+	transform = tile.get_global_transform()
+	transform.origin.y = 0
+	add_to_group("building")
+
 func set_blueprint(b):
 	my_blueprint = b
 	set_visible(false)
@@ -42,7 +52,10 @@ func find_unit_spawn_location():
 		if n.state == TileManager.State.LOWERED:
 			return n.pathing_centre
 	return null
-
+	
+func get_aoe_radius():
+	return Config.BUILDING_AOE[ type ]
+		
 #func update_monorail():
 	#assert(location != null)
 	#for mr in location.paths.values():

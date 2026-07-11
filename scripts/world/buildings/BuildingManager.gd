@@ -14,7 +14,6 @@ const HIDE_DEPTH = -50
 
 var enabled_blueprints := {}
 var disabled_blueprints := {}
-var building_instances := {}
 
 func _ready():
 	enabled_blueprints[Type.GEN] = $BlueprintsEnabled/Generator
@@ -22,19 +21,15 @@ func _ready():
 	#
 	disabled_blueprints[Type.GEN] = $BlueprintsDisabled/Generator
 	disabled_blueprints[Type.VAT] = $BlueprintsDisabled/Vat
-	#
-	building_instances[Type.MCP_1] = $BuildingFactory/MCP_1
-	building_instances[Type.MCP_2] = $BuildingFactory/MCP_2
-	building_instances[Type.MCP_3] = $BuildingFactory/MCP_2
-	building_instances[Type.MCP_4] = $BuildingFactory/MCP_2
-	building_instances[Type.GEN] = $BuildingFactory/Generator
-	building_instances[Type.VAT] = $BuildingFactory/Vat
-	
+
+func buildings():
+	return building_dictionary.values()
+
 func show_blueprint(type : int):
 	building_being_placed = type
 
 func can_place_here(tile : TileElement):
-	return (tile.state == tile.State.LOWERED)
+	return (tile.state == TileManager.State.LOWERED)
 		
 func check_under_aoe(tile : TileElement):
 	return (tile.under_aoe[Global.my_player_number] == true)
@@ -57,6 +52,19 @@ func update_blueprint(tile : TileElement):
 		disabled_blueprints[building_being_placed].transform.origin.y = -HIDE_DEPTH
 		enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
 
+func new_building_instance(t : BuildingManager.Type):
+	match t:
+		BuildingManager.Type.MCP_1: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.MCP_2: return $BuildingFactory/MCP_2.duplicate()
+		BuildingManager.Type.MCP_3: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.MCP_4: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.GEN: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.VAT: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.GARAGE: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.BEACON: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.NEST: return $BuildingFactory/MCP_1.duplicate()
+	return null	
+
 func place_blueprint(tile : TileElement):
 	assert(building_being_placed != Type.NONE)
 	update_blueprint(tile)
@@ -71,24 +79,19 @@ func place_blueprint(tile : TileElement):
 	if check_access(tile).size() == 0:
 		return
 	#
-	var new_building = building_instances[building_being_placed].duplicate()
-	new_building.id = building_dictionary.size()
-	new_building.type = building_being_placed
-	building_dictionary[new_building.id] = new_building
-	tile.set_building(new_building) 
+	var b = new_building_instance(building_being_placed)
+	b.initalise(tile, Global.my_player_number, building_being_placed)
+	add_to_dict_and_scene(b)
+	#
 	# Set building before set blueprint (to update monorail correctly)
 	var new_blueprint = enabled_blueprints[building_being_placed].duplicate()
-	new_building.set_blueprint(new_blueprint)
-	#
-	add_child(new_building)
+	new_blueprint.transform.origin.y = 0
+	b.set_blueprint(new_blueprint)
 	add_child(new_blueprint)
 	#
-	enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
-	new_blueprint.transform.origin.y = 0
-	new_building.transform = tile.get_global_transform()
-	new_building.transform.origin.y = 0
+	enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH # hide the hover one
 	#
-	#for z in get_tree().get_nodes_in_group("zoombas"):
+	#for z in get_tree().get_nodes_in_group("zoomba"):
 		#z.path.resize(0) # Force re-pathing
 	#
 	#new_building.queue_construction_jobs(placement_player)
@@ -97,17 +100,19 @@ func place_blueprint(tile : TileElement):
 	building_being_placed = Type.NONE
 
 # Place a pre-constructed building. Used in setting up the level
-func place_building(tile : TileElement, player_number : int, type : int):
-	var b : StaticBody3D = building_instances[type].duplicate()
-	b.location = tile
-	b.player_owner = player_number
+# Note: Does NOT call recompute_aoe. Call this once done with place_building
+func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
+	var b = new_building_instance(t)
+	b.initialise(tile, pnum, t)
+	add_to_dict_and_scene(b)
 	b.state = b.State.CONSTRUCTED
-	b.transform = tile.get_global_transform()
-	b.transform.origin.y = 0
-	tile.set_building(b)
-	add_child(b)
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
+
+func add_to_dict_and_scene(b : Building):
+	b.id = building_dictionary.size()
+	building_dictionary[b.id] = b
+	add_child(b)
 
 func is_placing() -> bool:
 	return building_being_placed != Type.NONE

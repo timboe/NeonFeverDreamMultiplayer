@@ -2,8 +2,6 @@ extends Unit
 
 class_name Zoomba
 
-
-
 const MOVE_TIME := 1.0
 const QUICK_ROTATE_TIME := 0.2
 const SCRAM : int = 10
@@ -30,7 +28,7 @@ func _ready():
 
 func initialise(b : Building):
 	initialise_base(b)
-	add_to_group("zoombas")
+	add_to_group("zoomba")
 	var updated_mat = load("res://materials/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
 	

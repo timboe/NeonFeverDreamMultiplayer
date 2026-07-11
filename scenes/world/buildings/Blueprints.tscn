@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://cynpi02upwnhe" path="res://scenes/world/buildings/MCP_1.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://davfucyw20nqc" path="res://scenes/world/buildings/Vat.tscn" id="4"]
 [ext_resource type="PackedScene" uid="uid://d2cn5emv1ypif" path="res://scenes/world/buildings/MCP_2.tscn" id="5_a17sx"]
+[ext_resource type="Script" uid="uid://bq4str8644pvy" path="res://scripts/world/buildings/MCP.gd" id="6_mtnla"]
 
 [node name="Blueprints" type="Node3D" unique_id=1401858525]
 script = ExtResource("2")
@@ -16,3 +17,4 @@ script = ExtResource("2")
 [node name="MCP_1" parent="." unique_id=1515520349 instance=ExtResource("3")]
 
 [node name="MCP_2" parent="." unique_id=1983162617 instance=ExtResource("5_a17sx")]
+script = ExtResource("6_mtnla")

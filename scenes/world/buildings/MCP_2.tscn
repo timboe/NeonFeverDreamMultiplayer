@@ -6,7 +6,7 @@
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="5"]
 [ext_resource type="Texture2D" uid="uid://dmow8oto4mckv" path="res://images/star_05.png" id="7"]
-[ext_resource type="Material" path="res://materials/player/player1_material.tres" id="8"]
+[ext_resource type="Material" uid="uid://dash4m4mo826t" path="res://materials/player/player1_material.tres" id="8"]
 
 [sub_resource type="ConcavePolygonShape3D" id="1"]
 data = PackedVector3Array(0, 0, 0, 2, 1, 2, 1.7321, 1, 9, 0, 0, 0, 1.7321, 1, 9, 0, 0, 10, 0, 0, 10, 1.7321, 1, 9, 6.3397, 1, 11.6603, 0, 0, 10, 6.3397, 1, 11.6603, 6.3397, 0, 13.6603, 6.3397, 0, 13.6603, 6.3397, 1, 11.6603, 13, 1, 8.1603, 6.3397, 0, 13.6603, 13, 1, 8.1603, 15, 0, 8.6603, 15, 0, 8.6603, 13, 1, 8.1603, 9, 1, 1.7321, 15, 0, 8.6603, 9, 1, 1.7321, 10, 0, 0, 10, 0, 0, 9, 1, 1.7321, 2, 1, 2, 10, 0, 0, 2, 1, 2, 0, 0, 0, 2, 1, 2, 6.3397, 1, 11.6603, 1.7321, 1, 9, 2, 1, 2, 13, 1, 8.1603, 6.3397, 1, 11.6603, 2, 1, 2, 9, 1, 1.7321, 13, 1, 8.1603)

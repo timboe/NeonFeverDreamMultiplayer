@@ -1,15 +1,12 @@
 extends Node3D
 class_name TileManager
 
-enum State {RAISED, SELECTED, FALLING, LOWERED, RISING, DISABLED}
+enum State {RAISED, FALLING, LOWERED, RISING, DISABLED}
 
 @onready var base_material : ShaderMaterial = preload("res://materials/aluminium.tres")
 @onready var outline_material : ShaderMaterial = preload("res://materials/floor/grid_edges.tres")
 @onready var disabled_material : StandardMaterial3D = preload("res://materials/disabled.tres")
-@onready var cairo_disabled = $CairoDisabled
-@onready var cairo_enabled = $CairoEnabled
-@onready var tiles : Node = $Tiles
-@onready var monorail_mm : MultiMeshInstance3D = $MonorailMultimesh
+#@onready var monorail_mm : MultiMeshInstance3D = $MonorailMultimesh
 #@onready var building_manager : BuildingManager = $"../BuildingManager"
 
 var generated = false
@@ -20,6 +17,9 @@ var tile_dictionary : Dictionary
 var rand := RandomNumberGenerator.new()
 
 @onready var tile_script = preload("res://scripts/world/tiles/TileElement.gd")
+
+func tiles():
+	return tile_dictionary.values()
 
 func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 	var mesh_instance = MeshInstance3D.new()
@@ -41,11 +41,11 @@ func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 		physics_body_instance.add_to_group("interactive")
 		physics_body_instance.add_to_group(rotation_group)
 	tile_id += 1
-	mesh_instance.set_mesh(cairo_disabled.mesh) # Doesn't matter which
+	mesh_instance.set_mesh($CairoDisabled.mesh) # Doesn't matter which
 	mesh_instance.set_surface_override_material(0, mat)
 	mesh_instance.set_surface_override_material(1, outline_material)
 	physics_body_instance.add_child(mesh_instance)
-	physics_body_instance.add_child(cairo_disabled.get_child(0).duplicate())
+	physics_body_instance.add_child($CairoDisabled.get_child(0).duplicate())
 	var ray := RayCast3D.new()
 	ray.translate(Vector3(Cairo.UNIT/2.0, Cairo.HEIGHT/2.0, Cairo.UNIT/2.0))
 	ray.target_position = Vector3(50.0, 0, 0)
@@ -71,9 +71,9 @@ func check_disabled(physics_body_instance : StaticBody3D) -> bool:
 
 func add_cluster(xOff : int, yOff : int):
 	var spatial : Node3D = Node3D.new()
-	var yMod : float = cairo_disabled.RIGHT_POINT__UP * xOff
-	var xMod : float = cairo_disabled.RIGHT_POINT__UP * yOff
-	spatial.translate(Vector3(yMod + yOff*(cairo_disabled.TOP_POINT__RIGHT + cairo_disabled.TOP_POINT__UP), 
+	var yMod : float = $CairoDisabled.RIGHT_POINT__UP * xOff
+	var xMod : float = $CairoDisabled.RIGHT_POINT__UP * yOff
+	spatial.translate(Vector3(yMod + yOff*($CairoDisabled.TOP_POINT__RIGHT + $CairoDisabled.TOP_POINT__UP), 
 		0, xOff*(Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - xMod))
 	var physics_body_a := StaticBody3D.new() # TL
 	var physics_body_b := StaticBody3D.new() # BL
@@ -96,7 +96,7 @@ func add_cluster(xOff : int, yOff : int):
 	spatial.add_child(physics_body_b)
 	spatial.add_child(physics_body_c)
 	spatial.add_child(physics_body_d)
-	tiles.add_child(spatial)
+	$Tiles.add_child(spatial)
 	physics_body_a.queue_free() if check_disabled(physics_body_a) else populate(physics_body_a, "tilesA")
 	physics_body_b.queue_free() if check_disabled(physics_body_b) else populate(physics_body_b, "tilesB")
 	physics_body_c.queue_free() if check_disabled(physics_body_c) else populate(physics_body_c, "tilesC")
@@ -106,8 +106,8 @@ func _generate():
 	tile_id = 0
 	tile_dictionary.clear()
 	rand.set_seed(Global.LEVEL.SEED)
-	for i in range(0, tiles.get_child_count()):
-		tiles.get_child(i).queue_free()
+	for i in range(0, $Tiles.get_child_count()):
+		$Tiles.get_child(i).queue_free()
 	var floor_v := Vector2()
 	var border : int = Global.LEVEL.BORDER_TRIPLETS*3
 	var arena : int = Global.LEVEL.TRIPLETS*3
@@ -165,7 +165,7 @@ func set_neighbours():
 	#var cap_count := 0
 	for tile in interactive:
 		var t = tile.get_child(0).get_transform()
-		t.origin += Vector3(cairo_disabled.RIGHT_POINT__UP, 0.0, cairo_disabled.RIGHT_POINT__UP)
+		t.origin += Vector3($CairoDisabled.RIGHT_POINT__UP, 0.0, $CairoDisabled.RIGHT_POINT__UP)
 		t = tile.get_global_transform() * t
 		t.origin.y = 0
 		tile.pathing_centre = t.origin
@@ -193,18 +193,44 @@ func apply_loaded_level():
 			pass
 		elif tile.get_id() in Global.LEVEL.LOWERED:
 			tile.set_lowered()
+		%TileManager.recompute_aoe()
+
+func recompute_aoe():
+	for t in tiles():
+		t.aoe.clear()
+	var touched := []
+	for b in %BuildingManager.buildings():
+		var queue := []
+		var visited := {}
+		visited[b.location] = true
+		queue.append({tile = b.location, depth = 0})
+		while queue:
+			var entry = queue.pop_front()
+			var current = entry.tile as TileElement
+			var depth = entry.depth as int
+			current.add_to_aoe(b.player_owner)
+			touched.append(current)
+			if depth >= b.get_aoe_radius():
+				continue
+			for n in current.neighbours:
+				if not visited.has(n):
+					visited[n] = true
+					queue.append({tile = n, depth = depth + 1})
+	for t in touched:
+		t.update_selection_and_aoe_visual()
 
 # Register click on tile to select. Toggle selection for pnum
+# WARNING: Do not call directly. Use Global.send_command(player_number, "toggle_tile", [tile_id])
 func apply_toggle(pnum: int, toggle_tile_id: int):
 	if not tile_dictionary.has(toggle_tile_id):
 		print("TileManager.apply_toggle: unknown tile_id ", toggle_tile_id)
 		return
 	var tile: TileElement = tile_dictionary[toggle_tile_id]
-	if tile.state != TileManager.State.RAISED:
-		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is not RAISED (state=", tile.state, ")")
+	if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
+		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is not RAISED or LOWERED (state=", tile.state, ")")
 		return
-	tile.selected_by[pnum] = not tile.selected_by[pnum]
-	tile.update_selection_visual()
+	tile.toggle_selected_by(pnum)
+	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 
 # Register click on tile to select. Distribute change to clients
@@ -214,7 +240,7 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 		return
 	var tile: TileElement = tile_dictionary[update_tile_id]
 	tile.selected_by = selected_by
-	tile.update_selection_visual()
+	tile.update_selection_and_aoe_visual()
 
 #func add_monorail():
 	## Our grid is formed of a tesselation of a four-tile primitive.
@@ -253,15 +279,15 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 					#if mg == "mr2":
 						#t = t.rotated(Vector3.UP, deg_to_rad(60))
 						## This is broken in the new coordinate system... this is good enough TODO - fix!
-						#t.origin += Vector3(0.5 * cairo_disabled.RIGHT_POINT__UP, 0.0, 2 * cairo_disabled.RIGHT_POINT__UP)
+						#t.origin += Vector3(0.5 * $CairoDisabled.RIGHT_POINT__UP, 0.0, 2 * $CairoDisabled.RIGHT_POINT__UP)
 						##t = tile.get_global_transform() * t
 					#elif mg == "mr3":
 						#t = t.rotated(Vector3.UP, deg_to_rad(120))
 						## As above - ugly & not precise
-						#t.origin += Vector3(1.6 * cairo_disabled.RIGHT_POINT__UP, 0.0, 2.0 * cairo_disabled.RIGHT_POINT__UP)
+						#t.origin += Vector3(1.6 * $CairoDisabled.RIGHT_POINT__UP, 0.0, 2.0 * $CairoDisabled.RIGHT_POINT__UP)
 						##t = tile.get_global_transform() * t
 					#else:
-						#t.origin += Vector3(0.0, 0.0, cairo_disabled.RIGHT_POINT__UP)
+						#t.origin += Vector3(0.0, 0.0, $CairoDisabled.RIGHT_POINT__UP)
 					#t = tile.get_global_transform() * t
 					#t.origin.y = -0.5 # Hide
 					#monorail_mm.multimesh.set_instance_transform(mr_count, t)
@@ -286,7 +312,7 @@ func disabled_tiles_to_multimesh():
 	var disabled_mm := $DisabledTileMultimesh
 	disabled_mm.multimesh = MultiMesh.new()
 	disabled_mm.multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	disabled_mm.multimesh.mesh = cairo_disabled.mesh.duplicate()
+	disabled_mm.multimesh.mesh = $CairoDisabled.mesh.duplicate()
 	disabled_mm.multimesh.instance_count = disabled.size()
 	for i in range(disabled.size()):
 		disabled_mm.multimesh.set_instance_transform(i, disabled[i].get_global_transform())
@@ -299,7 +325,7 @@ func enabled_tiles_to_multimesh():
 	tile_mm.multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	tile_mm.multimesh.use_colors = true
 	tile_mm.multimesh.use_custom_data = true
-	var mesh_dup = cairo_enabled.mesh.duplicate()
+	var mesh_dup = $CairoEnabled.mesh.duplicate()
 	# All these duplicates are not needed?
 	#var surface_mat = mesh_dup.surface_get_material(0)
 	#if surface_mat:
