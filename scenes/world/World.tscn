@@ -3,6 +3,7 @@
 [ext_resource type="Environment" uid="uid://qo24ms5a3285" path="res://scenes/world/WorldEnvironment.tres" id="1_gbddb"]
 [ext_resource type="Script" uid="uid://cj6vmp6fj61u3" path="res://scripts/world/camera/CameraRTS.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://cnucsxwycsib" path="res://scenes/world/floor/Floor.tscn" id="2_6eebf"]
+[ext_resource type="Script" uid="uid://hwnc0axr4q0l" path="res://scripts/core/game/GameManager.gd" id="3_ckp8c"]
 [ext_resource type="PackedScene" uid="uid://cp05lr438pv0l" path="res://scenes/world/buildings/BuildingManager.tscn" id="4_i1jm3"]
 [ext_resource type="PackedScene" uid="uid://be7arljxe4ohx" path="res://scenes/world/tiles/TileManager.tscn" id="4_qxiha"]
 [ext_resource type="Script" uid="uid://bgrswk647snuu" path="res://scripts/world/buildings/BuildingManager.gd" id="5_252at"]
@@ -25,6 +26,10 @@ shadow_enabled = true
 sky_mode = 2
 
 [node name="Floor" parent="." unique_id=1643165362 instance=ExtResource("2_6eebf")]
+
+[node name="GameManager" type="Node3D" parent="." unique_id=919247489]
+unique_name_in_owner = true
+script = ExtResource("3_ckp8c")
 
 [node name="BuildingManager" parent="." unique_id=825272559 instance=ExtResource("4_i1jm3")]
 unique_name_in_owner = true

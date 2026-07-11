@@ -24,6 +24,19 @@ func initialise_base(b : Building, t : UnitManager.Type):
 	global_transform.origin = building.find_unit_spawn_location()
 	add_to_group("unit")
 	add_to_group("unit_player"+str(b.player_owner))
+	position.y = -2 # hide
+	# Following animates the unit in and starts the callback loop.
+	# This all happens on the server. Wait for next frame as might now have multiplayer yet
+	# TODO - when no longer spawing zoomba in init, should be able to remove call deffered
+	post_initalise.call_deferred()
+
+@rpc("authority", "call_local")
+func post_initalise():
+	if not multiplayer.is_server():
+		return
+	var tw = create_tween()
+	tw.tween_property(self, "position:y", 0, 5.0)
+	tw.tween_callback(idle_callback).set_delay(5.0)
 
 @rpc("authority", "call_local")
 func assign_job(new_job : Dictionary):
