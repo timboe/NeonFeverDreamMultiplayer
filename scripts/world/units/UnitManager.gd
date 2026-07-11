@@ -2,11 +2,13 @@ extends Node3D
 
 class_name UnitManager
 
+enum Type {NONE, ZOOMBA, TANK, AERIAL, VIRUS}
+
 func _ready() -> void:
 	pass # Replace with function body.
 
 # TODO - genericse this to different units
-func spawn_zoomba(building : Building):
+func spawn_unit(type : Type, building : Building):
 	var zoomba = $UnitFactory/Zoomba.duplicate()
 	add_child(zoomba)
 	zoomba.initialise(building)

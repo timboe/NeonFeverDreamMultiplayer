@@ -18,11 +18,6 @@ const CONSTRUCTION_TIME : float = 5.0
 const CAPTURE_TIME : float = 10.0
 var capture_in_progress = false
 
-var _spawn_start_loc: TileElement
-var spawn_start_loc: TileElement:
-	get: return _spawn_start_loc
-	set(value): _spawn_start_loc = value
-
 var spawn_particles
 var zoomba_constructing_me
 
@@ -38,17 +33,15 @@ func set_blueprint(b):
 	set_visible(false)
 	#update_monorail()
 	state = State.BLUEPRINT
-
-# Location where new units rise out of the floor
-func set_spawn_start_loc(s):
-	spawn_start_loc = s
-	# TODO - location spawn particles
-	#spawn_particles = $"../../CameraManager/SpawnParticles".duplicate()
-	#$"../".add_child(spawn_particles)
-	#spawn_particles.transform.origin = spawn_start_loc.pathing_centre
 	
 func _ready():
 	set_livery()
+
+func find_unit_spawn_location():
+	for n in location.neighbours:
+		if n.state == TileManager.State.LOWERED:
+			return n.pathing_centre
+	return null
 
 #func update_monorail():
 	#assert(location != null)

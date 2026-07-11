@@ -1,6 +1,8 @@
 extends Node3D
 class_name TileManager
 
+enum State {RAISED, SELECTED, FALLING, LOWERED, RISING, DISABLED}
+
 @onready var base_material : ShaderMaterial = preload("res://materials/aluminium.tres")
 @onready var outline_material : ShaderMaterial = preload("res://materials/floor/grid_edges.tres")
 @onready var disabled_material : StandardMaterial3D = preload("res://materials/disabled.tres")
@@ -45,7 +47,7 @@ func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 	physics_body_instance.add_child(mesh_instance)
 	physics_body_instance.add_child(cairo_disabled.get_child(0).duplicate())
 	var ray := RayCast3D.new()
-	ray.translate(Vector3(cairo_disabled.UNIT/2.0, cairo_disabled.HEIGHT/2.0, cairo_disabled.UNIT/2.0))
+	ray.translate(Vector3(Cairo.UNIT/2.0, Cairo.HEIGHT/2.0, Cairo.UNIT/2.0))
 	ray.target_position = Vector3(50.0, 0, 0)
 	physics_body_instance.add_child(ray)
 	physics_body_instance.add_to_group("tiles")
@@ -55,7 +57,7 @@ func check_disabled(physics_body_instance : StaticBody3D) -> bool:
 	var t_local : Vector3 = physics_body_instance.position
 	var t : Vector3 = physics_body_instance.to_global(t_local)
 	var distance_v := Vector2()
-	var max_outer : float = Global.LEVEL.TRIPLETS*3*cairo_disabled.UNIT*2
+	var max_outer : float = Global.LEVEL.TRIPLETS*3*Cairo.UNIT*2
 	if t.z < 0 or t.x < 0:
 		distance_v.x = -min(t.x, t.z)
 	if t.z > max_outer or t.x > max_outer:
@@ -63,7 +65,7 @@ func check_disabled(physics_body_instance : StaticBody3D) -> bool:
 	var distance = max(distance_v.x, distance_v.y)
 	if distance > 0:
 		physics_body_instance.visible = false # Used to communicate w below
-		if distance > cairo_disabled.UNIT*4 and distance > rand.randf_range(0.0, cairo_disabled.UNIT*8):
+		if distance > Cairo.UNIT*4 and distance > rand.randf_range(0.0, Cairo.UNIT*8):
 			return true
 	return false
 
@@ -72,7 +74,7 @@ func add_cluster(xOff : int, yOff : int):
 	var yMod : float = cairo_disabled.RIGHT_POINT__UP * xOff
 	var xMod : float = cairo_disabled.RIGHT_POINT__UP * yOff
 	spatial.translate(Vector3(yMod + yOff*(cairo_disabled.TOP_POINT__RIGHT + cairo_disabled.TOP_POINT__UP), 
-		0, xOff*(cairo_disabled.UNIT + cairo_disabled.RIGHT_POINT__RIGHT) - xMod))
+		0, xOff*(Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - xMod))
 	var physics_body_a := StaticBody3D.new() # TL
 	var physics_body_b := StaticBody3D.new() # BL
 	var physics_body_c := StaticBody3D.new() # BR
@@ -81,12 +83,12 @@ func add_cluster(xOff : int, yOff : int):
 	physics_body_b.set_script(tile_script)
 	physics_body_c.set_script(tile_script)
 	physics_body_d.set_script(tile_script)
-	physics_body_a.translate(Vector3(cairo_disabled.UNIT, -Global.TILE_OFFSET, 0))
-	physics_body_b.translate(Vector3(cairo_disabled.UNIT, -Global.TILE_OFFSET, 0))
-	physics_body_c.translate(Vector3(cairo_disabled.UNIT + cairo_disabled.RIGHT_POINT__UP,
-		-Global.TILE_OFFSET, cairo_disabled.UNIT + cairo_disabled.RIGHT_POINT__RIGHT))
-	physics_body_d.translate(Vector3(cairo_disabled.UNIT + cairo_disabled.RIGHT_POINT__UP,
-		-Global.TILE_OFFSET, cairo_disabled.UNIT + cairo_disabled.RIGHT_POINT__RIGHT))
+	physics_body_a.translate(Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0))
+	physics_body_b.translate(Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0))
+	physics_body_c.translate(Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
+		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT))
+	physics_body_d.translate(Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
+		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT))
 	physics_body_b.rotate_y(deg_to_rad(-90.0))
 	physics_body_c.rotate_y(deg_to_rad(180.0))
 	physics_body_d.rotate_y(deg_to_rad(90.0))
@@ -147,7 +149,7 @@ func set_neighbours():
 				c.add_neighbour( tile )
 				tile.add_neighbour( c )
 			ray.rotate_object_local(Vector3.UP, 2.0*PI / 10.0)
-		if tile.state == TileElement.State.RAISED:
+		if tile.state == TileManager.State.RAISED:
 			assert(tile.neighbours.size() == 5)
 		ray.queue_free()
 	#var cap : MeshInstance3D = $"../ObjectFactory/MonorailCap"
@@ -198,7 +200,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int):
 		print("TileManager.apply_toggle: unknown tile_id ", toggle_tile_id)
 		return
 	var tile: TileElement = tile_dictionary[toggle_tile_id]
-	if tile.state != TileElement.State.RAISED:
+	if tile.state != TileManager.State.RAISED:
 		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is not RAISED (state=", tile.state, ")")
 		return
 	tile.selected_by[pnum] = not tile.selected_by[pnum]
@@ -274,19 +276,10 @@ func apply_initial_zoomba():
 	#print(monorail_mm.monorail_dict[11], " ", monorail_mm.monorail_dict[11].monorail_id)
 	for id in Global.LEVEL.MCP:
 		var tile : TileElement = tile_dictionary[id] # Get ID of MCP tile
-		var done := false
-		for n in tile.neighbours:
-			if n.state == TileElement.State.LOWERED: # Find a vaid initial link
-				done = true
-				tile.building.spawn_start_loc = n
-				%UnitManager.spawn_zoomba(tile.building)
+		%UnitManager.spawn_unit(UnitManager.Type.ZOOMBA, tile.building)
 				#var mr : Monorail = tile.paths[n]
 				#mr.set_constructed(zoomba, true) # Sets as constucted by player
-				break
 		#tile.building.update_monorail()
-		if not done:
-			print("Could not connect MCP to starting tile!")
-			assert(false)
 
 func disabled_tiles_to_multimesh():
 	var disabled := get_tree().get_nodes_in_group("disabled")

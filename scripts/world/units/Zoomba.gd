@@ -1,16 +1,14 @@
-extends Node3D
+extends Unit
+
 class_name Zoomba
 
-enum State {IDLE, PATHING, WORKING}
 
-@onready var state : int = State.IDLE
 
 const MOVE_TIME := 1.0
 const QUICK_ROTATE_TIME := 0.2
 const SCRAM : int = 10
 
 var job
-var building : Building
 var previous_location : TileElement
 var path : PackedInt64Array = []
 var progress : int
@@ -24,7 +22,6 @@ var quat_from : Quaternion
 var quat_to : Quaternion
 
 #var mr_class = load("res://scripts/Monorail.gd")
-const CairoScript = preload("res://scripts/world/tiles/Cairo.gd")
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -32,9 +29,8 @@ func _ready():
 	$Zapper.visible = false
 
 func initialise(b : Building):
+	initialise_base(b)
 	add_to_group("zoombas")
-	building = b
-	global_transform.origin = building.spawn_start_loc.global_transform.origin
 	var updated_mat = load("res://materials/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
 	
@@ -175,22 +171,22 @@ func scram():
 	#match job["type"]:
 		#JobManager.JobType.CONSTRUCT_MONORAIL:
 			## Get the monorail segment which connects this tile to the target
-			#$Zapper.target_position.y = CairoScript.UNIT
+			#$Zapper.target_position.y = Cairo.UNIT
 			#var mr = job["place"].paths[ job["target"] ]
 			#assert(mr.state == mr_class.State.INITIAL)
 			#mr.start_construction(self)
 		#JobManager.JobType.CONSTRUCT_BUILDING:
-			#$Zapper.target_position.y = CairoScript.UNIT
+			#$Zapper.target_position.y = Cairo.UNIT
 			#var building = job["target"].building
 			#assert(building != null)
 			#building.start_construction(self)
 		#JobManager.JobType.CLAIM_TILE:
-			#$Zapper.target_position.y = CairoScript.UNIT / 2.0
+			#$Zapper.target_position.y = Cairo.UNIT / 2.0
 			#var tile = job["place"]
 			#assert(tile.player != player)
 			#tile.start_capture(self)
 		#JobManager.JobType.CLAIM_BUILDING:
-			#$Zapper.target_position.y = CairoScript.UNIT
+			#$Zapper.target_position.y = Cairo.UNIT
 			#var building = job["target"].building
 			#assert(building != null)
 			#assert(job["place"].player == player)

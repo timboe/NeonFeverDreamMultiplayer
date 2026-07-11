@@ -2,13 +2,12 @@ extends MeshInstance3D
 
 const GENERATE = false
 
-var cairo = preload("res://scripts/world/tiles/Cairo.gd")
 var helper = preload("res://scripts/world/floor/MonumentHelper.gd")
 
 func add_plinth(mesh_tool : SurfaceTool, edge_tool : SurfaceTool):
 	var BEZEL := 2.0
 	var HEIGHT := 1.0
-	var UNIT : float = cairo.UNIT
+	var UNIT : float = Cairo.UNIT
 	var adg := sin(deg_to_rad(60)) * sqrt(2*BEZEL) 
 	var op  := cos(deg_to_rad(60)) * sqrt(2*BEZEL)
 	# Points
@@ -18,10 +17,10 @@ func add_plinth(mesh_tool : SurfaceTool, edge_tool : SurfaceTool):
 	var p2_edge  := Vector2(0, UNIT)
 	var p2_inner := Vector2(adg, UNIT - op) 
 	# 
-	var p3_edge  := Vector2(cairo.RIGHT_POINT__UP, cairo.RIGHT_POINT__RIGHT)
+	var p3_edge  := Vector2(Cairo.RIGHT_POINT__UP, Cairo.RIGHT_POINT__RIGHT)
 	var p3_inner := Vector2(p3_edge.x, p3_edge.y - BEZEL) 
 	# 
-	var p4_edge  := Vector2(cairo.TOP_POINT__UP, cairo.TOP_POINT__RIGHT)
+	var p4_edge  := Vector2(Cairo.TOP_POINT__UP, Cairo.TOP_POINT__RIGHT)
 	var p4_inner := Vector2(p4_edge.x - BEZEL, p4_edge.y - BEZEL/4.0) # Fix me...
 	# 
 	var p5_edge  := Vector2(UNIT, 0)

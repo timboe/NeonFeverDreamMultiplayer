@@ -7,8 +7,8 @@ enum Type {NONE, MCP_1, MCP_2, MCP_3, MCP_4, GEN, VAT, GARAGE, BEACON, NEST}
 # Multiplayer synchronised
 var building_dictionary : Dictionary
 
-var building_being_placed : int = Type.NONE
-var placement_player : int = -1
+var building_being_placed : int = Type.NONE # TODO - move this to the UI
+#var placement_player : int = -1
 
 const HIDE_DEPTH = -50
 
@@ -106,7 +106,7 @@ func place_building(tile : TileElement, player_number : int, type : int):
 	b.transform.origin.y = 0
 	tile.set_building(b)
 	add_child(b)
-	if tile.state != tile.State.LOWERED:
+	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
 
 func is_placing() -> bool:

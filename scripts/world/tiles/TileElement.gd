@@ -4,9 +4,7 @@ class_name TileElement
 
 var id := 0
 
-enum State {RAISED, SELECTED, FALLING, LOWERED, RISING, DISABLED}
-
-var state = State.RAISED
+var state = TileManager.State.RAISED
 
 # Multiplayer synchronised
 var selected_by : Array # players who have a raise/lower command queued on the tile
@@ -26,12 +24,12 @@ var building # What is built here
 #var monorail_cap_id : int
 #var monorail_cap_moved := false
 
-var tile_mm : MultiMesh
-var tile_mm_id : int
+var tile_mm : MultiMesh # Referenec to the TileManager's TileMultiMesh
+var tile_mm_id : int # This tile's index within the MM
 
-var claim_strength : int = 0
-#var pulse_count : int = 0
-#var updating_owner_emission := false
+#var claim_strength : int = 0 # del me
+#var pulse_count : int = 0 # del me
+#var updating_owner_emission := false # del me
 
 # Set to a vec3 if this tile is participating in the pathing. Note: in global coordinates
 var pathing_centre = null
@@ -60,10 +58,10 @@ func set_building(b):
 	b.location = self
 
 func set_disabled():
-	state = State.DISABLED
+	state = TileManager.State.DISABLED
 	
 func set_lowered():
-	state = State.LOWERED
+	state = TileManager.State.LOWERED
 	set_tile_mm_emission(0.0)
 	var t = transform
 	t.origin.y = -HEIGHT
@@ -72,7 +70,7 @@ func set_lowered():
 	# Note: We don't have access to the paths variable yet
 	# as this is called also during the level setup
 	for n in neighbours:
-		if n.state == State.LOWERED:
+		if n.state == TileManager.State.LOWERED:
 			pathing_manager.connect_tiles(self, n, true)
 	
 func get_state() -> int:
@@ -98,12 +96,12 @@ func add_neighbour(n : StaticBody3D):
 func can_be_lowered() -> bool:
 	return true
 	#for n in paths.keys():
-		#if n.state == State.LOWERED and n.player != -1 and selected_by[ n.player ]:
+		#if n.state == TileManager.State.LOWERED and n.player != -1 and selected_by[ n.player ]:
 			## My destruction was requested by someone who has a tile right nextdoor
 			#return true
 	#var pathing_manager = $"../../../PathingManager" 
 	#for n in paths.keys():
-		#if n.state != State.LOWERED:
+		#if n.state != TileManager.State.LOWERED:
 			#continue
 		#for p in Global.MAX_PLAYERS:
 			#if selected_by[p]:
@@ -123,7 +121,7 @@ func _ready():
 	# See delayed_ready
 	
 func delayed_ready():
-	if state >= State.DISABLED:
+	if state >= TileManager.State.DISABLED:
 		return
 	mouse_entered.connect(_on_StaticBody_mouse_entered)
 	mouse_exited.connect(_on_StaticBody_mouse_exited)
@@ -133,7 +131,7 @@ func delayed_ready():
 func update_selection_visual():
 	if tile_mm == null:
 		return
-	if state >= State.FALLING:
+	if state >= TileManager.State.FALLING:
 		return
 	var selecting := []
 	for p in Global.MAX_PLAYERS:
@@ -158,7 +156,7 @@ func update_selection_visual():
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction
 func a_neighbour_just_fell():
-	if state == State.SELECTED and can_be_lowered():
+	if state == TileManager.State.SELECTED and can_be_lowered():
 		do_deconstruct_start(FADE_TIME / 5.0)
 		
 #func assign_monorail_jobs_on_demolish():
@@ -166,7 +164,7 @@ func a_neighbour_just_fell():
 	## Call if I was just lowered, and there is an owned tile next door
 	## Here the owner of the neighbouring tile(s) sets who the jobs go to
 	#for n in paths.keys():
-		#if n.state != State.LOWERED:
+		#if n.state != TileManager.State.LOWERED:
 			#continue # No - can only connect to lowered tiles
 		#if n.player == -1:
 			#continue # No - can't setup jobs from unowned tiles to unowned tiles
@@ -179,10 +177,10 @@ func a_neighbour_just_fell():
 	#if building != null:
 		#return
 	#for n in paths.keys():
-		#if n.state != State.LOWERED:
+		#if n.state != TileManager.State.LOWERED:
 			#continue # No - can only connect to lowered tiles
 		#var mr = paths[n]
-		#if mr.state == mr.State.INITIAL:
+		#if mr.state == mr.TileManager.State.INITIAL:
 			## Spread 
 			#job_manager.add_job(player, job_manager.JobType.CONSTRUCT_MONORAIL, self, n)
 			
@@ -190,10 +188,10 @@ func a_neighbour_just_fell():
 	#if building != null:
 		#return
 	#for n in paths.keys():
-		#if n.state != State.LOWERED:
+		#if n.state != TileManager.State.LOWERED:
 			#continue # No - can only connect to lowered tiles
 		#var mr = paths[n]
-		#if mr.state == mr.State.CONSTRUCTED:
+		#if mr.state == mr.TileManager.State.CONSTRUCTED:
 			## Attack Check
 			#if player != -1 and n.player != -1 and player != n.player:
 				#if n.building != null:
@@ -271,7 +269,7 @@ func do_deconstruct_start(time : float):
 	tween_active = true
 	
 func do_deconstruct_a():
-	state = State.FALLING
+	state = TileManager.State.FALLING
 	var thunk_distance : float = Global.rand.randf_range(0.05, 0.2)
 	var thunk_time := thunk_distance * 2
 	var t = create_tween()
@@ -317,7 +315,7 @@ func done_deconstruct():
 	#if pulse_e <= 0:
 		#return
 	#for n in paths.keys():
-		#if n.state == State.LOWERED and n.pulse_count < pulse_count and n.player == player:
+		#if n.state == TileManager.State.LOWERED and n.pulse_count < pulse_count and n.player == player:
 			#n.pulse_start(pulse_e, pulse_n)
 
 func _on_StaticBody_mouse_entered():
@@ -360,7 +358,7 @@ func get_access_tiles():
 	var array : Array = []
 	for n in paths.keys():
 		if n.building == null:
-			assert(n.state == State.LOWERED)
+			assert(n.state == TileManager.State.LOWERED)
 			array.push_back(n)
 	return array
 	
@@ -369,13 +367,13 @@ func get_access_tiles_wall(for_player : int):
 	var array : Array = []
 	for n in paths.keys():
 		if n.building == null and n.player == for_player:
-			assert(n.state == State.LOWERED)
+			assert(n.state == TileManager.State.LOWERED)
 			array.push_back(n)
 	return array
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx):
 	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
 		return
-	if state != State.RAISED:
+	if state != TileManager.State.RAISED:
 		return
 	Global.send_command_me("toggle_tile", [id])

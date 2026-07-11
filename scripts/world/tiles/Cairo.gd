@@ -1,5 +1,7 @@
 extends MeshInstance3D
 
+class_name Cairo
+
 var cairo_mesh : ArrayMesh
 var cairo_mesh_shape := ConvexPolygonShape3D.new()
 
