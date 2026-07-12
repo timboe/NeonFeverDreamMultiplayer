@@ -123,5 +123,8 @@ func remove_building(id: int):
 		building_dictionary.erase(id)
 		b.queue_free()
 
+func get_building_by_id(id: int) -> Building:
+	return building_dictionary.get(id)
+
 func is_placing() -> bool:
 	return building_being_placed != Type.NONE

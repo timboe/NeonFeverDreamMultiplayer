@@ -97,7 +97,7 @@ func try_and_assign(job : Dictionary) -> bool:
 	return false
 
 func assign_jobs():
-	if unassigned == 0:
+	if not multiplayer.is_server() or unassigned == 0:
 		return
 	for job in jobs_dict.values():
 		if job["assigned"] != null:

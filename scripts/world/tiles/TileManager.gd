@@ -140,7 +140,6 @@ func _physics_process(_delta):
 	enabled_tiles_to_multimesh()
 	apply_loaded_level()
 	#add_monorail()
-	apply_initial_zoomba()
 
 func set_neighbours():
 	for tile in get_tree().get_nodes_in_group("tiles"):
@@ -338,17 +337,6 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 					#mr_count += 1
 	#assert(mr_count <= total_monorails)
 	#monorail_mm.multimesh.set_visible_instance_count(mr_count)
-
-#TODO - used to also do monorail, bring this back...?
-func apply_initial_zoomba():
-	#print(monorail_mm.monorail_dict[10], " ", monorail_mm.monorail_dict[10].monorail_id)
-	#print(monorail_mm.monorail_dict[11], " ", monorail_mm.monorail_dict[11].monorail_id)
-	for id in Global.LEVEL.MCP:
-		var tile : TileElement = tile_dictionary[id] # Get ID of MCP tile
-		%UnitManager.spawn_unit(UnitManager.Type.ZOOMBA, tile.building)
-				#var mr : Monorail = tile.paths[n]
-				#mr.set_constructed(zoomba, true) # Sets as constucted by player
-		#tile.building.update_monorail()
 
 func disabled_tiles_to_multimesh():
 	var disabled := get_tree().get_nodes_in_group("disabled")

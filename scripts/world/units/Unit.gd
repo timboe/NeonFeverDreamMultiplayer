@@ -27,28 +27,25 @@ func initialise_base(b : Building, t : UnitManager.Type):
 	add_to_group("unit_player"+str(b.player_owner))
 	position.y = -2 # hide
 	# Following animates the unit in and starts the callback loop.
-	# This all happens on the server. Wait for next frame as might now have multiplayer yet
-	# TODO - when no longer spawing zoomba in init, should be able to remove call deffered
-	post_initalise.call_deferred()
-
-@rpc("authority", "call_local")
-func post_initalise():
+	# This all happens only the server.
 	if not multiplayer.is_server():
 		return
 	var tw = create_tween()
 	tw.tween_property(self, "position:y", 0, 5.0)
 	tw.tween_callback(idle_callback).set_delay(5.0)
 
-@rpc("authority", "call_local")
 func assign_job(new_job : Dictionary):
+	if not multiplayer.is_server():
+		return
 	assert(job == null)
 	assert(state == State.IDLE)
 	assert(new_job["pnum"] == building.player_owner)
 	state = State.PATHING
 	job = new_job
 
-@rpc("authority", "call_local")
 func idle_callback():
+	if not multiplayer.is_server():
+		return
 	print("idle callback")
 	if not job.is_empty():
 		#assert(scram_count == 0)
@@ -89,8 +86,9 @@ func idle_callback():
 	print("do move")
 	move(idle_callback)
 
-@rpc("authority", "call_local")
 func move(callback):
+	if not multiplayer.is_server():
+		return
 	setup_rotation(location, null if job.is_empty() else job["target"])
 	var time = Config.UNIT_SPEED[ type ] 
 	#if scram_count > 0:
@@ -103,13 +101,15 @@ func move(callback):
 	t.tween_property(self, "position", location.pathing_centre, time)
 	t.tween_callback(callback).set_delay(time)
 
-@rpc("authority", "call_local")
 func quat_transform(amount : float):
+	if not multiplayer.is_server():
+		return
 	var mid = quat_from.slerp(quat_to, amount)
 	transform.basis = Basis(mid)
 
-@rpc("authority", "call_local")
 func setup_rotation(target, look_at_from_target):
+	if not multiplayer.is_server():
+		return
 	quat_from = Quaternion(transform.basis)
 	var cache_rot = transform.basis
 	if look_at_from_target != null:

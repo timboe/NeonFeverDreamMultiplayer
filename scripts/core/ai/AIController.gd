@@ -18,7 +18,7 @@ func _on_timer():
 	var srv = Global.network_manager.server
 	if not srv:
 		return
-	var tm = get_node_or_null("/root/World/TileManager")
+	var tm = get_node_or_null("%TileManager")
 	if not tm:
 		timer.wait_time = 1.0 + randf() * 2.0
 		timer.start()

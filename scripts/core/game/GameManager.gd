@@ -23,6 +23,8 @@ func _process(delta):
 	while _job_timer >= JOB_TICK_INTERVAL:
 		_job_timer -= JOB_TICK_INTERVAL
 		%JobManager.assign_jobs()
+		for b in %BuildingManager.buildings():
+			b.check_work()
 
 func _send_snapshot():
 	var ud = %UnitManager.unit_dictionary

@@ -4,9 +4,6 @@
 extends Node3D
 class_name CameraController
 
-@onready var camera: Camera3D = $Camera3D
-
-
 # Intern variables.
 var _mouse_offset = Vector2()
 var _direction = Vector3(0.0, 0.0, 0.0)
