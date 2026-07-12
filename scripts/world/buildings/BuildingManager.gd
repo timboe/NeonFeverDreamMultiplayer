@@ -7,6 +7,8 @@ enum Type {NONE, MCP_1, MCP_2, MCP_3, MCP_4, GEN, VAT, GARAGE, BEACON, NEST}
 # Multiplayer synchronised
 var building_dictionary : Dictionary
 
+var _next_building_id: int = 0
+
 var building_being_placed : int = Type.NONE # TODO - move this to the UI
 #var placement_player : int = -1
 
@@ -110,9 +112,16 @@ func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
 		tile.set_lowered()
 
 func add_to_dict_and_scene(b : Building):
-	b.id = building_dictionary.size()
+	b.id = _next_building_id
+	_next_building_id += 1
 	building_dictionary[b.id] = b
 	add_child(b)
+
+func remove_building(id: int):
+	var b = building_dictionary.get(id)
+	if b:
+		building_dictionary.erase(id)
+		b.queue_free()
 
 func is_placing() -> bool:
 	return building_being_placed != Type.NONE

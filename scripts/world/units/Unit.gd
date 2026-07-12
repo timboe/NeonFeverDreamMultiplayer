@@ -9,6 +9,7 @@ enum State {IDLE, PATHING, WORKING}
 var state : int = State.IDLE
 var type : UnitManager.Type
 var job : Dictionary = {}
+var health : float = 100.0
 
 var path : PackedInt64Array = []
 var location : TileElement

@@ -43,6 +43,7 @@ unique_name_in_owner = true
 script = ExtResource("7_l5ull")
 
 [node name="JobManager" type="Node3D" parent="." unique_id=304354839]
+unique_name_in_owner = true
 script = ExtResource("8_16fjv")
 
 [node name="CameraManager" type="Node3D" parent="." unique_id=1537047151]
