@@ -9,6 +9,7 @@ var state = TileManager.State.RAISED
 # Multiplayer synchronised
 var selected_by : Array # players who have a raise/lower command queued on the tile
 var aoe : Array # players for whome this tile falls under their AoE
+var gen_count : int = 0 # number of GEN buildings whose AoE covers this tile
 
 var particles_instance : GPUParticles3D
 

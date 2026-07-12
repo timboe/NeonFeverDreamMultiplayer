@@ -14,6 +14,9 @@ var generated = false
 var tile_id : int = 0
 var tile_dictionary : Dictionary
 
+var player_aoe_totals : Dictionary = {} # player_number -> float (split AoE score)
+var player_aoe_rings : Dictionary = {} # player_number -> Array[Array[TileElement]] (BFS rings from MCP within AoE)
+
 var rand := RandomNumberGenerator.new()
 
 @onready var tile_script = preload("res://scripts/world/tiles/TileElement.gd")
@@ -198,7 +201,8 @@ func apply_loaded_level():
 func recompute_aoe():
 	for t in tiles():
 		t.aoe.clear()
-	var touched := []
+		t.gen_count = 0
+	var touched := {}
 	for b in %BuildingManager.buildings():
 		var queue := []
 		var visited := {}
@@ -209,14 +213,49 @@ func recompute_aoe():
 			var current = entry.tile as TileElement
 			var depth = entry.depth as int
 			current.add_to_aoe(b.player_owner)
-			touched.append(current)
+			if b.type == BuildingManager.Type.GEN:
+				current.gen_count += 1
+			touched[current] = true
 			if depth >= b.get_aoe_radius():
 				continue
 			for n in current.neighbours:
 				if not visited.has(n):
 					visited[n] = true
 					queue.append({tile = n, depth = depth + 1})
-	for t in tiles(): # Un-select anythign no longer under AoE
+
+	# player_aoe_totals: each tile contributes 1, split evenly among players with AoE
+	player_aoe_totals.clear()
+	for t in touched:
+		var count = t.aoe.size()
+		if count == 0:
+			continue
+		var share = 1.0 / count
+		for p in t.aoe:
+			player_aoe_totals[p] = player_aoe_totals.get(p, 0.0) + share
+
+	# player_aoe_rings: BFS from each player's MCP, restricted to their AoE
+	player_aoe_rings.clear()
+	for pnum in player_aoe_totals:
+		var mcp_tile_id = Global.LEVEL.MCP[pnum - 1]
+		if not tile_dictionary.has(mcp_tile_id):
+			continue
+		var mcp_tile = tile_dictionary[mcp_tile_id]
+		var rings : Array = [] # Array of Array[TileElement]
+		var visited := {}
+		visited[mcp_tile] = true
+		var current_ring := [mcp_tile]
+		while current_ring.size() > 0:
+			rings.append(current_ring)
+			var next_ring : Array = []
+			for tile in current_ring:
+				for n in tile.neighbours:
+					if not visited.has(n) and pnum in n.aoe:
+						visited[n] = true
+						next_ring.append(n)
+			current_ring = next_ring
+		player_aoe_rings[pnum] = rings
+
+	for t in touched: # Un-select anything no longer under AoE
 		for s in t.selected_by:
 			if s not in t.aoe:
 				t.selected_by.erase(s)
