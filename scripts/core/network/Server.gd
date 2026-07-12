@@ -57,7 +57,7 @@ func _on_peer_disconnected(peer_id: int):
 
 func _cmd_toggle_tile(player_number: int, tile_id: int):
 	print("Server._cmd_toggle_tile  pnum=", player_number, "  tile_id=", tile_id)
-	var tm = get_node_or_null("%TileManager")
+	var tm = get_node_or_null("/root/World/TileManager")
 	if not tm:
 		print("  -> TileManager not found!")
 		return

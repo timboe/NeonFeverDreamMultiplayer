@@ -45,7 +45,7 @@ var pathing_manager
 const DEFAULT_COLOUR : Color = Color.WHITE
 const HOVER_COLOUR : Color = Color.YELLOW
 #const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
-#const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
+const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
 
 #const PULSE_TIME := 0.1 # Time in seconds to pulse for
 #const PULSE_DECAY := 0.001 # Amount to reduce pulse by per tile
@@ -69,11 +69,13 @@ func add_to_aoe(player_n : int):
 		
 func toggle_selected_by(player_n : int):
 	if state == TileManager.State.DISABLED:
-		return
+		return false
 	if player_n in selected_by:
 		selected_by.erase(player_n)
 	elif player_n in aoe:
 		selected_by.append(player_n)
+		return true
+	return false
 	
 func set_lowered():
 	state = TileManager.State.LOWERED
@@ -270,8 +272,8 @@ func do_deconstruct_start(time : float):
 	if tween_active:
 		return
 	var t = create_tween()
-	#t.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, time)\
-		#.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
+	t.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, time)\
+		.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	t.tween_callback(do_deconstruct_a).set_delay(time)
 	active_tween = t
 	tween_active = true
@@ -309,62 +311,18 @@ func done_deconstruct():
 		#n.a_neighbour_just_fell()
 	##assign_monorail_jobs_on_demolish()
 	#particles_instance.queue_free()
-	
-#func pulse_start(pulse_e, pulse_n):
-	#pulse_count = pulse_n
-	#if not updating_owner_emission:
-		#set_tile_mm_emission( get_tile_mm_emission() + pulse_e )
-	#var t = create_tween()
-	#t.tween_callback(pulse_end.bind(pulse_e, pulse_n, not updating_owner_emission)).set_delay(PULSE_TIME)
-		
-#func pulse_end(pulse_e, pulse_n, i_pulsed):
-	#if i_pulsed:
-		#set_tile_mm_emission( get_tile_mm_emission() - pulse_e )
-	#pulse_e -= PULSE_DECAY
-	#if pulse_e <= 0:
-		#return
-	#for n in paths.keys():
-		#if n.state == TileManager.State.LOWERED and n.pulse_count < pulse_count and n.player == player:
-			#n.pulse_start(pulse_e, pulse_n)
 
 func _on_StaticBody_mouse_entered():
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		if state == TileManager.State.RAISED or state == TileManager.State.LOWERED:
 			Global.send_command_me("toggle_tile", [id])
 	_hovered = true
-	print("Tile AoE ", aoe, ". Selected by ", selected_by)
+	#print("Tile AoE ", aoe, ". Selected by ", selected_by)
 	update_selection_and_aoe_visual()
 
 func _on_StaticBody_mouse_exited():
 	_hovered = false
 	update_selection_and_aoe_visual()
-	
-#func start_capture(by_whome):
-	#var time := CAPTURE_TIME * claim_strength
-	#if active_tween and active_tween.is_valid():
-		#active_tween.kill()
-	#var t = create_tween()
-	#t.tween_method(set_tile_mm_color, get_tile_mm_color(), OWNED_COLOUR[by_whome.player], time)
-	#t.parallel().tween_property(by_whome, "rotation:y", by_whome.rotation.y + (4.0 * PI * time), time)
-	#t.tween_callback(set_captured.bind(by_whome)).set_delay(time)
-	#active_tween = t
-	
-#func abandon_capture(by_whome):
-	#var time := CAPTURE_TIME
-	#if active_tween and active_tween.is_valid():
-		#active_tween.kill()
-	#var t = create_tween()
-	#t.tween_method(set_tile_mm_color, get_tile_mm_color(), OWNED_COLOUR[player], time)
-	#active_tween = t
-	
-#func set_captured(by_whome):
-	#player = by_whome.player
-	#update_owner_emission()
-	#try_and_spread_capture()
-	#for n in paths.keys(): # Give the enemy jobs to reclaim
-		#n.update_owner_emission()
-		#n.try_and_spread_capture()
-	#by_whome.job_finished(true)
 
 # From one lowered tile to another	
 func get_access_tiles(require_aoe : int = 0) -> Array:

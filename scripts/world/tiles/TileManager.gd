@@ -271,7 +271,14 @@ func apply_toggle(pnum: int, toggle_tile_id: int):
 	if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
 		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is not RAISED or LOWERED (state=", tile.state, ")")
 		return
-	tile.toggle_selected_by(pnum)
+	if tile.state == TileManager.State.LOWERED and tile.building != null:
+		print("TileManager.apply_toggle: tile ", toggle_tile_id, " is LOWERED but has a building (state=", tile.building, ")")
+		return
+	var result = tile.toggle_selected_by(pnum)
+	if result:
+		%JobManager.add_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
+	else:
+		%JobManager.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 

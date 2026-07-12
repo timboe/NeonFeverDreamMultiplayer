@@ -39,16 +39,14 @@ func _setup_debug():
 	debug_mesh_instance.material_override = mat
 	add_child(debug_mesh_instance)
 
-func add_job(pnum : int, type : Type, place, target):
+func add_job(pnum : int, type : Type, location : TileElement):
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
 	var job : Dictionary
 	var have_job := false
 	for the_job in jobs_dict.values():
 		if the_job["type"] != type:
 			continue
-		if the_job["place"] != place:
-			continue
-		if the_job["target"] != target:
+		if the_job["location"] != location:
 			continue
 		have_job = true
 		break
@@ -57,14 +55,33 @@ func add_job(pnum : int, type : Type, place, target):
 	#
 	job_id += 1
 	job = {"id": job_id, "pnum": pnum, "type": type,
-		"place": place, "target": target, "assigned": null,
+		"location": location, "assigned": null,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
 	unassigned += 1
 	jobs_dict[job_id] = job
 	print("New job ", job)
+	
+func cancel_job(pnum : int, type : Type, location : TileElement):
+	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
+	var found_job := -1
+	for the_job in jobs_dict.values():
+		if the_job["pnum"] != pnum:
+			continue
+		if the_job["type"] != type:
+			continue
+		if the_job["location"] != location:
+			continue
+		found_job = the_job["id"]
+		break
+	if found_job >= 0:
+		print("Cancel job ", jobs_dict[found_job])
+		remove_job(found_job)
 
 func remove_job(id_to_remove : int):
 	assert(jobs_dict.has(id_to_remove))
+	print("removing job ", jobs_dict[id_to_remove])
+	if jobs_dict[id_to_remove]["assigned"]:
+		jobs_dict[id_to_remove]["assigned"].job = {} # TODO - check, maybe this is already a copy?
 	jobs_dict.erase(id_to_remove)
 
 func abandon_job(id_to_remove : int):
@@ -79,22 +96,33 @@ func abandon_job(id_to_remove : int):
 func try_and_assign(job : Dictionary) -> bool:
 	# Get all units belonging to this player's job
 	var best_unit = null
+	var best_dist = 9999
 	for unit in get_tree().get_nodes_in_group("unit_player" + str(job["pnum"])):
-		if not unit.job.empty():
+		if not unit.job.is_empty():
 			continue
 		#if zoomba.scram_count > 0:
 			#continue
-		# in following if: or priority[job["type"]] < priority[bestest_job["type"]
-		# TODO - use pathing system distance rather than simple crow-fly
-		if best_unit == null \
-			or job["place"].pathing_centre.distance_to(unit.location.pathing_centre) \
-				< job["place"].pathing_centre.distance_to(best_unit.location.pathing_centre):
+		var dist = get_pathlength(unit.location, job["location"])
+		if dist < best_dist:
+			best_dist = dist
 			best_unit = unit
 	if best_unit != null:
 		job["assigned"] = best_unit
 		best_unit.assign_job(job)
 		return true
 	return false
+	
+func get_pathlength(from : TileElement, to : TileElement) -> int:
+	var shortest = 9999
+	var pm = get_node_or_null("/root/World/TileManager/PathingManager")
+	# Get best path length to any lowered neighbour.
+	for n in to.neighbours:
+		if n.state != TileManager.State.LOWERED:
+			continue
+		var dist = pm.pathfind(from, n)
+		if dist.size() != 0 and dist.size() < shortest:
+			shortest = dist.size() # Don't care about the actual path here
+	return shortest
 
 func assign_jobs():
 	if not multiplayer.is_server() or unassigned == 0:
@@ -120,11 +148,16 @@ func _process(_delta : float):
 		return
 	debug_mesh.clear_surfaces()
 	debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	var added := false
 	for job in jobs_dict.values():
-		var a = job["place"].pathing_centre
+		if not job["assigned"]:
+			continue
+		added = true
+		var a = job["location"].pathing_centre
+		var b = job["assigned"].location.pathing_centre
 		match job["type"]:
-			Type.CONSTRUCT_BUILDING:
-				var b = job["target"].pathing_centre
+			Type.TOGGLE_TILE:
+				
 				debug_mesh.surface_set_color(Color.GREEN)
 				debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
 				debug_mesh.surface_add_vertex(Vector3(b.x, b.y + 5, b.z))
@@ -134,4 +167,5 @@ func _process(_delta : float):
 				#$DebugRender.surface_add_vertex(Vector3(a.x + 5, a.y + 5, a.z + 5))
 				#$DebugRender.surface_add_vertex(Vector3(a.x - 5, a.y + 5, a.z + 5))
 				#$DebugRender.surface_add_vertex(Vector3(a.x + 5, a.y + 5, a.z - 5))
-	debug_mesh.surface_end()
+	if added:
+		debug_mesh.surface_end()

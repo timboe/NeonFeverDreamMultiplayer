@@ -2,10 +2,8 @@ extends Unit
 
 class_name Zoomba
 
-const QUICK_ROTATE_TIME := 0.2
 const SCRAM : int = 10
 
-var progress : int
 var scram_count : int = 0
 
 var pathing_manager
@@ -33,14 +31,7 @@ func scram():
 		
 
 
-#func check_pathing_valid() -> bool:
-	#if path.size() == 0:
-		#path = pathing_manager.pathfind(location, job["place"])
-		#progress = 1 # 0 is our starting location
-		##print("player " , player , " from " , location , " to " , job["place"] , " size " , path.size())
-		#if path.size() < 2:
-			#return false # We were unable to path
-	#return true
+
 
 #func pathing_callback():
 	## First - check we didn't scram while moving.
@@ -64,15 +55,7 @@ func scram():
 	#progress += 1
 	#move("pathing_callback")
 
-#func abandon_job(have_active_callback : bool = true):
-	#assert(state == State.PATHING or state == State.WORKING)
-	#assert(job != null)
-	#match state:
-		#State.PATHING:
-			#return abandon_job_while_pathing(have_active_callback)
-		#State.WORKING:
-			#return abandon_job_while_working(have_active_callback)
-		#
+
 #func abandon_job_while_pathing(have_active_callback : bool):
 	#state = State.IDLE
 	#var id = job["id"]
