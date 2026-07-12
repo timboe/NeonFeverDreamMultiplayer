@@ -23,6 +23,9 @@ var rand := RandomNumberGenerator.new()
 
 func tiles():
 	return tile_dictionary.values()
+	
+func get_tile_by_id(id: int) -> TileElement:
+	return tile_dictionary.get(id)
 
 func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 	var mesh_instance = MeshInstance3D.new()
@@ -281,8 +284,8 @@ func apply_toggle(pnum: int, toggle_tile_id: int):
 		%JobManager.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
-
-# TODO - "selected by" is only needed on the original client and server - not all other nodes. Delete this?
+		
+# NOTE - "selected by" is only strictly needed on the original client and server - not all other nodes.
 @rpc("authority", "call_remote", "reliable")
 func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	if not tile_dictionary.has(update_tile_id):
@@ -290,6 +293,12 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	var tile: TileElement = tile_dictionary[update_tile_id]
 	tile.selected_by = selected_by
 	tile.update_selection_and_aoe_visual()
+
+@rpc("authority", "call_local")
+func rpc_toggle_animation(tile_id: int, thunk_distance: float, thunk_time: float, fall_time: float, dest: float):
+	if not tile_dictionary.has(tile_id):
+		return
+	tile_dictionary[tile_id].rpc_toggle_animation(thunk_distance, thunk_time, fall_time, dest)
 
 #func add_monorail():
 	## Our grid is formed of a tesselation of a four-tile primitive.
@@ -376,7 +385,6 @@ func enabled_tiles_to_multimesh():
 		#edge_mat.set_shader_parameter(&"use_instance_color", true)
 		#mesh_dup.surface_set_material(1, edge_mat)
 	mesh_dup.surface_get_material(0).set_shader_parameter(&"use_instance_color", true)
-	mesh_dup.surface_get_material(1).set_shader_parameter(&"use_instance_color", true)
 	tile_mm.multimesh.mesh = mesh_dup
 	tile_mm.multimesh.instance_count = enabled.size()
 	var count = 0

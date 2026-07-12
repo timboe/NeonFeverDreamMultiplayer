@@ -6,7 +6,7 @@ var id : int # My ID within the BuildingManager dict. TODO - not needed?
 var location : TileElement # My tile, bi-directional linked
 var player_owner : int # Building owner. Cannot be infered from tile
 
-var default_mat = preload("res://materials/player/player0_material.tres")
+var default_mat = preload("res://materials/player/player1_material.tres")
 var updated_mat
 
 enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTIOfN}

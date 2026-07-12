@@ -67,9 +67,9 @@ void fragment() {
 	SPECULAR = specular;
 	NORMAL_MAP = texture(texture_normal, base_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_scale;
-	// emission: COLOR.a driven by TileElement.set_tile_mm_emission (local-selected glow)
-	if (use_instance_color && COLOR.a > 0.01) {
-		EMISSION = vec3(1.0) * COLOR.a;
+	// emission: COLOR.rgb = emission color, COLOR.a = emission intensity
+	if (use_instance_color) {
+		EMISSION = COLOR.rgb * COLOR.a;
 	}
 	vec3 anisotropy_tex = texture(texture_flowmap, base_uv).rga;
 	ANISOTROPY = anisotropy_ratio * anisotropy_tex.b;

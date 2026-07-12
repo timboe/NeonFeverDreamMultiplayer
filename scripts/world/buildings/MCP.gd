@@ -24,6 +24,7 @@ func _process(delta):
 		to_rot.rotate_object_local(Vector3.UP, delta * A_VELOCITY)
 
 func zoomba_cap() -> int:
+	return 1
 	var tm = get_node_or_null("/root/World/TileManager")
 	return floor(sqrt( tm.player_aoe_totals[player_owner] * 8 ))
 

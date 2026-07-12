@@ -4,6 +4,7 @@ class_name Unit
 
 # Class constants
 const QUICK_ROTATE_TIME := 0.2
+const SPAWN_TIME := 2.0
 
 # Immutable properties
 var id : int # My ID within the UnitManager
@@ -12,7 +13,7 @@ var building : Building # Building which spawned me (designates owner)
 
 # Mutabl properties
 enum State {IDLE, PATHING, WORKING}
-var state : int = State.IDLE
+var state : State = State.IDLE
 var job : Dictionary = {}
 var health : float = 100.0
 
@@ -41,8 +42,8 @@ func initialise_base(b : Building, t : UnitManager.Type):
 	if not multiplayer.is_server():
 		return
 	var tw = create_tween()
-	tw.tween_property(self, "position:y", 0, 5.0)
-	tw.tween_callback(idle_callback).set_delay(5.0)
+	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
+	tw.tween_callback(idle_callback).set_delay(SPAWN_TIME)
 
 func assign_job(new_job : Dictionary):
 	if not multiplayer.is_server():
@@ -110,10 +111,9 @@ func pathing_callback():
 	# Second - check our job is stil valid
 	if not check_job_still_valid():
 		return job_finished(false)
-	# Third check if at destination - always a neighbour of location
-	for n in job["location"].neighbours:
-		if n == location:
-			return start_work()
+	# Third check if at destination - path_dest is always a neighbour of location
+	if job.has("path_dest") and job["path_dest"].id == location.id:
+		return start_work()
 	# Fourth, run pathing
 	if not check_pathing_valid():
 		pass
@@ -124,7 +124,7 @@ func pathing_callback():
 	var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 	location = pm.get_tile( path[progress] )
 	progress += 1
-	move("pathing_callback")
+	move(pathing_callback)
 	
 func start_work():
 	if not multiplayer.is_server():
@@ -134,9 +134,9 @@ func start_work():
 	quick_rotate()
 	$Zapper.visible = true
 	match job["type"]:
-		JobManager.JobType.TOGGLE_TILE:
+		JobManager.Type.TOGGLE_TILE:
 			$Zapper.target_position.y = Cairo.UNIT
-			job["location"].do_deconstruct_start(5.0)
+			job["location"].do_toggle_countdown(self)
 		#JobManager.JobType.CONSTRUCT_BUILDING:
 			#$Zapper.target_position.y = Cairo.UNIT
 			#var building = job["target"].building
@@ -160,6 +160,8 @@ func start_work():
 func check_job_still_valid() -> bool: # TODO
 	if not multiplayer.is_server():
 		return false
+	if job.is_empty():
+		return false
 	return true
 
 func check_pathing_valid() -> bool:
@@ -169,27 +171,41 @@ func check_pathing_valid() -> bool:
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for n in job["location"].get_access_tiles():
 			var check_path = pm.pathfind(location, n)
-			if check_path.size() < path.size():
+			#print("check to ", n, " -> " , check_path)
+			if path.size() == 0 or check_path.size() < path.size():
 				path = check_path
+				job["path_dest"] = n
 		progress = 1 # 0 is our starting location
-		#print("player " , player , " from " , location , " to " , job["place"] , " size " , path.size())
+		print("player " , job["pnum"] , " from " , location , " to " , job["path_dest"] , " size " , path.size())
 		if path.size() < 2:
 			return false # We were unable to path
 	return true
 		
-
+# Remove the job as it is finished
 func job_finished(work_was_done : bool):
 	if not multiplayer.is_server():
 		return
 	assert((work_was_done and state == State.WORKING) or (not work_was_done and state == State.PATHING))
 	assert(job != null)
 	state = State.IDLE
-	$Zapper.visible = false
-	var job_id = job["id"]
-	job = {}
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
-	jm.remove_job(job_id)
+	jm.remove_job(job["id"]) # This then calls our remove_job()
 	idle_callback()
+
+# Job was removed - we could be in any state
+func remove_job():
+	if not multiplayer.is_server():
+		return
+	if state == State.IDLE:
+		pass # will already be under idle callout
+	elif state == State.PATHING:
+		pass # will already be under 
+	elif state == State.WORKING:
+		pass
+		# this is the most involved one. 
+	$Zapper.visible = false
+	job = {}
+	
 	
 #func abandon_job(have_active_callback : bool = true):
 	#assert(state == State.PATHING or state == State.WORKING)
@@ -204,7 +220,7 @@ func job_finished(work_was_done : bool):
 func move(callback):
 	if not multiplayer.is_server():
 		return
-	setup_rotation(location, null if job.is_empty() else job["target"])
+	setup_rotation(location, null if job.is_empty() else job["location"])
 	var time = Config.UNIT_SPEED[ type ] 
 	#if scram_count > 0:
 		#time *=  0.5

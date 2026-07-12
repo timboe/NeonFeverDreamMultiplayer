@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://do5ayabbkcssm" path="res://scripts/world/units/Zoomba.gd" id="1"]
 [ext_resource type="CapsuleMesh" uid="uid://i8kulhkm1fdb" path="res://meshes/eye.tres" id="2"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player0_material.tres" id="4"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://b1d53jlc4oj3s" path="res://scenes/world/buildings/Zapper.tscn" id="5"]
 
 [sub_resource type="Animation" id="1"]

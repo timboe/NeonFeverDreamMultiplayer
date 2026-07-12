@@ -78,20 +78,20 @@ func cancel_job(pnum : int, type : Type, location : TileElement):
 		remove_job(found_job)
 
 func remove_job(id_to_remove : int):
-	assert(jobs_dict.has(id_to_remove))
-	print("removing job ", jobs_dict[id_to_remove])
-	if jobs_dict[id_to_remove]["assigned"]:
-		jobs_dict[id_to_remove]["assigned"].job = {} # TODO - check, maybe this is already a copy?
-	jobs_dict.erase(id_to_remove)
+	if jobs_dict.has(id_to_remove):
+		print("removing job ", jobs_dict[id_to_remove])
+		if jobs_dict[id_to_remove]["assigned"]:
+			jobs_dict[id_to_remove]["assigned"].remove_job()
+		jobs_dict.erase(id_to_remove)
 
-func abandon_job(id_to_remove : int):
-	assert(jobs_dict.has(id_to_remove))
-	var job = jobs_dict[id_to_remove]
-	unassigned += 1
-	job["abandoned_by"] = job["assigned"]
-	job["assigned"] = null
-	job["abandoned_n"] += 1
-	job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
+#func abandon_job(id_to_remove : int):
+	#assert(jobs_dict.has(id_to_remove))
+	#var job = jobs_dict[id_to_remove]
+	#unassigned += 1
+	#job["abandoned_by"] = job["assigned"]
+	#job["assigned"] = null
+	#job["abandoned_n"] += 1
+	#job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
 
 func try_and_assign(job : Dictionary) -> bool:
 	# Get all units belonging to this player's job
@@ -150,10 +150,10 @@ func _process(_delta : float):
 	debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	var added := false
 	for job in jobs_dict.values():
-		if not job["assigned"]:
+		if not job["assigned"] or not job.has("path_dest"):
 			continue
 		added = true
-		var a = job["location"].pathing_centre
+		var a = job["path_dest"].pathing_centre
 		var b = job["assigned"].location.pathing_centre
 		match job["type"]:
 			Type.TOGGLE_TILE:

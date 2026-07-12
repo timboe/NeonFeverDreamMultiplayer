@@ -18,10 +18,12 @@ var particles_instance : GPUParticles3D
 
 var neighbours : Array # Array of all neighbours (including immutible ones)
 
-var active_tween : Tween
 #var building_manager
 
-var building # What is built here
+var building : Building = null# What is built here
+
+var toggle_zoomba : Zoomba # what is raising or lowering me
+var toggle_tween : Tween
 
 #var monorail_cap_mm : MultiMesh
 #var monorail_cap_id : int
@@ -43,17 +45,16 @@ var pathing_manager
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
 const DEFAULT_COLOUR : Color = Color.WHITE
-const HOVER_COLOUR : Color = Color.YELLOW
-#const SELECT_COLOUR : Color = Color(100/255.0, 200/255.0, 150/255.0)
+#const HOVER_COLOUR : Color = Color.YELLOW
+const SELECT_COLOUR : Color = Color(1, 1, 1)
 const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
+
 
 #const PULSE_TIME := 0.1 # Time in seconds to pulse for
 #const PULSE_DECAY := 0.001 # Amount to reduce pulse by per tile
 #const CAPTURE_TIME = 1.5 # Time in seconds to capture per enemy neighbour
 const FADE_TIME : float = 5.0 # Time to allow revoke of destroy order
-
-# Only have one countdown timer
-var tween_active := false
+const TOGGLE_COUNTDOWN_TIME : float = 2.0
 
 func set_building(b):
 	assert(building == null)
@@ -84,11 +85,18 @@ func set_lowered():
 	t.origin.y = -HEIGHT
 	transform = t
 	set_tile_mm_height(-HEIGHT)
+	# TODO - is this still comment true? I don't think so (2026)
 	# Note: We don't have access to the paths variable yet
 	# as this is called also during the level setup
 	for n in neighbours:
 		if n.state == TileManager.State.LOWERED:
-			pathing_manager.connect_tiles(self, n, true)
+			pathing_manager.connect_tiles(self, n)
+			
+# Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
+func set_rising():
+	state = TileManager.State.RISING
+	for n in neighbours:
+		pathing_manager.disconnect_tiles(self, n)
 	
 func get_state() -> int:
 	return state
@@ -140,6 +148,8 @@ func delayed_ready():
 	mouse_entered.connect(_on_StaticBody_mouse_entered)
 	mouse_exited.connect(_on_StaticBody_mouse_exited)
 	input_event.connect(_on_StaticBody_input_event)
+	# Only do this here as setup code depends on the orderign of the children
+	add_child($"../../../Particles".duplicate())
 	#building_manager = $"../../../../BuildingManager"
 
 func update_selection_and_aoe_visual():
@@ -158,74 +168,21 @@ func update_selection_and_aoe_visual():
 	set_tile_mm_selecting_mask(mask)
 
 	# COLOR.rgb → grid_edges ALBEDO (local hover)
-	set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
+	# TODO - figure out an alternate way of doing this
+	#set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
 
-	# COLOR.a → aluminium EMISSION (local-selection glow)
-	var is_selected = (Global.my_player_number in selected_by)
-	set_tile_mm_emission(0.4 if is_selected else 0.0)
+	# NOTE: Don't mess with the emission here if a zoomba is "doing work" on this tile
+	if toggle_zoomba == null:
+		var is_selected = (Global.my_player_number in selected_by)
+		if is_selected:
+			set_tile_mm_color(Color.WHITE)
+		set_tile_mm_emission(0.4 if is_selected else 0.0)
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction
 #func a_neighbour_just_fell():
 	#if state == TileManager.State.SELECTED and can_be_lowered():
 		#do_deconstruct_start(FADE_TIME / 5.0)
 		
-#func assign_monorail_jobs_on_demolish():
-	## Check for monorail construction tasks
-	## Call if I was just lowered, and there is an owned tile next door
-	## Here the owner of the neighbouring tile(s) sets who the jobs go to
-	#for n in paths.keys():
-		#if n.state != TileManager.State.LOWERED:
-			#continue # No - can only connect to lowered tiles
-		#if n.player == -1:
-			#continue # No - can't setup jobs from unowned tiles to unowned tiles
-		#job_manager.add_job(n.player, job_manager.JobType.CONSTRUCT_MONORAIL, n, self)
-			
-#func try_and_spread_monorail():
-	## Check for monorail construction tasks
-	## Call if a piece of monorail was just finished to/from me
-	## Here my owner determins who the jobs go to
-	#if building != null:
-		#return
-	#for n in paths.keys():
-		#if n.state != TileManager.State.LOWERED:
-			#continue # No - can only connect to lowered tiles
-		#var mr = paths[n]
-		#if mr.state == mr.TileManager.State.INITIAL:
-			## Spread 
-			#job_manager.add_job(player, job_manager.JobType.CONSTRUCT_MONORAIL, self, n)
-			
-#func try_and_spread_capture():
-	#if building != null:
-		#return
-	#for n in paths.keys():
-		#if n.state != TileManager.State.LOWERED:
-			#continue # No - can only connect to lowered tiles
-		#var mr = paths[n]
-		#if mr.state == mr.TileManager.State.CONSTRUCTED:
-			## Attack Check
-			#if player != -1 and n.player != -1 and player != n.player:
-				#if n.building != null:
-					#job_manager.add_job(player, job_manager.JobType.CLAIM_BUILDING, self, n)
-				#else:
-					#job_manager.add_job(player, job_manager.JobType.CLAIM_TILE, n, null)
-
-#func update_owner_emission():
-	#if player == -1:
-		#set_tile_mm_emission(0.0)
-		#return
-	#claim_strength = 1
-	#set_tile_mm_color(OWNED_COLOUR[player])
-	#for n in paths.keys():
-		#if n.player == player:
-			#claim_strength += 1
-	#var t = create_tween()
-	#t.tween_method(set_tile_mm_emission, get_tile_mm_emission(), claim_strength * 0.01, 0.5)
-	#t.tween_callback(owner_emission_done).set_delay(0.5)
-	#updating_owner_emission = true
-	
-#func owner_emission_done():
-	#updating_owner_emission = false
-
 func get_tile_mm_height() -> float:
 	return tile_mm.get_instance_transform(tile_mm_id).origin.y
 
@@ -257,56 +214,81 @@ func set_tile_mm_emission(value : float):
 	c.a = value
 	tile_mm.set_instance_color(tile_mm_id, c)
 
-#func raise_cap_call(value : float):
-	#var t : Transform3D = monorail_cap_mm.get_instance_transform(monorail_cap_id)
-	#t.origin.y = value
-	#monorail_cap_mm.set_instance_transform(monorail_cap_id, t)
-
-#func raise_cap(time):
-	#if not monorail_cap_moved:
-		#var t = create_tween()
-		#t.tween_method(raise_cap_call, monorail_cap_mm.get_instance_transform(monorail_cap_id).origin.y, 0.0, time)
-		#monorail_cap_moved = true
-
-func do_deconstruct_start(time : float):
-	if tween_active:
+func do_toggle_countdown(z : Zoomba):
+	if not multiplayer.is_server():
 		return
-	var t = create_tween()
-	t.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, time)\
+	assert(toggle_zoomba == null)
+	toggle_zoomba = z
+	toggle_tween = create_tween()
+	toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, TOGGLE_COUNTDOWN_TIME)\
 		.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
-	t.tween_callback(do_deconstruct_a).set_delay(time)
-	active_tween = t
-	tween_active = true
+	toggle_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	print("Start")
 	
-func do_deconstruct_a():
-	state = TileManager.State.FALLING
-	var thunk_distance : float = Global.rand.randf_range(0.05, 0.2)
+func cancel_toggle_countdown(z : Zoomba):
+	if not multiplayer.is_server():
+		return
+	assert(toggle_zoomba == z)
+	toggle_zoomba = null
+	toggle_tween.kill()
+	toggle_tween = create_tween()
+	set_tile_mm_emission(0.0)
+	
+func begin_toggle():
+	if not multiplayer.is_server():
+		return
+
+	if state == TileManager.State.RAISED:
+		state = TileManager.State.FALLING
+	elif state == TileManager.State.LOWERED:
+		set_rising()
+		
+	# Remove the "is selected" toggle and broadcast
+	selected_by.erase( toggle_zoomba.building.player_owner )
+	get_node_or_null("/root/World/TileManager").rpc("broadcast_tile_selection", id, selected_by.duplicate())
+	
+	toggle_zoomba.job_finished(true)
+	toggle_zoomba = null
+	
+	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
 	var thunk_time := thunk_distance * 2
+	var fall_time := Global.rand.randf_range(4.5, 5.5)
+	var dest = -HEIGHT if state == TileManager.State.FALLING else HEIGHT 
+
+	# Set the animation going everywhere (routed through TileManager for reliable RPC delivery)
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, thunk_distance, thunk_time, fall_time, dest)
+
+	# Finished animation callback only runs on the server
 	var t = create_tween()
-	t.tween_property(self, "position:y", -HEIGHT * thunk_distance, thunk_time)\
+	t.tween_callback(done_toggle).set_delay(fall_time + thunk_time)
+	
+# Called locally by TileManager.rpc_toggle_animation
+func rpc_toggle_animation(thunk_distance : float, thunk_time : float, fall_time : float, dest : float):
+	$Particles.emitting = true
+	var t = create_tween()
+	# Need to alter collision box and nav mesh
+	t.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), -HEIGHT * thunk_distance, thunk_time)\
+	t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 	t.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.tween_callback(do_deconstruct_b).set_delay(thunk_time)
-	
-func do_deconstruct_b():
-	set_tile_mm_emission(0.0)
-	var fall_time : float = Global.rand.randf_range(4.5, 5.5)
-	var t = create_tween()
-	t.tween_property(self, "position:y", -HEIGHT, fall_time)\
+	#
+	t.parallel().tween_property(self, "position:y", dest, fall_time)\
+		.from(dest * thunk_distance).set_delay(thunk_time)\
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), -HEIGHT, fall_time)\
+	t.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
+		.set_delay(thunk_time)\
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.tween_callback(done_deconstruct).set_delay(fall_time)
-	particles_instance = $"../../../Particles".duplicate()
-	self.add_child(particles_instance)
-	particles_instance.emitting = true
 
-func done_deconstruct():
-	pass
-	#set_lowered()
+func done_toggle():
+	if not multiplayer.is_server():
+		return
+	print("C")
+	if state == TileManager.State.FALLING:
+		set_lowered() # set lowered gets called at the end
+	elif state == TileManager.State.RISING:
+		state = TileManager.State.RAISED
 	#for n in paths.keys():
 		#n.a_neighbour_just_fell()
 	##assign_monorail_jobs_on_demolish()

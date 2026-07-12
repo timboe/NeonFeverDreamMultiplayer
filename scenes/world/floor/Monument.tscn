@@ -2,7 +2,7 @@
 
 [ext_resource type="ArrayMesh" path="res://meshes/monument.tres" id="1"]
 [ext_resource type="Script" uid="uid://b0evx38qu3ark" path="res://scripts/world/floor/Monument.gd" id="3"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player0_material.tres" id="4"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="4"]
 [ext_resource type="Material" uid="uid://b75ab0w12qbtq" path="res://materials/floor/grid_faces.tres" id="4_q1r5d"]
 [ext_resource type="Texture2D" uid="uid://dmow8oto4mckv" path="res://images/star_05.png" id="5"]
 [ext_resource type="Material" uid="uid://nxjeu82w4fsn" path="res://materials/floor/grid_edges.tres" id="5_ih6da"]
