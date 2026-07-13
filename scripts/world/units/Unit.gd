@@ -116,9 +116,10 @@ func pathing_callback():
 		return start_work()
 	# Fourth, run pathing
 	if not check_pathing_valid():
-		pass
-		# TODO
-		#return abandon_job(false) # No active call-backs
+		return job_finished(false)
+	# Re-check: path_dest may have just been set to our current location (unit already adjacent)
+	if job.has("path_dest") and job["path_dest"].id == location.id:
+		return start_work()
 	# Fifth, move to next location
 	assert(progress < path.size())
 	var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
@@ -171,13 +172,14 @@ func check_pathing_valid() -> bool:
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for n in job["location"].get_access_tiles():
 			var check_path = pm.pathfind(location, n)
-			#print("check to ", n, " -> " , check_path)
 			if path.size() == 0 or check_path.size() < path.size():
 				path = check_path
 				job["path_dest"] = n
 		progress = 1 # 0 is our starting location
-		print("player " , job["pnum"] , " from " , location , " to " , job["path_dest"] , " size " , path.size())
 		if path.size() < 2:
+			# path.size() == 1 means we're already on an access tile — start_work will catch it
+			if path.size() == 1 and job.has("path_dest") and job["path_dest"].id == location.id:
+				return true
 			return false # We were unable to path
 	return true
 		
@@ -185,8 +187,8 @@ func check_pathing_valid() -> bool:
 func job_finished(work_was_done : bool):
 	if not multiplayer.is_server():
 		return
-	assert((work_was_done and state == State.WORKING) or (not work_was_done and state == State.PATHING))
-	assert(job != null)
+	if job.is_empty():
+		return
 	state = State.IDLE
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
 	jm.remove_job(job["id"]) # This then calls our remove_job()
@@ -196,13 +198,7 @@ func job_finished(work_was_done : bool):
 func remove_job():
 	if not multiplayer.is_server():
 		return
-	if state == State.IDLE:
-		pass # will already be under idle callout
-	elif state == State.PATHING:
-		pass # will already be under 
-	elif state == State.WORKING:
-		pass
-		# this is the most involved one. 
+	state = State.IDLE
 	$Zapper.visible = false
 	job = {}
 	

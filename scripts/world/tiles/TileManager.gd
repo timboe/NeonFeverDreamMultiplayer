@@ -295,10 +295,10 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	tile.update_selection_and_aoe_visual()
 
 @rpc("authority", "call_local")
-func rpc_toggle_animation(tile_id: int, thunk_distance: float, thunk_time: float, fall_time: float, dest: float):
+func rpc_toggle_animation(tile_id: int, mode : int, thunk_distance: float = 0, thunk_time: float = 0, fall_time: float = 0, dest: float = 0):
 	if not tile_dictionary.has(tile_id):
 		return
-	tile_dictionary[tile_id].rpc_toggle_animation(thunk_distance, thunk_time, fall_time, dest)
+	tile_dictionary[tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
 
 #func add_monorail():
 	## Our grid is formed of a tesselation of a four-tile primitive.

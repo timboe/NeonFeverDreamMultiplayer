@@ -22,8 +22,9 @@ var neighbours : Array # Array of all neighbours (including immutible ones)
 
 var building : Building = null# What is built here
 
-var toggle_zoomba : Zoomba # what is raising or lowering me
-var toggle_tween : Tween
+var toggle_zoomba_player : int # player who is raising or lowering me
+var working_unit : Unit = null # unit currently toggling this tile
+var toggle_tween : Tween 
 
 #var monorail_cap_mm : MultiMesh
 #var monorail_cap_id : int
@@ -172,7 +173,8 @@ func update_selection_and_aoe_visual():
 	#set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
 
 	# NOTE: Don't mess with the emission here if a zoomba is "doing work" on this tile
-	if toggle_zoomba == null:
+	# Detectable on client and server via the toggle_tween currently running 
+	if not (toggle_tween and toggle_tween.is_valid() and toggle_tween.is_running()):
 		var is_selected = (Global.my_player_number in selected_by)
 		if is_selected:
 			set_tile_mm_color(Color.WHITE)
@@ -217,38 +219,42 @@ func set_tile_mm_emission(value : float):
 func do_toggle_countdown(z : Zoomba):
 	if not multiplayer.is_server():
 		return
-	assert(toggle_zoomba == null)
-	toggle_zoomba = z
-	toggle_tween = create_tween()
-	toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, TOGGLE_COUNTDOWN_TIME)\
-		.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
-	toggle_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
-	print("Start")
-	
+	assert(toggle_zoomba_player == 0)
+	assert(working_unit == null)
+	toggle_zoomba_player = z.building.player_owner
+	working_unit = z
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0) # MODE 0
+	var t = create_tween()
+	t.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+
 func cancel_toggle_countdown(z : Zoomba):
 	if not multiplayer.is_server():
 		return
-	assert(toggle_zoomba == z)
-	toggle_zoomba = null
-	toggle_tween.kill()
-	toggle_tween = create_tween()
-	set_tile_mm_emission(0.0)
+	assert(toggle_zoomba_player == z.building.player_owner)
+	toggle_zoomba_player = 0
+	working_unit = null
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1) # MODE 1
 	
 func begin_toggle():
 	if not multiplayer.is_server():
+		return
+	# If tile state changed during countdown (human click, another unit), abort
+	# TODO - LLM - needed?
+	if state != TileManager.State.RAISED and state != TileManager.State.LOWERED:
+		if is_instance_valid(working_unit):
+			working_unit.job_finished(false)
+		working_unit = null
+		toggle_zoomba_player = 0
 		return
 
 	if state == TileManager.State.RAISED:
 		state = TileManager.State.FALLING
 	elif state == TileManager.State.LOWERED:
 		set_rising()
-		
-	# Remove the "is selected" toggle and broadcast
-	selected_by.erase( toggle_zoomba.building.player_owner )
-	get_node_or_null("/root/World/TileManager").rpc("broadcast_tile_selection", id, selected_by.duplicate())
 	
-	toggle_zoomba.job_finished(true)
-	toggle_zoomba = null
+	selected_by.erase( toggle_zoomba_player )
+	toggle_zoomba_player = 0
+	get_node_or_null("/root/World/TileManager").rpc("broadcast_tile_selection", id, selected_by.duplicate())
 	
 	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
 	var thunk_time := thunk_distance * 2
@@ -256,43 +262,55 @@ func begin_toggle():
 	var dest = -HEIGHT if state == TileManager.State.FALLING else HEIGHT 
 
 	# Set the animation going everywhere (routed through TileManager for reliable RPC delivery)
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, thunk_distance, thunk_time, fall_time, dest)
+	# MODE=2
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 2, thunk_distance, thunk_time, fall_time, dest)
 
 	# Finished animation callback only runs on the server
 	var t = create_tween()
 	t.tween_callback(done_toggle).set_delay(fall_time + thunk_time)
 	
 # Called locally by TileManager.rpc_toggle_animation
-func rpc_toggle_animation(thunk_distance : float, thunk_time : float, fall_time : float, dest : float):
-	$Particles.emitting = true
-	var t = create_tween()
-	# Need to alter collision box and nav mesh
-	t.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
-		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
-		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
-		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	#
-	t.parallel().tween_property(self, "position:y", dest, fall_time)\
-		.from(dest * thunk_distance).set_delay(thunk_time)\
-		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-	t.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
-		.set_delay(thunk_time)\
-		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+func rpc_toggle_animation(mode : int, thunk_distance : float = 0, thunk_time : float = 0, fall_time : float = 0, dest : float = 0):
+	if mode == 0: # Countdown
+		set_tile_mm_color(Color.WHITE)
+		set_tile_mm_emission(0.4)
+		toggle_tween = create_tween()
+		toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, TOGGLE_COUNTDOWN_TIME)\
+			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
+		toggle_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	elif mode == 1: # Cancel
+		toggle_tween.kill()
+		toggle_tween = create_tween()
+		set_tile_mm_emission(0.0)
+	elif mode == 2: # Commit
+		$Particles.emitting = true
+		var t = create_tween()
+		# Need to alter collision box and nav mesh
+		t.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
+			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+		t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
+			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+		t.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
+			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+		#
+		t.parallel().tween_property(self, "position:y", dest, fall_time)\
+			.from(dest * thunk_distance).set_delay(thunk_time)\
+			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+		t.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
+			.set_delay(thunk_time)\
+			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 
 func done_toggle():
 	if not multiplayer.is_server():
 		return
-	print("C")
 	if state == TileManager.State.FALLING:
 		set_lowered() # set lowered gets called at the end
 	elif state == TileManager.State.RISING:
 		state = TileManager.State.RAISED
-	#for n in paths.keys():
-		#n.a_neighbour_just_fell()
-	##assign_monorail_jobs_on_demolish()
-	#particles_instance.queue_free()
+	# Notify the unit that its job is complete
+	if is_instance_valid(working_unit):
+		working_unit.job_finished(true)
+	working_unit = null
 
 func _on_StaticBody_mouse_entered():
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
