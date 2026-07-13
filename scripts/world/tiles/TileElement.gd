@@ -96,8 +96,7 @@ func set_lowered():
 # Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
 func set_rising():
 	state = TileManager.State.RISING
-	for n in neighbours:
-		pathing_manager.disconnect_tiles(self, n)
+	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(self)
 	
 func get_state() -> int:
 	return state
@@ -242,7 +241,7 @@ func begin_toggle():
 	# TODO - LLM - needed?
 	if state != TileManager.State.RAISED and state != TileManager.State.LOWERED:
 		if is_instance_valid(working_unit):
-			working_unit.job_finished(false)
+			working_unit.job_finished()
 		working_unit = null
 		toggle_zoomba_player = 0
 		return
@@ -309,7 +308,7 @@ func done_toggle():
 		state = TileManager.State.RAISED
 	# Notify the unit that its job is complete
 	if is_instance_valid(working_unit):
-		working_unit.job_finished(true)
+		working_unit.job_finished()
 	working_unit = null
 
 func _on_StaticBody_mouse_entered():

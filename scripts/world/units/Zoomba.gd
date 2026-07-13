@@ -56,43 +56,7 @@ func scram():
 	#move("pathing_callback")
 
 
-#func abandon_job_while_pathing(have_active_callback : bool):
-	#state = State.IDLE
-	#var id = job["id"]
-	#print("ABANDONING JOB WHILE PATHING ", job)
-	#job = null
-	#job_manager.abandon_job(player, id)
-	## Wait for pathing callback, unless it was the pathing itself which failed
-	#if not have_active_callback:
-		#idle_callback()
-		#
-#func abandon_job_while_working(have_active_callback : bool):
-	#assert(have_active_callback == true)
-	#$Zapper.visible = false
-	#match job["type"]:
-		#JobManager.JobType.CONSTRUCT_MONORAIL:
-			#var mr = job["place"].paths[ job["target"] ]
-			#mr.abandon_construction()
-		#JobManager.JobType.CONSTRUCT_BUILDING:
-			#var building = job["target"].building
-			#building.abandon_construction()
-		#JobManager.JobType.CLAIM_TILE:
-			#var tile = job["place"]
-			#tile.abandon_capture(self)
-		#JobManager.JobType.CLAIM_BUILDING:
-			#var building = job["target"].building
-			#building.abandon_capture()
-		#_:
-			#print("UNKNOWN JOB TYPE")
-			#assert(false)
-	#state = State.IDLE
-	#var id = job["id"]
-	#print("ABANDONING JOB WHILE WORKIN ", id)
-	#job = null
-	#job_manager.abandon_job(player, id)
-	## If we abandoned while we were working - then we were waiting for the end-of
-	## job callback which will now never come. Hence we now need to call idle_callback
-	#idle_callback()
+
 #
 #func check_job_still_valid() -> bool:
 	#match job["type"]:

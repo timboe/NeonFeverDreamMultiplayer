@@ -24,6 +24,7 @@ var progress : int
 # Current (and previous) locations on the pathing grid
 var location : TileElement
 var previous_location : TileElement
+var move_tween : Tween
 
 # Used for rotation
 var quat_from : Quaternion
@@ -110,13 +111,13 @@ func pathing_callback():
 	assert(state == State.PATHING)
 	# Second - check our job is stil valid
 	if not check_job_still_valid():
-		return job_finished(false)
+		return job_finished()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
 		return start_work()
 	# Fourth, run pathing
 	if not check_pathing_valid():
-		return job_finished(false)
+		return abandon_job()
 	# Re-check: path_dest may have just been set to our current location (unit already adjacent)
 	if job.has("path_dest") and job["path_dest"].id == location.id:
 		return start_work()
@@ -143,17 +144,6 @@ func start_work():
 			#var building = job["target"].building
 			#assert(building != null)
 			#building.start_construction(self)
-		#JobManager.JobType.CLAIM_TILE:
-			#$Zapper.target_position.y = Cairo.UNIT / 2.0
-			#var tile = job["place"]
-			#assert(tile.player != player)
-			#tile.start_capture(self)
-		#JobManager.JobType.CLAIM_BUILDING:
-			#$Zapper.target_position.y = Cairo.UNIT
-			#var building = job["target"].building
-			#assert(building != null)
-			#assert(job["place"].player == player)
-			#building.start_capture(self)
 		_:
 			print("UNKNOWN JOB TYPE")
 			assert(false)
@@ -184,7 +174,7 @@ func check_pathing_valid() -> bool:
 	return true
 		
 # Remove the job as it is finished
-func job_finished(work_was_done : bool):
+func job_finished():
 	if not multiplayer.is_server():
 		return
 	if job.is_empty():
@@ -201,17 +191,41 @@ func remove_job():
 	state = State.IDLE
 	$Zapper.visible = false
 	job = {}
-	
-	
-#func abandon_job(have_active_callback : bool = true):
-	#assert(state == State.PATHING or state == State.WORKING)
-	#assert(job != null)
-	#match state:
-		#State.PATHING:
-			#return abandon_job_while_pathing(have_active_callback)
-		#State.WORKING:
-			#return abandon_job_while_working(have_active_callback)
-		#
+
+func abandon_job():
+	assert(state == State.PATHING or state == State.WORKING)
+	assert(job != null)
+	match state:
+		State.PATHING:
+			return abandon_job_while_pathing()
+		State.WORKING:
+			return abandon_job_while_working()
+
+func abandon_job_while_pathing():
+	state = State.IDLE
+	var j_id = job["id"]
+	print("ABANDONING JOB WHILE PATHING ", job)
+	job = {}
+	get_node_or_null("/root/World/JobManager").abandon_job(j_id)
+	if not move_tween or move_tween.is_finished():
+		idle_callback()
+		
+func abandon_job_while_working():
+	$Zapper.visible = false
+	match job["type"]:
+		JobManager.Type.TOGGLE_TILE:
+			job["location"].cancel_toggle_countdown(self)
+		_:
+			print("UNKNOWN JOB TYPE")
+			assert(false)
+	state = State.IDLE
+	var j_id = job["id"]
+	print("ABANDONING JOB WHILE WORKIN ", id)
+	job = {}
+	get_node_or_null("/root/World/JobManager").abandon_job(j_id)
+	# If we abandoned while we were working - then we were waiting for the end-of
+	# job callback which will now never come. Hence we now need to call idle_callback
+	idle_callback()
 
 func move(callback):
 	if not multiplayer.is_server():
@@ -223,10 +237,10 @@ func move(callback):
 	if state == State.IDLE:
 		time *= 2.0 
 	# else - pathing, time *= 1.0
-	var t = create_tween()
-	t.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
-	t.tween_property(self, "position", location.pathing_centre, time)
-	t.tween_callback(callback).set_delay(time)
+	move_tween = create_tween()
+	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
+	move_tween.tween_property(self, "position", location.pathing_centre, time)
+	move_tween.tween_callback(callback).set_delay(time)
 
 func quick_rotate():
 	if not multiplayer.is_server():

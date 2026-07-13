@@ -44,8 +44,33 @@ func rpc_spawn_unit(type: int, building_id: int):
 	if building:
 		spawn_unit(type as Type, building)
 
-func remove_unit(id: int):
-	var u = unit_dictionary.get(id)
+func displace_units_on_tile(tile : TileElement):
+	var displaced : Array = []
+	for u in units():
+		if u.location == tile:
+			displaced.append(u)
+	for u in displaced:
+		_displace_unit(u, tile)
+
+func _displace_unit(unit : Unit, tile : TileElement):
+	if not unit.job.is_empty():
+		unit.abandon_job()
+	if unit.move_tween and unit.move_tween.is_valid():
+		unit.move_tween.kill()
+	# Find first adjacent valid tile
+	var best_tile : TileElement = null
+	for n in tile.get_access_tiles():
+		best_tile = n
+		break
+	if best_tile:
+		unit.location = best_tile
+		unit.global_position = best_tile.pathing_centre
+	else:
+		rpc("rpc_remove_unit", unit.id)
+
+@rpc("authority", "call_local")
+func rpc_remove_unit(unit_id: int):
+	var u = unit_dictionary.get(unit_id)
 	if u:
-		unit_dictionary.erase(id)
+		unit_dictionary.erase(unit_id)
 		u.queue_free()

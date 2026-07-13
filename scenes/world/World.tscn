@@ -12,7 +12,6 @@
 [ext_resource type="Script" uid="uid://c3i58cfvskf37" path="res://scripts/world/camera/OmniLight.gd" id="7_252at"]
 [ext_resource type="Script" uid="uid://bjdjfiocjvvij" path="res://scripts/world/units/UnitManager.gd" id="7_l5ull"]
 [ext_resource type="Script" uid="uid://c7fxwvdnwg7js" path="res://scripts/world/units/JobManager.gd" id="8_16fjv"]
-
 [node name="World" type="Node3D" unique_id=943865623]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=454790477]

@@ -23,6 +23,10 @@ var rand := RandomNumberGenerator.new()
 
 func tiles():
 	return tile_dictionary.values()
+
+func remove_tile_from_pathing(tile : TileElement):
+	$PathingManager.disconnect_tile(tile)
+	%UnitManager.displace_units_on_tile(tile)
 	
 func get_tile_by_id(id: int) -> TileElement:
 	return tile_dictionary.get(id)
@@ -299,60 +303,6 @@ func rpc_toggle_animation(tile_id: int, mode : int, thunk_distance: float = 0, t
 	if not tile_dictionary.has(tile_id):
 		return
 	tile_dictionary[tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
-
-#func add_monorail():
-	## Our grid is formed of a tesselation of a four-tile primitive.
-	## The linking relationships between neighbouring tiles depends on
-	## the translation and rotations applied during the tesselation.
-	## The four dictionaries below map this for each of the base tiles
-	#var tile_groups : Array = ["tilesA", "tilesB", "tilesC", "tilesD"]
-	#var monorail_groups : Array = ["mr1", "mr2", "mr3"]
-	#var tilesA_mapping : Dictionary = {"mr1": 2, "mr2": 3, "mr3": 4}
-	#var tilesB_mapping : Dictionary = {"mr1": 1, "mr2": 0, "mr3": 2}
-	#var tilesC_mapping : Dictionary = {"mr1": 4, "mr2": -1, "mr3": 2} # mr2 was 1 (dupe)
-	#var tilesD_mapping : Dictionary = {"mr1": 2, "mr2": -1, "mr3": 4} # mr2 was 3 (dupe)
-	#var tiles_mapping : Dictionary = {
-		#"tilesA": tilesA_mapping, "tilesB": tilesB_mapping,
-		#"tilesC": tilesC_mapping, "tilesD": tilesD_mapping}
-	#var total_monorails := 0
-	#total_monorails += get_tree().get_nodes_in_group("tilesA").size() * 3
-	#total_monorails += get_tree().get_nodes_in_group("tilesB").size() * 3
-	#total_monorails += get_tree().get_nodes_in_group("tilesC").size() * 2
-	#total_monorails += get_tree().get_nodes_in_group("tilesD").size() * 2
-	#monorail_mm.multimesh.set_instance_count(total_monorails) # This is high-balling it, due to DISABLED instances
-	#var mr_count := 0
-	#for tg in tile_groups:
-		#for tile in get_tree().get_nodes_in_group(tg):
-			#var mapping = tiles_mapping[tg]
-			#for mg in monorail_groups:
-				## We don't need to make three links from every tile
-				## Some are dupes. These are given -1 above
-				#var neighbour_id = mapping[mg]
-				#if neighbour_id == -1:
-					#continue;
-				#var target : StaticBody3D = tile.neighbours[ neighbour_id ]
-				#if target.state == TileElement.State.BUILT or target.state == TileElement.State.DESTROYED:
-					#var mr : Monorail = monorail_mm.new_mr(mr_count)
-					#var t : Transform3D = tile.get_child(0).get_transform()
-					#if mg == "mr2":
-						#t = t.rotated(Vector3.UP, deg_to_rad(60))
-						## This is broken in the new coordinate system... this is good enough TODO - fix!
-						#t.origin += Vector3(0.5 * $CairoDisabled.RIGHT_POINT__UP, 0.0, 2 * $CairoDisabled.RIGHT_POINT__UP)
-						##t = tile.get_global_transform() * t
-					#elif mg == "mr3":
-						#t = t.rotated(Vector3.UP, deg_to_rad(120))
-						## As above - ugly & not precise
-						#t.origin += Vector3(1.6 * $CairoDisabled.RIGHT_POINT__UP, 0.0, 2.0 * $CairoDisabled.RIGHT_POINT__UP)
-						##t = tile.get_global_transform() * t
-					#else:
-						#t.origin += Vector3(0.0, 0.0, $CairoDisabled.RIGHT_POINT__UP)
-					#t = tile.get_global_transform() * t
-					#t.origin.y = -0.5 # Hide
-					#monorail_mm.multimesh.set_instance_transform(mr_count, t)
-					#tile.links_to(target, mr, true)
-					#mr_count += 1
-	#assert(mr_count <= total_monorails)
-	#monorail_mm.multimesh.set_visible_instance_count(mr_count)
 
 func disabled_tiles_to_multimesh():
 	var disabled := get_tree().get_nodes_in_group("disabled")

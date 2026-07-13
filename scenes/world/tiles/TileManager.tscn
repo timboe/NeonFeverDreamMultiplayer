@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d3y6sbq5dfdj4" path="res://scripts/world/tiles/Cairo.gd" id="1"]
 [ext_resource type="Script" uid="uid://4v8arwtcn477" path="res://scripts/world/tiles/TileManager.gd" id="2"]
 [ext_resource type="Texture2D" uid="uid://d3lyc2sgxnr3s" path="res://images/smoke_06.png" id="3"]
+[ext_resource type="Script" uid="uid://b6bg2asekurqm" path="res://scripts/world/tiles/PulseEffect.gd" id="3_00cpv"]
 [ext_resource type="Script" uid="uid://dt2011efly0as" path="res://scripts/world/tiles/PathingManager.gd" id="4"]
 [ext_resource type="Shape3D" path="res://meshes/cairo_collision.tres" id="5"]
 [ext_resource type="Material" uid="uid://nxjeu82w4fsn" path="res://materials/floor/grid_edges.tres" id="6"]
@@ -110,6 +111,9 @@ unique_name_in_owner = true
 script = ExtResource("4")
 
 [node name="Tiles" type="Node3D" parent="." unique_id=1481607777]
+
+[node name="PulseEffect" type="Node3D" parent="." unique_id=203990885]
+script = ExtResource("3_00cpv")
 
 [node name="Particles" type="GPUParticles3D" parent="." unique_id=1033512989]
 transform = Transform3D(1, 0, 0, 0, -1, 8.74228e-08, 0, -8.74228e-08, -1, 6, 22, 6)

@@ -46,6 +46,7 @@ func _pack_unit(data: PackedFloat64Array, u: Unit):
 			slots[3] = u.global_rotation.y
 			slots[4] = u.state
 			slots[5] = u.health
+			slots[6] = u.get_node("Zapper").visible
 	for s in slots:
 		data.append(s)
 
@@ -126,6 +127,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array):
 			u.rotation.y = slots[3]
 			u.state = int(slots[4])
 			u.health = slots[5]
+			u.get_node("Zapper").visible = slots[6]
 
 static func _lerp_angle(from: float, to: float, t: float) -> float:
 	var diff = fmod(to - from, TAU)

@@ -93,11 +93,7 @@ func place_blueprint(tile : TileElement):
 	#
 	enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH # hide the hover one
 	#
-	#for z in get_tree().get_nodes_in_group("zoomba"):
-		#z.path.resize(0) # Force re-pathing
-	#
-	#new_building.queue_construction_jobs(placement_player)
-	#%CameraManager.add_trauma(1.0, tile.pathing_centre)
+	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
 	#
 	building_being_placed = Type.NONE
 

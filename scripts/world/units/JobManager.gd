@@ -84,56 +84,58 @@ func remove_job(id_to_remove : int):
 			jobs_dict[id_to_remove]["assigned"].remove_job()
 		jobs_dict.erase(id_to_remove)
 
-#func abandon_job(id_to_remove : int):
-	#assert(jobs_dict.has(id_to_remove))
-	#var job = jobs_dict[id_to_remove]
-	#unassigned += 1
-	#job["abandoned_by"] = job["assigned"]
-	#job["assigned"] = null
-	#job["abandoned_n"] += 1
-	#job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
+func abandon_job(id_to_abandon : int):
+	assert(jobs_dict.has(id_to_abandon))
+	var job = jobs_dict[id_to_abandon]
+	unassigned += 1
+	job["abandoned_by"] = job["assigned"]
+	job["assigned"] = null
+	job["abandoned_n"] += 1
+	job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
 
-func try_and_assign(job : Dictionary) -> bool:
-	# Get all units belonging to this player's job
-	var best_unit = null
+func assign_nearest_job(unit : Unit) -> bool:
+	var pnum = unit.building.player_owner
+	var best_job = null
 	var best_dist = 9999
-	for unit in get_tree().get_nodes_in_group("unit_player" + str(job["pnum"])):
-		if not unit.job.is_empty():
+	for job in jobs_dict.values():
+		if job["pnum"] != pnum:
 			continue
-		#if zoomba.scram_count > 0:
-			#continue
+		if job["assigned"] != null:
+			continue
+		if job["abandoned_timer"] > 0.0:
+			continue
 		var dist = get_pathlength(unit.location, job["location"])
 		if dist < best_dist:
 			best_dist = dist
-			best_unit = unit
-	if best_unit != null:
-		job["assigned"] = best_unit
-		best_unit.assign_job(job)
+			best_job = job
+	if best_job != null:
+		best_job["assigned"] = unit
+		unit.assign_job(best_job)
 		return true
 	return false
-	
+
 func get_pathlength(from : TileElement, to : TileElement) -> int:
 	var shortest = 9999
 	var pm = get_node_or_null("/root/World/TileManager/PathingManager")
-	# Get best path length to any lowered neighbour.
-	for n in to.neighbours:
-		if n.state != TileManager.State.LOWERED:
-			continue
+	for n in to.get_access_tiles():
 		var dist = pm.pathfind(from, n)
 		if dist.size() != 0 and dist.size() < shortest:
-			shortest = dist.size() # Don't care about the actual path here
+			shortest = dist.size()
 	return shortest
 
 func assign_jobs():
 	if not multiplayer.is_server() or unassigned == 0:
 		return
+	# Decrement timers for all unassigned jobs
 	for job in jobs_dict.values():
 		if job["assigned"] != null:
 			continue
-		job["abandoned_timer"] -= 1.0 # TODO make this configurable to the server job tick
-		if job["abandoned_timer"] > 0.0:
+		job["abandoned_timer"] -= 1.0
+	# Assign jobs to idle workers
+	for unit in get_tree().get_nodes_in_group("unit"):
+		if not unit.job.is_empty():
 			continue
-		if try_and_assign(job):
+		if assign_nearest_job(unit):
 			unassigned -= 1
 
 #func _on_AssignJobs_timeout():
