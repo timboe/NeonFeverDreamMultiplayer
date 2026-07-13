@@ -30,8 +30,8 @@ emission_shape = 2
 emission_sphere_radius = 1.0
 direction = Vector3(0, 1, 0)
 gravity = Vector3(0, -50, 0)
-scale_min = 0.0
-scale_max = 0.0
+scale_min = 1.0
+scale_max = 1.0
 scale_curve = SubResource("4")
 color_ramp = SubResource("2")
 
@@ -47,6 +47,7 @@ particles_anim_loop = false
 
 [sub_resource type="QuadMesh" id="7"]
 material = SubResource("6")
+size = Vector2(12, 12)
 
 [sub_resource type="BoxMesh" id="8"]
 
