@@ -18,17 +18,12 @@ func _process(delta : float):
 		return
 	jaggies -= JAGGIES_UPDATE
 	
-	var target : Vector3
-	if enabled:
-		if is_colliding():
-			target = get_collision_point()
-		else:
-			return
-	else:
-		target = target_position
+	if not visible:
+		imm_mesh.clear_surfaces()
+		return
 	
 	imm_mesh.clear_surfaces()
-	draw_jaggy_to(target.y)
+	draw_jaggy_to(target_position.y)
 	
 func draw_jaggy_to(dist : float):
 	imm_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)

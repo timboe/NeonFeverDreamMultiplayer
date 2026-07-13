@@ -8,9 +8,9 @@ const PLAYER_COLORS : Array[Color] = [
 ]
 
 const CYCLE_TIME := 1.0
-const BASE_TICK_TIME := 0.15
+const BASE_TICK_TIME := 0.1
 const MIN_TICK_TIME := 0.04
-const BASE_EMISSION := 0.4
+const BASE_EMISSION := 0.1
 const MIN_EMISSION := 0.05
 
 var tile_manager : TileManager

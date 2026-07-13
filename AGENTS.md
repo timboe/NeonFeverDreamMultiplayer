@@ -63,9 +63,9 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 | `Config` | `autoload/Config.gd` | Singleton, static dicts: `BUILDING_AOE` (radius per building type), `UNIT_SPEED`, `HOME_TERRITORY_UNITS` |
 | `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates Server/LocalClients or ENet client |
 | `Server` | `scripts/core/network/Server.gd` | ENet server, peer→player mapping, command dispatch |
-| `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon tile grid generation + multiplayer selection sync, AoE recomputation |
-| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual, `aoe` array |
-| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D pathfinding, `connect_tiles`/`disconnect_tiles`, debug renderer (ImmediateMesh) |
+| `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon tile grid generation + multiplayer selection sync, AoE recomputation, `remove_tile_from_pathing` |
+| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual, `aoe` array, `working_unit` for job callback |
+| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D pathfinding, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, debug renderer (ImmediateMesh) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven tile toggle |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Slot config: LOCAL, REMOTE, AI, CLOSED |
 | `GameManager` | `scripts/core/game/GameManager.gd` | Snapshot/interpolation manager for network state |
@@ -77,10 +77,63 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 | `Vat` | `scripts/world/buildings/Vat.gd` | Energy storage: liquid-level tween, capacity calculation, `contains` set/get with underscore-backed var |
 | `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam effect (ImmediateMesh + RayCast3D), jaggies animation |
 | `Blueprints` | `scripts/world/buildings/Blueprints.gd` | Ghost building preview, duplicate material assignment |
-| `UnitManager` | `scripts/world/units/UnitManager.gd` | Unit type enum, `spawn_unit`, `add_to_dict_and_scene`, `remove_unit`, server guard on spawn |
-| `Unit` | `scripts/world/units/Unit.gd` | Base unit: states (IDLE/PATHING/WORKING), pathing, rotation (Quaternion slerp), `@rpc("authority", "call_local")` for authority-triggered methods |
+| `UnitManager` | `scripts/world/units/UnitManager.gd` | Unit type enum, `spawn_unit`/`rpc_spawn_unit`, `rpc_remove_unit`, `displace_units_on_tile`, server guard on spawn |
+| `Unit` | `scripts/world/units/Unit.gd` | Base unit: states (IDLE/PATHING/WORKING), pathing, rotation (Quaternion slerp), `abandon_job`, `job_finished`, `move_tween` |
 | `Zoomba` | `scripts/world/units/Zoomba.gd` | Bot unit: `initialise`, player-colour material, most logic commented out (scram, pathing jobs) |
-| `JobManager` | `scripts/world/units/JobManager.gd` | Job queue per player, priorities, abandoned-job delay, debug renderer |
+| `JobManager` | `scripts/world/units/JobManager.gd` | Job queue per player, worker-centric assignment (`assign_nearest_job`), abandoned-job delay, debug renderer |
+
+## Job system
+
+### Lifecycle
+
+```
+Player clicks tile → apply_toggle → JobManager.add_job(TOGGLE_TILE, tile)
+                                         ↓
+GameManager._process (every 1s) → JobManager.assign_jobs()
+                                         ↓
+                          For each idle unit → assign_nearest_job(unit)
+                                         ↓
+                          Unit.assign_job(job) → state=PATHING
+                                         ↓
+                          pathing_callback → check_pathing_valid → start_work
+                                         ↓
+                          Unit.state=WORKING → tile.do_toggle_countdown(self)
+                                         ↓
+                          begin_toggle → done_toggle → unit.job_finished(true)
+                                         ↓
+                          JobManager.remove_job → Unit.remove_job → idle_callback
+```
+
+### Job states
+
+| Job field | Meaning |
+|---|---|
+| `assigned` | Unit currently working on this job (null if unassigned) |
+| `abandoned_n` | How many times this job has been abandoned (escalates retry delay) |
+| `abandoned_timer` | Seconds until job is eligible for reassignment (11s × abandon_n, capped at 60s) |
+
+### Abandon vs finish vs cancel
+
+- **`unit.job_finished(work_was_done)`**: Job completed successfully. Removes job from pool entirely. Called by `TileElement.done_toggle()` (via `working_unit` ref) when toggle animation completes.
+- **`unit.abandon_job()`**: Unit gives up but job stays in pool. Dispatches to `abandon_job_while_pathing()` or `abandon_job_while_working()`. Calls `JobManager.abandon_job(id)` which increments `abandoned_n` and sets `abandoned_timer`. Job is reassignable after timer expires.
+- **`JobManager.cancel_job(pnum, type, tile)`**: Human deselects a tile. Removes job from pool entirely via `remove_job`.
+
+### Tile disconnection / unit displacement
+
+When a tile leaves the pathing grid (`set_rising` or building placement), `TileManager.remove_tile_from_pathing(tile)` is called:
+
+1. `PathingManager.disconnect_tile(tile)` — removes all AStar edges from this tile
+2. `UnitManager.displace_units_on_tile(tile)` — for each unit on the tile:
+   - If unit has a job → `unit.abandon_job()` (job goes back to pool)
+   - Kill active `move_tween`
+   - Find first `LOWERED` neighbour with no building → teleport unit there
+   - If no valid neighbour exists → `rpc("rpc_remove_unit", unit.id)` (destroy)
+
+### Worker-centric assignment
+
+`JobManager.assign_jobs()` runs two passes:
+1. Decrement `abandoned_timer` for all unassigned jobs
+2. For each idle unit (from `"unit"` group), call `assign_nearest_job(unit)` which finds the closest eligible job (matching `pnum`, unassigned, timer expired)
 
 ## Per-instance visual data (MultiMesh)
 
@@ -90,7 +143,7 @@ Each tile instance packs three independent visuals into `set_instance_color` and
 |---|---|---|---|
 | `INSTANCE_CUSTOM.rgba` | `set_tile_mm_selecting_mask` | `aluminium.tres` vertex→`selecting_mask` | Band stripes — which players claim this tile and which have AoE |
 | `COLOR.rgb` | `set_tile_mm_color` | `grid_edges.tres` fragment → `ALBEDO` | Edge color — local hover indicator |
-| `COLOR.a` | `set_tile_mm_emission` | `aluminium.tres` fragment → `EMISSION` | White glow — local-selection highlight |
+| `COLOR.a` | `set_tile_mm_emission` | `aluminium.tres` fragment → `EMISSION` + `EMISSION_ENERGY` | White glow — local-selection highlight (RGB=color, A=intensity) |
 
 All three are independent: `set_tile_mm_color` preserves `a`, `set_tile_mm_emission` preserves `rgb`, and `set_tile_mm_selecting_mask` writes custom data.
 
@@ -167,10 +220,10 @@ dr_mesh.surface_end()
 
 ### Tile scripts
 
-- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference.
-- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref.
+- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished(true)`, `begin_toggle` guards against invalid tile state.
+- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`.
 - `TileManager.tscn`: both `[node name="Tween"]` children removed.
-- `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`.
+- `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`. Added `disconnect_tile(tile)` for removing all edges from a tile.
 - `Cairo.gd`: `GENERATE = false` with "do not regenerate" note.
 - `MonorailMultimesh.gd`: not yet reviewed (entire body commented out).
 
@@ -189,10 +242,10 @@ dr_mesh.surface_end()
 
 ### Unit scripts
 
-- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation.
+- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. Added `abandon_job`, `abandon_job_while_pathing`, `abandon_job_while_working`, `move_tween` var. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job.
 - `Zoomba.gd`: Removed `@onready var tween`, added `pathing_manager`. `PoolIntArray`→`PackedInt64Array`. `interpolate_method`→`create_tween().tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback().set_delay()`. `Quat`→`Quaternion`, `translation`→`position`, `GlobalVars`→`Global`, `push_back`→`append`, `remove`→`remove_at`, `cast_to`→`target_position`. Most pathing/work logic is commented out.
-- `UnitManager.gd`: Added `units()`, `_next_unit_id`, `remove_unit()`, server guard on `spawn_unit`.
-- `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer.
+- `UnitManager.gd`: Added `units()`, `_next_unit_id`, `rpc_remove_unit` (replaces `remove_unit`) with `@rpc("authority", "call_local")`, `displace_units_on_tile` + `_displace_unit` for tile disconnection handling. Server guard on `spawn_unit`.
+- `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer. Flipped assignment to worker-centric: `try_and_assign(job)` → `assign_nearest_job(unit)`. `assign_jobs()` now has two-pass structure (timer decrement then worker iteration).
 
 ### Camera / Floor scripts
 
@@ -207,7 +260,7 @@ dr_mesh.surface_end()
 | Pattern | File | Line(s) | Fix |
 |---|---|---|---|
 | `push_back` | `GridMultiMesh.gd` | 56, 57, 96 | `append()` |
-| `push_back` | `TileElement.gd` | 378 | `append()` |
+| `push_back` | `TileElement.gd` | 336 | `append()` |
 | `location.player` (nonexistent) | `Vat.gd` | 32 | `TileElement` has no `.player` |
 | `tile.under_aoe` (nonexistent) | `BuildingManager.gd` | 37 | Should be `tile.aoe` |
 | `empty()` on Dictionary | `JobManager.gd` | removed | Use `is_empty()` |
