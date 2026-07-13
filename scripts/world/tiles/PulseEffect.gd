@@ -1,12 +1,5 @@
 extends Node3D
 
-const PLAYER_COLORS : Array[Color] = [
-	Color.RED,
-	Color.PURPLE,
-	Color.YELLOW,
-	Color.GREEN,
-]
-
 const CYCLE_TIME := 1.0
 const BASE_TICK_TIME := 0.1
 const MIN_TICK_TIME := 0.04
@@ -78,7 +71,7 @@ func _flash_ring(pnum : int, idx : int):
 	var rings := _get_rings(pnum)
 	if idx >= rings.size():
 		return
-	var color : Color = PLAYER_COLORS[pnum - 1]
+	var color : Color = Config.PLAYER_COLORS[pnum - 1]
 	var em := _emission(idx, rings.size())
 	for tile in rings[idx]:
 		if _can_modify(tile):

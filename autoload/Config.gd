@@ -25,3 +25,10 @@ static var HOME_TERRITORY_UNITS : Array = [
 	UnitManager.Type.TANK,
 	UnitManager.Type.AERIAL_PATROL,
 ]
+
+static var PLAYER_COLORS : Array[Color] = [
+	Color.RED,
+	Color.PURPLE,
+	Color.YELLOW,
+	Color.GREEN,
+]
