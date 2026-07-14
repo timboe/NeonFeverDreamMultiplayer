@@ -106,6 +106,7 @@ func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
+	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
 
 func add_to_dict_and_scene(b : Building):
 	b.id = _next_building_id

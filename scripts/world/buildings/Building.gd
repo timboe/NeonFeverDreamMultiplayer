@@ -62,11 +62,6 @@ func get_aoe_radius():
 
 func check_work():
 	pass
-		
-#func update_monorail():
-	#assert(location != null)
-	#for mr in location.paths.values():
-		#mr.update_building_passable()	
 
 func set_livery():
 	# TODO - tile can now have multiple AoE players, this does not work anymore to select the owner
@@ -109,32 +104,6 @@ func set_constructed_b():
 	set_visible(true)
 	my_blueprint.queue_free()
 	
-##NOTE: Moved to UnitManager as spawn_zoomba
-#func add_zoomba():
-
-##NOTE: Moved to UnitManager
-#func zoomba_callback(z):
-	
-#func start_capture(by_whome):
-	#var t = create_tween()
-	#t.tween_callback(set_captured.bind(by_whome)).set_delay(CAPTURE_TIME)
-	#capture_in_progress = true
-	
-#func abandon_capture():
-	#capture_in_progress = false
-
-#func set_captured(var by_whome):
-	#location.set_captured(by_whome)
-	#set_livery()
-	#capture_in_progress = false
-	#if zoomba_constructing_me != null:
-		#zoomba_constructing_me.scram() # If I was being con/de-structed, now I'm not
-	#if state == State.BLUEPRINT:
-		## Disallow capture of a barrier - just poof it
-		#if type == BuildingManager.Type.BAR:
-			#queue_free()
-		#else:
-			#queue_construction_jobs(-1) # I might have been captured before I was constructed
 	
 func queue_construction_jobs(_placement_player : int):
 	pass

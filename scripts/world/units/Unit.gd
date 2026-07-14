@@ -181,16 +181,21 @@ func job_finished():
 		return
 	state = State.IDLE
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
-	jm.remove_job(job["id"]) # This then calls our remove_job()
-	idle_callback()
+	jm.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
 
 # Job was removed - we could be in any state
 func remove_job():
 	if not multiplayer.is_server():
 		return
+	if state == State.WORKING:
+		match job["type"]:
+			JobManager.Type.TOGGLE_TILE:
+				job["location"].cancel_toggle_countdown(self)
 	state = State.IDLE
 	$Zapper.visible = false
 	job = {}
+	if not move_tween or not move_tween.is_running():
+		idle_callback()
 
 func abandon_job():
 	assert(state == State.PATHING or state == State.WORKING)

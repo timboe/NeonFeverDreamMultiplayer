@@ -84,39 +84,123 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 
 ## Job system
 
-### Lifecycle
+### Unit states
 
-```
-Player clicks tile → apply_toggle → JobManager.add_job(TOGGLE_TILE, tile)
-                                         ↓
-GameManager._process (every 1s) → JobManager.assign_jobs()
-                                         ↓
-                          For each idle unit → assign_nearest_job(unit)
-                                         ↓
-                          Unit.assign_job(job) → state=PATHING
-                                         ↓
-                          pathing_callback → check_pathing_valid → start_work
-                                         ↓
-                          Unit.state=WORKING → tile.do_toggle_countdown(self)
-                                         ↓
-                           begin_toggle → done_toggle → unit.job_finished()
-                                         ↓
-                          JobManager.remove_job → Unit.remove_job → idle_callback
-```
+Every unit has exactly one of three states. State transitions are the core of the job system.
 
-### Job states
-
-| Job field | Meaning |
+| State | Meaning |
 |---|---|
-| `assigned` | Unit currently working on this job (null if unassigned) |
-| `abandoned_n` | How many times this job has been abandoned (escalates retry delay) |
-| `abandoned_timer` | Seconds until job is eligible for reassignment (11s × abandon_n, capped at 60s) |
+| `IDLE` | No job. Unit wanders randomly between accessible tiles. |
+| `PATHING` | Has a job. Unit is pathfinding toward the target tile. |
+| `WORKING` | At target tile. Unit is performing the job action (e.g. toggle countdown). |
 
-### Abandon vs finish vs cancel
+### State transitions
 
-- **`unit.job_finished(work_was_done)`**: Job completed successfully. Removes job from pool entirely. Called by `TileElement.done_toggle()` (via `working_unit` ref) when toggle animation completes. No arguments (was `work_was_done` boolean, now parameterless).
-- **`unit.abandon_job()`**: Unit gives up but job stays in pool. Dispatches to `abandon_job_while_pathing()` or `abandon_job_while_working()`. Calls `JobManager.abandon_job(id)` which increments `abandoned_n` and sets `abandoned_timer`. Job is reassignable after timer expires.
-- **`JobManager.cancel_job(pnum, type, tile)`**: Human deselects a tile. Removes job from pool entirely via `remove_job`.
+```
+                    ┌──────────────────────────────────────────────────┐
+                    │                                                  │
+  ┌─────────┐   assign_job()   ┌─────────┐   start_work()   ┌─────────┐
+  │  IDLE   │ ───────────────→ │ PATHING │ ───────────────→ │ WORKING │
+  └─────────┘                  └─────────┘                  └─────────┘
+       ↑                            │    │                        │  │
+       │                            │    │                        │  │
+       │  remove_job()              │    │  remove_job()          │  │  remove_job()
+       │  abandon_job_while_pathing │    │  abandon_job_while_    │  │  abandon_job_while_working
+       │  job_finished()            │    │  pathing               │  │  job_finished()
+       │                            │    │                        │  │
+       └────────────────────────────┘    └────────────────────────┘  │
+                                                                     │
+       ┌─────────────────────────────────────────────────────────────┘
+       │
+       └──→ IDLE (unit resumes wandering)
+```
+
+All transitions are server-only (`if not multiplayer.is_server(): return` guard at top of every function).
+
+### Unit.gd functions
+
+**`idle_callback()`** — The idle loop entry point. Called after spawn, after `remove_job()`, and after each wander move.
+- If `job` is non-empty (unit was assigned while idle): asserts `PATHING`, clears path, calls `pathing_callback()`.
+- If `job` is empty (true idle): picks a random accessible tile (preferring AoE tiles for HOME_TERRITORY_UNITS), avoids backtracking, calls `move(idle_callback)`.
+
+**`pathing_callback()`** — Runs each step of pathfinding toward the job target.
+1. Asserts `PATHING` state.
+2. `check_job_still_valid()` — if job was removed externally, calls `job_finished()` (early-out).
+3. Checks if unit reached `path_dest` — if so, calls `start_work()`.
+4. `check_pathing_valid()` — if no path exists or it's empty, calls `abandon_job()`.
+5. Re-checks `path_dest` (may have changed to current location after re-pathing).
+6. Moves to next node in path via `move(pathing_callback)`.
+
+**`check_pathing_valid()`** — If `path` is empty, re-runs pathfinding from current location to all access tiles of the job target. Sets `path_dest` to the closest access tile. Returns `false` if no reachable path exists (triggers `abandon_job`). Returns `true` if a valid path exists (path was already computed and hasn't been invalidated).
+
+**`start_work()`** — Transitions PATHING → WORKING.
+- Sets `state = WORKING`, rotates unit toward target, enables zapper visual.
+- For `TOGGLE_TILE`: calls `job["location"].do_toggle_countdown(self)` — the tile now owns the callback chain.
+
+**`job_finished()`** — Called when work completes or the job is no longer valid.
+- Early-out if `job` is empty (idempotent).
+- Sets `state = IDLE`.
+- Calls `JobManager.remove_job(job["id"])` which calls `Unit.remove_job()` → handles tile cleanup and idle resumption.
+
+**`remove_job()`** — Called by `JobManager.remove_job()` when a job is deleted from the pool.
+- If `state == WORKING`: cancels the tile's countdown via `cancel_toggle_countdown(self)` (kills `_countdown_tween`, clears `working_unit`, kills visual via RPC).
+- Sets `state = IDLE`, hides zapper, clears `job`.
+- Calls `idle_callback()` if `move_tween` is finished or null (same guard as `abandon_job_while_pathing`).
+
+**`abandon_job()`** — Dispatches based on current state.
+- `abandon_job_while_pathing()`: sets IDLE, clears job, calls `JobManager.abandon_job(id)` (job stays in pool), calls `idle_callback()` if move_tween finished.
+- `abandon_job_while_working()`: hides zapper, cancels tile countdown, sets IDLE, clears job, calls `JobManager.abandon_job(id)`, calls `idle_callback()` unconditionally (move_tween not relevant — unit was stationary while working).
+
+**`move(callback)`** — Creates a tween that slerps rotation and moves to `location.pathing_centre`. Calls `callback` when done. IDLE units move at 2x speed.
+
+### JobManager.gd
+
+**`add_job(pnum, type, location)`** — Deduplicates: if a job with the same `type` and `location` already exists, no-op. Otherwise creates a job dict and adds to `jobs_dict`.
+
+**`cancel_job(pnum, type, location)`** — Finds the matching job by pnum/type/location and calls `remove_job(id)`. Used when a human deselects a tile (`TileManager.apply_toggle` → `toggle_selected_by` returns false → `cancel_job`).
+
+**`remove_job(id)`** — If the job has an `assigned` unit, calls `unit.remove_job()` (which handles tile cleanup and idle resumption). Then erases the job from `jobs_dict`. The job is permanently deleted — it cannot be reassigned.
+
+**`abandon_job(id)`** — Job stays in the pool. Clears `assigned`, increments `abandoned_n`, sets `abandoned_timer = min(60, abandoned_n × 11)`. The job becomes eligible for reassignment after the timer expires.
+
+**`assign_jobs()`** — Called every 1s by `GameManager._process`. Two passes:
+1. Decrements `abandoned_timer` by 1.0 for all unassigned jobs.
+2. Iterates all units in the `"unit"` group. For each unit with empty `job`, calls `assign_nearest_job(unit)`.
+
+**`assign_nearest_job(unit)`** — For each unassigned job matching the unit's player, with expired abandon timer, computes path length. Picks the shortest. Sets `job["assigned"] = unit` and calls `unit.assign_job(job)`.
+
+### TileElement.gd (tile-side job support)
+
+**`do_toggle_countdown(z)`** — Server-only. Stores `working_unit = z` and `toggle_zoomba_player`. Starts a 2s countdown tween (`_countdown_tween`) that calls `begin_toggle`. Sends RPC mode 0 (visual countdown to all peers).
+
+**`cancel_toggle_countdown(z)`** — Server-only. Clears `toggle_zoomba_player` and `working_unit`. Kills `_countdown_tween` (prevents `begin_toggle` from firing). Sends RPC mode 1 (kills visual countdown on all peers).
+
+**`begin_toggle()`** — Server-only. Fired by `_countdown_tween` after 2s delay.
+- If tile state is no longer RAISED/LOWERED (state changed during countdown): calls `working_unit.job_finished()` and cleans up. The toggle is aborted.
+- Otherwise: transitions tile state (RAISED → FALLING, or LOWERED → RISING via `set_rising()`), erases player from `selected_by`, sends RPC broadcast. Creates a second tween (`fall_time + thunk_time`) that calls `done_toggle`.
+
+**`done_toggle()`** — Server-only. Fired after the fall/rise animation completes.
+- RAISED→FALLING: calls `set_lowered()`. LOWERED→RISING: sets state = RAISED.
+- Calls `working_unit.job_finished()` if unit is still valid, then clears `working_unit`.
+
+### Tween separation on TileElement
+
+Two independent tweens exist on each tile during a toggle:
+
+| Tween | Scope | Purpose |
+|---|---|---|
+| `_countdown_tween` | Server-only | Drives the 2s countdown → `begin_toggle`. Never synced to clients. |
+| `toggle_tween` | All peers (via RPC) | Visual countdown animation (color lerp). Created by `rpc_toggle_animation` mode 0. Read by `update_selection_and_aoe_visual` to avoid overwriting emission during work. |
+
+### Job finish vs abandon vs cancel
+
+| Outcome | Who triggers | Job lifecycle | Unit lifecycle | Tile lifecycle |
+|---|---|---|---|---|
+| **Finish** | Tile animation completes → `done_toggle` → `job_finished()` | Removed from pool (`remove_job`) | → IDLE via `remove_job` → `idle_callback` | `done_toggle` completes state change, clears `working_unit` |
+| **Cancel** | Human deselects tile → `cancel_job` → `remove_job` | Removed from pool | → IDLE via `remove_job` → `idle_callback` | `remove_job` calls `cancel_toggle_countdown` if WORKING |
+| **Abandon (pathing)** | Path invalid → `abandon_job_while_pathing` | Stays in pool (`abandon_job`), reassignable after timer | → IDLE → `idle_callback` | N/A (unit never reached tile) |
+| **Abandon (working)** | Unit gives up → `abandon_job_while_working` | Stays in pool (`abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, `working_unit` cleared |
+| **Displacement** | Tile removed from pathing → `_displace_unit` | Stays in pool (`abandon_job`) | Teleported to adjacent tile or destroyed | N/A |
 
 ### Tile disconnection / unit displacement
 
@@ -129,11 +213,25 @@ When a tile leaves the pathing grid (`set_rising` or building placement), `TileM
    - Find first `LOWERED` neighbour with no building → teleport unit there
    - If no valid neighbour exists → `rpc("rpc_remove_unit", unit.id)` (destroy)
 
-### Worker-centric assignment
+### Path re-routing
 
-`JobManager.assign_jobs()` runs two passes:
-1. Decrement `abandoned_timer` for all unassigned jobs
-2. For each idle unit (from `"unit"` group), call `assign_nearest_job(unit)` which finds the closest eligible job (matching `pnum`, unassigned, timer expired)
+`check_pathing_valid()` re-computes the path whenever the unit reaches a node and the current path is empty (or was invalidated). It tries all access tiles of the job target and picks the shortest path. This handles:
+- Other tiles being lowered/raised mid-path
+- Pathing edges being disconnected by tile displacement
+- The access tile changing if a building was placed/removed next to the target
+
+### Job dict fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | int | Unique job ID (monotonically increasing) |
+| `pnum` | int | Player who owns this job |
+| `type` | JobManager.Type | `TOGGLE_TILE`, `CONSTRUCT_BUILDING`, etc. |
+| `location` | TileElement | The tile this job targets |
+| `assigned` | Unit or null | Unit currently working on this job (null if unassigned) |
+| `abandoned_by` | Unit or null | Last unit that abandoned this job |
+| `abandoned_n` | int | How many times this job has been abandoned |
+| `abandoned_timer` | float | Seconds until eligible for reassignment (0 = eligible) |
 
 ## Per-instance visual data (MultiMesh)
 
@@ -220,7 +318,7 @@ dr_mesh.surface_end()
 
 ### Tile scripts
 
-- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished()`, `begin_toggle` guards against invalid tile state. Added `rpc_toggle_animation` for network-synced toggle visuals.
+- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished()`, `begin_toggle` guards against invalid tile state. Added `rpc_toggle_animation` for network-synced toggle visuals. Added `_countdown_tween` (server-only) to store the countdown tween so it can be killed by `cancel_toggle_countdown`. `toggle_tween` is the visual tween synced to all peers via RPC.
 - `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. `translate()`→`position` (lines 60, 86, 96-101). Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`. `recompute_aoe()` runs once after `apply_loaded_level()` (not per-tile).
 - `TileManager.tscn`: both `[node name="Tween"]` children removed.
 - `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`. Added `disconnect_tile(tile)` for removing all edges from a tile.
@@ -242,7 +340,7 @@ dr_mesh.surface_end()
 
 ### Unit scripts
 
-- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. Added `abandon_job`, `abandon_job_while_pathing`, `abandon_job_while_working`, `move_tween` var. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job.
+- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. Added `abandon_job`, `abandon_job_while_pathing`, `abandon_job_while_working`, `move_tween` var. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `remove_job` cancels tile countdown if WORKING, then resumes idle loop.
 - `Zoomba.gd`: Removed `@onready var tween`, added `pathing_manager`. `PoolIntArray`→`PackedInt64Array`. `interpolate_method`→`create_tween().tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback().set_delay()`. `Quat`→`Quaternion`, `translation`→`position`, `GlobalVars`→`Global`, `push_back`→`append`, `remove`→`remove_at`, `cast_to`→`target_position`. Most pathing/work logic is commented out.
 - `UnitManager.gd`: Added `units()`, `_next_unit_id`, `rpc_remove_unit` (replaces `remove_unit`) with `@rpc("authority", "call_local")`, `displace_units_on_tile` + `_displace_unit` for tile disconnection handling. Server guard on `spawn_unit`.
 - `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer. Flipped assignment to worker-centric: `try_and_assign(job)` → `assign_nearest_job(unit)`. `assign_jobs()` now has two-pass structure (timer decrement then worker iteration).

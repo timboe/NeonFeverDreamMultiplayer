@@ -24,7 +24,8 @@ var building : Building = null# What is built here
 
 var toggle_zoomba_player : int # player who is raising or lowering me
 var working_unit : Unit = null # unit currently toggling this tile
-var toggle_tween : Tween 
+var toggle_tween : Tween  # Visual countdown animation — synced to clients via rpc_toggle_animation RPC; read by update_selection_and_aoe_visual (runs on all peers)
+var _countdown_tween : Tween  # Server-only — fires begin_toggle after TOGGLE_COUNTDOWN_TIME; never synced, never read on clients
 
 #var monorail_cap_mm : MultiMesh
 #var monorail_cap_id : int
@@ -223,8 +224,8 @@ func do_toggle_countdown(z : Zoomba):
 	toggle_zoomba_player = z.building.player_owner
 	working_unit = z
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0) # MODE 0
-	var t = create_tween()
-	t.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	_countdown_tween = create_tween()
+	_countdown_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
 
 func cancel_toggle_countdown(z : Zoomba):
 	if not multiplayer.is_server():
@@ -232,6 +233,9 @@ func cancel_toggle_countdown(z : Zoomba):
 	assert(toggle_zoomba_player == z.building.player_owner)
 	toggle_zoomba_player = 0
 	working_unit = null
+	if _countdown_tween and _countdown_tween.is_valid():
+		_countdown_tween.kill()
+		_countdown_tween = null
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1) # MODE 1
 	
 func begin_toggle():
@@ -312,7 +316,8 @@ func done_toggle():
 
 func _on_StaticBody_mouse_entered():
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		if state == TileManager.State.RAISED or state == TileManager.State.LOWERED:
+		var hud = get_tree().get_first_node_in_group("hud") as HUD
+		if hud and hud.can_toggle_tile(self) and hud.should_toggle(self):
 			Global.send_command_me("toggle_tile", [id])
 	_hovered = true
 	#print("Tile AoE ", aoe, ". Selected by ", selected_by)
@@ -338,5 +343,7 @@ func get_access_tiles(require_aoe : int = 0) -> Array:
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx):
 	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
 		return
-	if state == TileManager.State.RAISED or state == TileManager.State.LOWERED:
+	var hud = get_tree().get_first_node_in_group("hud") as HUD
+	if hud and hud.can_toggle_tile(self):
+		hud.begin_drag(self)
 		Global.send_command_me("toggle_tile", [id])

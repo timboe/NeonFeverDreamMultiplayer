@@ -1,22 +1,23 @@
-[gd_scene format=3 uid="uid://c1hudscene1234"]
+[gd_scene format=3 uid="uid://bp2hmyclt62wr"]
 
-[ext_resource type="Script" uid="uid://a1huddscript12" path="res://scripts/ui/HUD.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://b3dbnii03wxt7" path="res://scripts/ui/HUD.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
 
-[node name="HUD" type="CanvasLayer"]
+[node name="HUD" type="CanvasLayer" unique_id=708157452]
 layer = 10
 script = ExtResource("1_script")
 
-[node name="HUDRoot" type="Control" parent="."]
+[node name="HUDRoot" type="Control" parent="." unique_id=1609169870]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_theme")
 mouse_filter = 2
+theme = ExtResource("2_theme")
 
-[node name="EnergyPanel" type="PanelContainer" parent="HUDRoot"]
+[node name="EnergyPanel" type="PanelContainer" parent="HUDRoot" unique_id=2044786272]
 layout_mode = 1
 offset_left = 20.0
 offset_top = 15.0
@@ -24,139 +25,151 @@ offset_right = 260.0
 offset_bottom = 85.0
 mouse_filter = 2
 
-[node name="HBox" type="HBoxContainer" parent="HUDRoot/EnergyPanel"]
+[node name="HBox" type="HBoxContainer" parent="HUDRoot/EnergyPanel" unique_id=1619726664]
 layout_mode = 2
-theme_override_constants/separation = 8
 mouse_filter = 2
+theme_override_constants/separation = 8
 
-[node name="EnergyBar" type="ProgressBar" parent="HUDRoot/EnergyPanel/HBox"]
+[node name="EnergyBar" type="ProgressBar" parent="HUDRoot/EnergyPanel/HBox" unique_id=202410909]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(140, 20)
+layout_mode = 2
+mouse_filter = 2
 max_value = 6000.0
 value = 3000.0
 show_percentage = false
-mouse_filter = 2
 
-[node name="EnergyLabel" type="Label" parent="HUDRoot/EnergyPanel/HBox"]
+[node name="EnergyLabel" type="Label" parent="HUDRoot/EnergyPanel/HBox" unique_id=40561917]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "3000"
 horizontal_alignment = 1
 vertical_alignment = 1
-mouse_filter = 2
 
-[node name="EnergyRateLabel" type="Label" parent="HUDRoot/EnergyPanel/HBox"]
+[node name="EnergyRateLabel" type="Label" parent="HUDRoot/EnergyPanel/HBox" unique_id=735665707]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
 theme_override_font_sizes/font_size = 12
 text = "+0/s"
 horizontal_alignment = 2
 vertical_alignment = 1
-mouse_filter = 2
 
-[node name="NotificationPanel" type="PanelContainer" parent="HUDRoot"]
+[node name="NotificationPanel" type="PanelContainer" parent="HUDRoot" unique_id=891373441]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-grow_horizontal = 0
 offset_left = -260.0
 offset_top = 15.0
 offset_right = -20.0
 offset_bottom = 200.0
+grow_horizontal = 0
 mouse_filter = 2
 
-[node name="List" type="VBoxContainer" parent="HUDRoot/NotificationPanel"]
+[node name="List" type="VBoxContainer" parent="HUDRoot/NotificationPanel" unique_id=684570707]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 4
 mouse_filter = 2
+theme_override_constants/separation = 4
 
-[node name="Placeholder" type="Label" parent="HUDRoot/NotificationPanel/List"]
+[node name="Placeholder" type="Label" parent="HUDRoot/NotificationPanel/List" unique_id=2105337775]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.5, 0.8, 0.8, 0.5)
+theme_override_font_sizes/font_size = 14
 text = "No notifications"
 autowrap_mode = 2
-mouse_filter = 2
 
-[node name="FPSButton" type="Button" parent="HUDRoot"]
+[node name="FPSButton" type="Button" parent="HUDRoot" unique_id=1658707665]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-grow_horizontal = 0
 offset_left = -60.0
 offset_top = 15.0
 offset_right = -20.0
 offset_bottom = 45.0
+grow_horizontal = 0
 theme_override_font_sizes/font_size = 12
 text = "FPS"
 
-[node name="ModeBar" type="PanelContainer" parent="HUDRoot"]
+[node name="ModeBar" type="PanelContainer" parent="HUDRoot" unique_id=1822124006]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
+offset_left = -370.0
+offset_top = -65.0
+offset_right = 370.0
+offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 0
-offset_left = -320.0
-offset_top = -65.0
-offset_right = 320.0
-offset_bottom = -15.0
 mouse_filter = 2
 
-[node name="HBox" type="HBoxContainer" parent="HUDRoot/ModeBar"]
+[node name="HBox" type="HBoxContainer" parent="HUDRoot/ModeBar" unique_id=240958952]
 layout_mode = 2
-theme_override_constants/separation = 8
+mouse_filter = 2
+theme_override_constants/separation = 12
 alignment = 1
-mouse_filter = 2
 
-[node name="RaiseBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
-unique_name_in_owner = true
+[node name="TileModes" type="HBoxContainer" parent="HUDRoot/ModeBar/HBox" unique_id=79849828]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="RaiseBtn" type="Button" parent="HUDRoot/ModeBar/HBox/TileModes" unique_id=1186641303]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "RAISE"
 
-[node name="LowerBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
+[node name="LowerBtn" type="Button" parent="HUDRoot/ModeBar/HBox/TileModes" unique_id=601798710]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "LOWER"
 
-[node name="GenBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
-unique_name_in_owner = true
+[node name="Sep" type="VSeparator" parent="HUDRoot/ModeBar/HBox" unique_id=425968380]
+custom_minimum_size = Vector2(4, 0)
 layout_mode = 2
+mouse_filter = 2
+
+[node name="BuildModes" type="HBoxContainer" parent="HUDRoot/ModeBar/HBox" unique_id=940066685]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="GenBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=2058369679]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "GEN"
 
-[node name="VatBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
+[node name="VatBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=136259467]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "VAT"
 
-[node name="GarageBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
+[node name="GarageBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=893132355]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "GARAGE"
 
-[node name="BeaconBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
+[node name="BeaconBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=1879615562]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "BEACON"
 
-[node name="NestBtn" type="Button" parent="HUDRoot/ModeBar/HBox"]
+[node name="NestBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=761583345]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(70, 40)
+layout_mode = 2
 text = "NEST"
