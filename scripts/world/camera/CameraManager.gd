@@ -87,12 +87,9 @@ func to_fps_cam_end():
 
 func to_overhead_cam_start():
 	camera_status = CameraStatus.TO_OVERHEAD
-	var avatar_pos = avatar.global_position
 	var avatar_body = avatar.get_node_or_null("FPSBody")
-	if avatar_body:
-		avatar_pos = avatar_body.global_position
-	overhead_camera.transform.origin = avatar_pos
-	overhead_camera.rotation.y = avatar.rotation.y
+	overhead_camera.transform.origin = avatar_body.global_position if avatar_body else avatar.global_position
+	overhead_camera.rotation.y = avatar_body.global_rotation.y if avatar_body else avatar.rotation.y
 	var start_tf : Transform3D = overhead_camera.transform
 	overhead_camera.transform.origin += avatar.global_transform.basis.z * UNPOSESS_DISTANCE.y
 	overhead_camera.transform.origin.y = UNPOSESS_DISTANCE.y
@@ -118,7 +115,11 @@ func _show_mouse():
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 func add_trauma(amount : float, from, add_linger = false):
-	var c : Vector3 = overhead_camera.global_position if overhead_camera.current else avatar.global_position
+	var avatar_pos = avatar.global_position
+	var avatar_body = avatar.get_node_or_null("FPSBody")
+	if avatar_body:
+		avatar_pos = avatar_body.global_position
+	var c : Vector3 = overhead_camera.global_position if overhead_camera.current else avatar_pos
 	var d : float = from.distance_to(c) if from is Vector3 else 0.0
 	linger = max(linger, add_linger) if add_linger is float else linger
 	if d > RUMBLE_FALLOFF:

@@ -48,6 +48,13 @@ func _pack_unit(data: PackedFloat64Array, u: Unit):
 			slots[5] = u.health
 			slots[6] = u.get_node("Zapper").visible
 			slots[7] = u.get_node("Zapper").target_position.y
+		UnitManager.Type.AVATAR:
+			var body = u.get_node("FPSBody") as Node3D
+			slots[0] = body.global_position.x
+			slots[1] = body.global_position.y
+			slots[2] = body.global_position.z
+			slots[3] = body.global_rotation.y
+			slots[4] = u.health
 	for s in slots:
 		data.append(s)
 
@@ -110,6 +117,13 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
 			for i in 4:
 				slots[4 + i] = e1["slots"][4 + i]
+		UnitManager.Type.AVATAR:
+			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
+			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
+			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
+			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
+			for i in 4:
+				slots[4 + i] = e1["slots"][4 + i]
 	_apply_unit(u, type_val, slots)
 
 func _apply_snapshot_units(snapshot: Dictionary):
@@ -130,6 +144,11 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array):
 			u.health = slots[5]
 			u.get_node("Zapper").visible = slots[6]
 			u.get_node("Zapper").target_position.y = slots[7]
+		UnitManager.Type.AVATAR:
+			var body = u.get_node("FPSBody") as Node3D
+			body.global_position = Vector3(slots[0], slots[1], slots[2])
+			body.rotation.y = slots[3]
+			u.health = slots[4]
 
 static func _lerp_angle(from: float, to: float, t: float) -> float:
 	var diff = fmod(to - from, TAU)
