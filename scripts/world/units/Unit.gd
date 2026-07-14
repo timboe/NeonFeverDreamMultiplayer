@@ -42,9 +42,12 @@ func initialise_base(b : Building, t : UnitManager.Type):
 	# This all happens only the server.
 	if not multiplayer.is_server():
 		return
+
 	var tw = create_tween()
 	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
-	tw.tween_callback(idle_callback).set_delay(SPAWN_TIME)
+	if t == UnitManager.Type.AVATAR:
+		return
+	tw.tween_callback(idle_callback)
 
 func assign_job(new_job : Dictionary):
 	if not multiplayer.is_server():
@@ -134,10 +137,12 @@ func start_work():
 	assert(state == State.PATHING)
 	state = State.WORKING
 	quick_rotate()
-	$Zapper.visible = true
+	if has_node("Zapper"):
+		$Zapper.visible = true
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
-			$Zapper.target_position.y = Cairo.UNIT
+			if has_node("Zapper"):
+				$Zapper.target_position.y = Cairo.UNIT
 			job["location"].do_toggle_countdown(self)
 		#JobManager.JobType.CONSTRUCT_BUILDING:
 			#$Zapper.target_position.y = Cairo.UNIT
@@ -192,7 +197,8 @@ func remove_job():
 			JobManager.Type.TOGGLE_TILE:
 				job["location"].cancel_toggle_countdown(self)
 	state = State.IDLE
-	$Zapper.visible = false
+	if has_node("Zapper"):
+		$Zapper.visible = false
 	job = {}
 	if not move_tween or not move_tween.is_running():
 		idle_callback()
@@ -214,11 +220,12 @@ func abandon_job_while_pathing():
 	var jm = get_node_or_null("/root/World/JobManager")
 	if jm:
 		jm.abandon_job(j_id)
-	if not move_tween or move_tween.is_finished():
+	if not move_tween or not move_tween.is_finished():
 		idle_callback()
 		
 func abandon_job_while_working():
-	$Zapper.visible = false
+	if has_node("Zapper"):
+		$Zapper.visible = false
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
 			job["location"].cancel_toggle_countdown(self)
@@ -249,7 +256,7 @@ func move(callback):
 	move_tween = create_tween()
 	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
 	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
-	move_tween.tween_callback(callback).set_delay(time)
+	move_tween.parallel().tween_callback(callback).set_delay(time)
 
 func quick_rotate():
 	if not multiplayer.is_server():

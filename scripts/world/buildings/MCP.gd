@@ -8,7 +8,8 @@ var to_rotate : Array
 const A_VELOCITY = 100
 
 const BASE_GENERATION := 100.0
-const ZOOMBA_CREATON_COOLDOWN_TICKS := 10
+const ZOOMBA_CREATION_COOLDOWN_TICKS := 10
+const AVATAR_CREATION_COOLDOWN_TICKS := 10
 
 var cooldown_ticks := 0
 
@@ -24,9 +25,8 @@ func _process(delta):
 		to_rot.rotate_object_local(Vector3.UP, delta * A_VELOCITY)
 
 func zoomba_cap() -> int:
-	return 1
 	var tm = get_node_or_null("/root/World/TileManager")
-	return floor(sqrt( tm.player_aoe_totals[player_owner] * 8 ))
+	return floor(sqrt( tm.player_aoe_totals[player_owner] ))
 
 func check_work():
 	if not multiplayer.is_server():
@@ -35,9 +35,12 @@ func check_work():
 		cooldown_ticks -= 1
 		return
 	var um = get_node_or_null("/root/World/UnitManager")
-	if um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():		
+	if um.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
+		um.rpc("rpc_spawn_unit", UnitManager.Type.AVATAR, self.id)
+		cooldown_ticks = AVATAR_CREATION_COOLDOWN_TICKS
+	elif um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
 		um.rpc("rpc_spawn_unit", UnitManager.Type.ZOOMBA, self.id)
-		cooldown_ticks = ZOOMBA_CREATON_COOLDOWN_TICKS
+		cooldown_ticks = ZOOMBA_CREATION_COOLDOWN_TICKS
 		print("new zoomba for player ",player_owner," (cap is ",zoomba_cap(),")")
 
 func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):

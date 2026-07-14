@@ -2,7 +2,7 @@ extends Node3D
 
 class_name UnitManager
 
-enum Type {NONE, ZOOMBA, TANK, AERIAL_PATROL, AERIAL_SCOUT, VIRUS}
+enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL_PATROL, AERIAL_SCOUT, VIRUS}
 
 # Multiplayer synchronised
 var unit_dictionary : Dictionary
@@ -26,6 +26,7 @@ func spawn_unit(type : Type, building : Building) -> void:
 	var u = null
 	match type:
 		Type.ZOOMBA: u = $UnitFactory/Zoomba.duplicate()
+		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
 	add_to_dict_and_scene(u)
 	u.initialise(building)
 	

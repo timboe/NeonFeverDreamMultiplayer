@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://gnuq7frg6asq"]
 
 [ext_resource type="PackedScene" uid="uid://64ywqdxbkakh" path="res://scenes/world/units/Zoomba.tscn" id="1_2l7su"]
+[ext_resource type="PackedScene" uid="uid://4efjgde2341f" path="res://scenes/world/units/Avatar.tscn" id="2"]
 
 [node name="UnitManager" type="Node3D" unique_id=1175523443]
 
@@ -8,3 +9,4 @@
 visible = false
 
 [node name="Zoomba" parent="UnitFactory" unique_id=685679189 instance=ExtResource("1_2l7su")]
+[node name="Avatar" parent="UnitFactory" unique_id=2088159802 instance=ExtResource("2")]

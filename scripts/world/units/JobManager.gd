@@ -135,6 +135,8 @@ func assign_jobs():
 	for unit in get_tree().get_nodes_in_group("unit"):
 		if not unit.job.is_empty():
 			continue
+		if unit.type == UnitManager.Type.AVATAR:
+			continue
 		if assign_nearest_job(unit):
 			unassigned -= 1
 

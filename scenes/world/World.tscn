@@ -8,11 +8,12 @@
 [ext_resource type="PackedScene" uid="uid://be7arljxe4ohx" path="res://scenes/world/tiles/TileManager.tscn" id="4_qxiha"]
 [ext_resource type="Script" uid="uid://bgrswk647snuu" path="res://scripts/world/buildings/BuildingManager.gd" id="5_252at"]
 [ext_resource type="Script" uid="uid://bd3u1fgrfgqha" path="res://scripts/world/camera/CameraManager.gd" id="6_qh0kd"]
-[ext_resource type="PackedScene" uid="uid://c1hudscene1234" path="res://scenes/ui/HUD.tscn" id="7_hud"]
 [ext_resource type="PackedScene" uid="uid://gnuq7frg6asq" path="res://scenes/world/units/UnitManager.tscn" id="6_yr1n6"]
 [ext_resource type="Script" uid="uid://c3i58cfvskf37" path="res://scripts/world/camera/OmniLight.gd" id="7_252at"]
+[ext_resource type="PackedScene" uid="uid://bp2hmyclt62wr" path="res://scenes/ui/HUD.tscn" id="7_hud"]
 [ext_resource type="Script" uid="uid://bjdjfiocjvvij" path="res://scripts/world/units/UnitManager.gd" id="7_l5ull"]
 [ext_resource type="Script" uid="uid://c7fxwvdnwg7js" path="res://scripts/world/units/JobManager.gd" id="8_16fjv"]
+
 [node name="World" type="Node3D" unique_id=943865623]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=454790477]
@@ -56,7 +57,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
 current = true
 script = ExtResource("2")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="CameraManager" unique_id=352719806]
+[node name="OmniLight3D_RTS" type="OmniLight3D" parent="CameraManager" unique_id=352719806]
+unique_name_in_owner = true
 light_color = Color(0.7490196, 1, 1, 1)
 light_energy = 0.5
 light_specular = 0.1
@@ -65,4 +67,4 @@ omni_attenuation = 0.7
 omni_shadow_mode = 0
 script = ExtResource("7_252at")
 
-[node name="HUD" parent="." instance=ExtResource("7_hud")]
+[node name="HUD" parent="." unique_id=1691572145 instance=ExtResource("7_hud")]

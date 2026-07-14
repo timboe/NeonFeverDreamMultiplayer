@@ -3,7 +3,7 @@ extends CanvasLayer
 class_name HUD
 
 signal mode_changed(mode: Mode)
-signal fps_button_pressed
+signal toggle_camera
 
 enum Mode { NONE, RAISE, LOWER, GEN, VAT, GARAGE, BEACON, NEST }
 enum DragAction { NONE, SELECTING, UNSELECTING }
@@ -41,7 +41,7 @@ func _ready():
 		btn.pressed.connect(_on_mode_pressed.bind(mode))
 		btn.add_theme_font_size_override("font_size", 12)
 
-	fps_button.pressed.connect(func(): fps_button_pressed.emit())
+	fps_button.pressed.connect(func(): toggle_camera.emit())
 
 	_style_all_panels()
 	_apply_player_color()
@@ -181,6 +181,8 @@ func add_notification(text: String, duration: float = 5.0) -> void:
 func _input(event: InputEvent):
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		end_drag()
+	if event.is_action_pressed("capture_toggle"):
+		toggle_camera.emit()
 
 
 func can_toggle_tile(tile: TileElement) -> bool:

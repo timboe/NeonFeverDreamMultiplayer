@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://4efjgde2341f"]
+
+[ext_resource type="Script" uid="uid://dg3ktsy8hd3xp" path="res://scripts/world/units/Avatar.gd" id="1"]
+[ext_resource type="Material" uid="uid://nxjeu82w4fsn" path="res://materials/floor/grid_edges.tres" id="3"]
+
+[sub_resource type="CapsuleMesh" id="1"]
+radius = 1.2
+height = 4.8
+
+[sub_resource type="BoxMesh" id="3"]
+size = Vector3(1.6, 0.2, 1.6)
+
+[sub_resource type="ConvexPolygonShape3D" id="4"]
+points = PackedVector3Array(-0.8, 0.1, 0.8, 0.8, 0.1, -0.8, 0.8, 0.1, 0.8, -0.8, 0.1, -0.8, -0.8, -0.1, 0.8, 0.8, -0.1, -0.8, 0.8, -0.1, 0.8, -0.8, -0.1, -0.8, 0.8, 0.1, 0.8, -0.8, 0.1, -0.8, 0.8, 0.1, -0.8, -0.8, 0.1, 0.8, 0.8, -0.1, 0.8, -0.8, -0.1, -0.8, 0.8, -0.1, -0.8, -0.8, -0.1, 0.8, 0.8, 0.1, 0.8, -0.8, -0.1, 0.8, -0.8, 0.1, 0.8, 0.8, -0.1, 0.8, 0.8, 0.1, -0.8, -0.8, -0.1, -0.8, -0.8, 0.1, -0.8, 0.8, -0.1, -0.8)
+
+[node name="Avatar" type="Node3D" unique_id=2088159802]
+script = ExtResource("1")
+
+[node name="FPSBody" type="CharacterBody3D" parent="." unique_id=2039129963]
+
+[node name="Body" type="MeshInstance3D" parent="FPSBody" unique_id=504433039]
+transform = Transform3D(1, 0, 0, 0, 1, -1.192096e-07, 0, 1.192096e-07, 1, 0, 2.2, 0)
+mesh = SubResource("1")
+
+[node name="Feet" type="MeshInstance3D" parent="FPSBody" unique_id=691644723]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("3")
+
+[node name="FeetCollisionShape" type="CollisionShape3D" parent="FPSBody" unique_id=862417888]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("4")
+
+[node name="Rotation_Helper" type="Node3D" parent="FPSBody" unique_id=1112214522]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
+
+[node name="RayRender" type="MeshInstance3D" parent="FPSBody/Rotation_Helper" unique_id=1988568896]
+transform = Transform3D(1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, -1.3, -2)
+material_override = ExtResource("3")
+
+[node name="RayCast" type="RayCast3D" parent="FPSBody/Rotation_Helper" unique_id=1147548449]
+transform = Transform3D(1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, -1.3, -2)
+
+[node name="FPSCamera" type="Camera3D" parent="FPSBody/Rotation_Helper" unique_id=1142734265]
+far = 8192.0
