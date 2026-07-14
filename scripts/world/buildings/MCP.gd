@@ -14,10 +14,10 @@ var cooldown_ticks := 0
 
 func _ready():
 	if name == "MCP_1":
-		to_rotate.push_back($MCPTop)
-		to_rotate.push_back($MCPFaceTop)
-		to_rotate.push_back($MCPBottom)
-		to_rotate.push_back($MCPFaceBottom)
+		to_rotate.append($MCPTop)
+		to_rotate.append($MCPFaceTop)
+		to_rotate.append($MCPBottom)
+		to_rotate.append($MCPFaceBottom)
 
 func _process(delta):
 	for to_rot in to_rotate:
@@ -40,13 +40,7 @@ func check_work():
 		cooldown_ticks = ZOOMBA_CREATON_COOLDOWN_TICKS
 		print("new zoomba for player ",player_owner," (cap is ",zoomba_cap(),")")
 
-func initialise(tile : TileElement, pnum : int):
-	var t : BuildingManager.Type
-	match name:
-		"MCP_1": t = BuildingManager.Type.MCP_1
-		"MCP_2": t = BuildingManager.Type.MCP_2
-		"MCP_3": t = BuildingManager.Type.MCP_3
-		"MCP_4": t = BuildingManager.Type.MCP_4
+func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	initialise_base(tile, pnum, t)
 	add_to_group("generator")
 	add_to_group("mcp")

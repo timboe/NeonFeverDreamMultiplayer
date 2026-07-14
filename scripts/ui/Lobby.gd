@@ -79,8 +79,10 @@ func _start_game():
 	# Called on the host when all remote slots are filled.
 	# Broadcasts the transition RPC, then transitions locally.
 	if Global.network_manager.server:
-		multiplayer.peer_connected.disconnect(_on_peer_connected)
-		multiplayer.peer_disconnected.disconnect(_on_peer_disconnected)
+		if multiplayer.peer_connected.is_connected(_on_peer_connected):
+			multiplayer.peer_connected.disconnect(_on_peer_connected)
+		if multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
+			multiplayer.peer_disconnected.disconnect(_on_peer_disconnected)
 		rpc("remote_start_game")
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 

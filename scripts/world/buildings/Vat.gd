@@ -29,8 +29,8 @@ func get_capacity():
 	
 func animate(time : float, total_energy_cache : Array):
 	if location != null and state == State.CONSTRUCTED:
-		total_energy_cache[ location.player ].x += get_capacity()
-		total_energy_cache[ location.player ].y += _contains_val
+		total_energy_cache[ player_owner ].x += get_capacity()
+		total_energy_cache[ player_owner ].y += _contains_val
 	if liquid != null:
 		if _liquid_tween and _liquid_tween.is_valid():
 			_liquid_tween.kill()

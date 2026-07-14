@@ -73,10 +73,10 @@ func _ready():
 	beacon.transform = Transform3D.IDENTITY
 	cylinder = beacon.mesh as CylinderMesh 
 	cylinder.height = 2000
-	beacon.translate(Vector3(LENGTH + CENTRE/2.0, HEIGHT + cylinder.height/2.0, LENGTH + CENTRE/2.0))
+	beacon.position = Vector3(LENGTH + CENTRE/2.0, HEIGHT + cylinder.height/2.0, LENGTH + CENTRE/2.0)
 	var particles : GPUParticles3D = $Particles
 	particles.transform = Transform3D.IDENTITY
-	particles.translate(Vector3(LENGTH + CENTRE/2.0, HEIGHT + 100, LENGTH + CENTRE/2.0))
+	particles.position = Vector3(LENGTH + CENTRE/2.0, HEIGHT + 100, LENGTH + CENTRE/2.0)
 	
 func _process(delta : float):
 	time += delta

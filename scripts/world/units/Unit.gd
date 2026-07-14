@@ -194,7 +194,7 @@ func remove_job():
 
 func abandon_job():
 	assert(state == State.PATHING or state == State.WORKING)
-	assert(job != null)
+	assert(not job.is_empty())
 	match state:
 		State.PATHING:
 			return abandon_job_while_pathing()
@@ -206,7 +206,9 @@ func abandon_job_while_pathing():
 	var j_id = job["id"]
 	print("ABANDONING JOB WHILE PATHING ", job)
 	job = {}
-	get_node_or_null("/root/World/JobManager").abandon_job(j_id)
+	var jm = get_node_or_null("/root/World/JobManager")
+	if jm:
+		jm.abandon_job(j_id)
 	if not move_tween or move_tween.is_finished():
 		idle_callback()
 		
@@ -222,7 +224,9 @@ func abandon_job_while_working():
 	var j_id = job["id"]
 	print("ABANDONING JOB WHILE WORKIN ", id)
 	job = {}
-	get_node_or_null("/root/World/JobManager").abandon_job(j_id)
+	var jm2 = get_node_or_null("/root/World/JobManager")
+	if jm2:
+		jm2.abandon_job(j_id)
 	# If we abandoned while we were working - then we were waiting for the end-of
 	# job callback which will now never come. Hence we now need to call idle_callback
 	idle_callback()
@@ -239,7 +243,7 @@ func move(callback):
 	# else - pathing, time *= 1.0
 	move_tween = create_tween()
 	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
-	move_tween.tween_property(self, "position", location.pathing_centre, time)
+	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
 	move_tween.tween_callback(callback).set_delay(time)
 
 func quick_rotate():

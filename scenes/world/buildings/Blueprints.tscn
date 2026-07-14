@@ -6,6 +6,11 @@
 [ext_resource type="PackedScene" uid="uid://davfucyw20nqc" path="res://scenes/world/buildings/Vat.tscn" id="4"]
 [ext_resource type="PackedScene" uid="uid://d2cn5emv1ypif" path="res://scenes/world/buildings/MCP_2.tscn" id="5_a17sx"]
 [ext_resource type="Script" uid="uid://bq4str8644pvy" path="res://scripts/world/buildings/MCP.gd" id="6_mtnla"]
+[ext_resource type="PackedScene" path="res://scenes/world/buildings/MCP_3.tscn" id="7_mcp3"]
+[ext_resource type="PackedScene" path="res://scenes/world/buildings/MCP_4.tscn" id="8_mcp4"]
+[ext_resource type="PackedScene" path="res://scenes/world/buildings/Garage.tscn" id="9_garage"]
+[ext_resource type="PackedScene" path="res://scenes/world/buildings/Beacon.tscn" id="10_beacon"]
+[ext_resource type="PackedScene" path="res://scenes/world/buildings/Nest.tscn" id="11_nest"]
 
 [node name="Blueprints" type="Node3D" unique_id=1401858525]
 script = ExtResource("2")
@@ -18,3 +23,13 @@ script = ExtResource("2")
 
 [node name="MCP_2" parent="." unique_id=1983162617 instance=ExtResource("5_a17sx")]
 script = ExtResource("6_mtnla")
+
+[node name="MCP_3" parent="." instance=ExtResource("7_mcp3")]
+
+[node name="MCP_4" parent="." instance=ExtResource("8_mcp4")]
+
+[node name="Garage" parent="." instance=ExtResource("9_garage")]
+
+[node name="Beacon" parent="." instance=ExtResource("10_beacon")]
+
+[node name="Nest" parent="." instance=ExtResource("11_nest")]

@@ -23,7 +23,12 @@ func _on_timer():
 		timer.wait_time = 1.0 + randf() * 2.0
 		timer.start()
 		return
-	var tile_id = randi() % tm.tile_dictionary.size()
-	Global.send_command(player_number, "toggle_tile", [tile_id])
+	var interactive : Array = get_tree().get_nodes_in_group("interactive")
+	if interactive.is_empty():
+		timer.wait_time = 1.0 + randf() * 2.0
+		timer.start()
+		return
+	var tile : TileElement = interactive[randi() % interactive.size()]
+	Global.send_command(player_number, "toggle_tile", [tile.get_id()])
 	timer.wait_time = 1.0 + randf() * 2.0
 	timer.start()

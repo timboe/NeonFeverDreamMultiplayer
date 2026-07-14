@@ -34,7 +34,7 @@ func can_place_here(tile : TileElement):
 	return (tile.state == TileManager.State.LOWERED)
 		
 func check_under_aoe(tile : TileElement):
-	return (tile.under_aoe[Global.my_player_number] == true)
+	return (Global.my_player_number in tile.aoe)
 		
 func check_access(tile : TileElement):
 	return tile.get_access_tiles()
@@ -58,13 +58,13 @@ func new_building_instance(t : BuildingManager.Type):
 	match t:
 		BuildingManager.Type.MCP_1: return $BuildingFactory/MCP_1.duplicate()
 		BuildingManager.Type.MCP_2: return $BuildingFactory/MCP_2.duplicate()
-		BuildingManager.Type.MCP_3: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.MCP_4: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.GEN: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.VAT: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.GARAGE: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.BEACON: return $BuildingFactory/MCP_1.duplicate()
-		BuildingManager.Type.NEST: return $BuildingFactory/MCP_1.duplicate()
+		BuildingManager.Type.MCP_3: return $BuildingFactory/MCP_3.duplicate()
+		BuildingManager.Type.MCP_4: return $BuildingFactory/MCP_4.duplicate()
+		BuildingManager.Type.GEN: return $BuildingFactory/Generator.duplicate()
+		BuildingManager.Type.VAT: return $BuildingFactory/Vat.duplicate()
+		BuildingManager.Type.GARAGE: return $BuildingFactory/Garage.duplicate()
+		BuildingManager.Type.BEACON: return $BuildingFactory/Beacon.duplicate()
+		BuildingManager.Type.NEST: return $BuildingFactory/Nest.duplicate()
 	return null	
 
 func place_blueprint(tile : TileElement):
@@ -82,7 +82,7 @@ func place_blueprint(tile : TileElement):
 		return
 	#
 	var b = new_building_instance(building_being_placed)
-	b.initalise(tile, Global.my_player_number, building_being_placed)
+	b.initialise(tile, Global.my_player_number, building_being_placed)
 	add_to_dict_and_scene(b)
 	#
 	# Set building before set blueprint (to update monorail correctly)
@@ -101,7 +101,7 @@ func place_blueprint(tile : TileElement):
 # Note: Does NOT call recompute_aoe. Call this once done with place_building
 func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	var b = new_building_instance(t)
-	b.initialise(tile, pnum)
+	b.initialise(tile, pnum, t)
 	add_to_dict_and_scene(b)
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:

@@ -71,8 +71,8 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 | `GameManager` | `scripts/core/game/GameManager.gd` | Snapshot/interpolation manager for network state |
 | `CameraController` | `scripts/world/camera/CameraRTS.gd` | Middle-click drag, scroll zoom, WASD pan, pitch/yaw limits |
 | `CameraManager` | `scripts/world/camera/CameraManager.gd` | Stub (~99% commented dead code, not converted) |
-| `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | Building type enum, placement validation, blueprint visibility, dictionary of all buildings |
-| `Building` | `scripts/world/buildings/Building.gd` | Base building: states (BLUEPRINT→CONSTRUCTED→UNDER_DESTRUCTION), `player_owner`, `get_aoe_radius()`, tween-driven construction |
+| `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | Building type enum, placement validation, blueprint visibility, dictionary of all buildings, `new_building_instance()` returns correct scene per type |
+| `Building` | `scripts/world/buildings/Building.gd` | Base building: states (BLUEPRINT→CONSTRUCTED→UNDER_DESTRUCTION), `player_owner`, `get_aoe_radius()`, `check_work()` stub, tween-driven construction |
 | `MCP` | `scripts/world/buildings/MCP.gd` | Main Control Point: rotating top animation, energy generation |
 | `Vat` | `scripts/world/buildings/Vat.gd` | Energy storage: liquid-level tween, capacity calculation, `contains` set/get with underscore-backed var |
 | `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam effect (ImmediateMesh + RayCast3D), jaggies animation |
@@ -99,7 +99,7 @@ GameManager._process (every 1s) → JobManager.assign_jobs()
                                          ↓
                           Unit.state=WORKING → tile.do_toggle_countdown(self)
                                          ↓
-                          begin_toggle → done_toggle → unit.job_finished(true)
+                           begin_toggle → done_toggle → unit.job_finished()
                                          ↓
                           JobManager.remove_job → Unit.remove_job → idle_callback
 ```
@@ -114,7 +114,7 @@ GameManager._process (every 1s) → JobManager.assign_jobs()
 
 ### Abandon vs finish vs cancel
 
-- **`unit.job_finished(work_was_done)`**: Job completed successfully. Removes job from pool entirely. Called by `TileElement.done_toggle()` (via `working_unit` ref) when toggle animation completes.
+- **`unit.job_finished(work_was_done)`**: Job completed successfully. Removes job from pool entirely. Called by `TileElement.done_toggle()` (via `working_unit` ref) when toggle animation completes. No arguments (was `work_was_done` boolean, now parameterless).
 - **`unit.abandon_job()`**: Unit gives up but job stays in pool. Dispatches to `abandon_job_while_pathing()` or `abandon_job_while_working()`. Calls `JobManager.abandon_job(id)` which increments `abandoned_n` and sets `abandoned_timer`. Job is reassignable after timer expires.
 - **`JobManager.cancel_job(pnum, type, tile)`**: Human deselects a tile. Removes job from pool entirely via `remove_job`.
 
@@ -220,8 +220,8 @@ dr_mesh.surface_end()
 
 ### Tile scripts
 
-- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished(true)`, `begin_toggle` guards against invalid tile state.
-- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`.
+- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished()`, `begin_toggle` guards against invalid tile state. Added `rpc_toggle_animation` for network-synced toggle visuals.
+- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. `translate()`→`position` (lines 60, 86, 96-101). Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`. `recompute_aoe()` runs once after `apply_loaded_level()` (not per-tile).
 - `TileManager.tscn`: both `[node name="Tween"]` children removed.
 - `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`. Added `disconnect_tile(tile)` for removing all edges from a tile.
 - `Cairo.gd`: `GENERATE = false` with "do not regenerate" note.
@@ -229,10 +229,10 @@ dr_mesh.surface_end()
 
 ### Building scripts
 
-- `Building.gd`: `player_owner`, `get_aoe_radius()`. Removed `@onready var tween` — uses `create_tween()` + `_build_tween` var with `.kill()`/`.is_valid()`. `setget`→`set`/`get` blocks for `spawn_start_loc` and `my_blueprint`.
-- `Vat.gd`: `contains`→`_contains_val` set/get. `tween.remove(liquid)`→`_liquid_tween.kill()` + `create_tween().tween_property(...)`.
-- `BuildingManager.gd`: `StaticBody`→`StaticBody3D`, `DESTROYED`→`LOWERED`, `tile.set_destroyed()`→`tile.set_lowered()`, added `buildings()` returning `building_dictionary.values()`.
-- `Zapper.gd`: `ImmediateGeometry`→`MeshInstance3D` + `ImmediateMesh`, `cast_to`→`target_position`, removed `tween.remove`/`tween.start`.
+- `Building.gd`: `player_owner`, `get_aoe_radius()`, `check_work()` stub. Removed `@onready var tween` — uses `create_tween()` + `_build_tween` var with `.kill()`/`.is_valid()`. `setget`→`set`/`get` blocks for `spawn_start_loc` and `my_blueprint`. `initialise()` wrapper calls `initialise_base()`. Fixed `UNDER_DESTRUCTIOfN` typo.
+- `Vat.gd`: `contains`→`_contains_val` set/get. `tween.remove(liquid)`→`_liquid_tween.kill()` + `create_tween().tween_property(...)`. `location.player`→`self.player_owner`.
+- `BuildingManager.gd`: `StaticBody`→`StaticBody3D`, `DESTROYED`→`LOWERED`, `tile.set_destroyed()`→`tile.set_lowered()`, added `buildings()` returning `building_dictionary.values()`. `initalise`→`initialise`. `tile.under_aoe`→`Global.my_player_number in tile.aoe`. `new_building_instance()` returns correct scene per type (MCP_3/4 use MCP.gd, GARAGE/BEACON/NEST use Building.gd).
+- `Zapper.gd`: `ImmediateGeometry`→`MeshInstance3D` + `ImmediateMesh`, `cast_to`→`target_position`, removed `tween.remove`/`tween.start`. Removed duplicate `Vector3.ZERO` first vertex.
 - `Zapper.tscn`: `type="ImmediateGeometry"`→`type="MeshInstance3D"`.
 - `Blueprints.gd`: `get_name()`→`name`, `set_surface_material`→`set_surface_override_material`, `get_surface_material_count()`→`node.mesh.get_surface_count()` with null guard.
 - `Blueprints.tscn`: removed orphan Tween node.
@@ -251,22 +251,29 @@ dr_mesh.surface_end()
 
 - `OmniLight.gd`: `translation`→`position`, `GlobalVars`→`Global`, `get_world()`→`get_world_3d()`, `intersect_ray(old_args)`→`PhysicsRayQueryParameters3D.create()`, `result.empty()`→`result.is_empty()`.
 - `CameraRTS.gd`: already Godot 4.
-- `GridMultiMesh.gd`: `push_back`→`append` needed (lines 56, 57, 96).
-- `Monument.gd` + `MonumentHelper.gd`: converted.
+- `GridMultiMesh.gd`: `push_back`→`append` (lines 56, 57, 96).
+- `Monument.gd` + `MonumentHelper.gd`: converted. `translate()`→`position` (lines 76, 79).
+
+### Core / Network scripts
+
+- `GameManager.gd`: `_apply_unit()` — client only; server never reaches it (early return in `_process` + `apply_snapshot` is `call_remote`). Client no longer mutates `server_state` or `health` — those fields only written by server.
+- `AIController.gd`: Filters to `interactive` group tiles instead of random from all tiles.
+- `Lobby.gd`: Guards `disconnect()` calls with `is_connected()` checks.
+- `Global.gd`: Fixed comment typo "of time" → "of tile".
+
+### Placeholder buildings
+
+Placeholder `.tscn` files created for MCP_3, MCP_4, Garage, Beacon, Nest under `scenes/world/buildings/`. MCP_3/4 use `MCP.gd`; Garage/Beacon/Nest use `Building.gd`. All have `StaticBody3D` root, `BuildingConstructedParticles`, `Plinth` with `Plinth.gd`, `CollisionShape3D`. Added to `Blueprints.tscn` so `new_building_instance()` can reference them as `$BuildingFactory/<Name>.duplicate()`.
+
+### Floor materials
+
 - Floor materials: `grid_faces.tres` and `grid_edges.tres` — `albedo` texture with `source_color`, `grid_edges.tres` has `use_instance_color` uniform for per-instance edge colour.
 
 ### Remaining Godot 3 patterns (active bugs)
 
 | Pattern | File | Line(s) | Fix |
 |---|---|---|---|
-| `push_back` | `GridMultiMesh.gd` | 56, 57, 96 | `append()` |
-| `push_back` | `TileElement.gd` | 336 | `append()` |
-| `location.player` (nonexistent) | `Vat.gd` | 32 | `TileElement` has no `.player` |
-| `tile.under_aoe` (nonexistent) | `BuildingManager.gd` | 37 | Should be `tile.aoe` |
-| `empty()` on Dictionary | `JobManager.gd` | removed | Use `is_empty()` |
 | Massive commented Godot 3 code | `CameraManager.gd` | most of file | Dead code, not converted |
-| `translate()` (deprecated) | `TileManager.gd` | 50, 76, 86-91 | Prefer `position +=` |
-| `translate()` (deprecated) | `Monument.gd` | 76, 79 | Prefer `position +=` |
 
 ## Running
 

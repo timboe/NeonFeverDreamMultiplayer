@@ -169,5 +169,4 @@ func _process(_delta : float):
 				#$DebugRender.surface_add_vertex(Vector3(a.x + 5, a.y + 5, a.z + 5))
 				#$DebugRender.surface_add_vertex(Vector3(a.x - 5, a.y + 5, a.z + 5))
 				#$DebugRender.surface_add_vertex(Vector3(a.x + 5, a.y + 5, a.z - 5))
-	if added:
-		debug_mesh.surface_end()
+	debug_mesh.surface_end()

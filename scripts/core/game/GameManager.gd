@@ -126,7 +126,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array):
 		UnitManager.Type.ZOOMBA:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
 			u.rotation.y = slots[3]
-			u.state = int(slots[4])
+			u.state = slots[4]
 			u.health = slots[5]
 			u.get_node("Zapper").visible = slots[6]
 			u.get_node("Zapper").target_position.y = slots[7]

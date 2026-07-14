@@ -72,4 +72,4 @@ func get_point(id : int) -> Vector3:
 	return astar.get_point_position(id)
 	
 func get_tile(id : int) -> TileElement:
-	return $"../../TileManager".tile_dictionary[id]
+	return get_node("/root/World/TileManager").tile_dictionary[id]

@@ -57,7 +57,7 @@ func populate(physics_body_instance : StaticBody3D, rotation_group : String):
 	physics_body_instance.add_child(mesh_instance)
 	physics_body_instance.add_child($CairoDisabled.get_child(0).duplicate())
 	var ray := RayCast3D.new()
-	ray.translate(Vector3(Cairo.UNIT/2.0, Cairo.HEIGHT/2.0, Cairo.UNIT/2.0))
+	ray.position = Vector3(Cairo.UNIT/2.0, Cairo.HEIGHT/2.0, Cairo.UNIT/2.0)
 	ray.target_position = Vector3(50.0, 0, 0)
 	physics_body_instance.add_child(ray)
 	physics_body_instance.add_to_group("tiles")
@@ -83,8 +83,8 @@ func add_cluster(xOff : int, yOff : int):
 	var spatial : Node3D = Node3D.new()
 	var yMod : float = $CairoDisabled.RIGHT_POINT__UP * xOff
 	var xMod : float = $CairoDisabled.RIGHT_POINT__UP * yOff
-	spatial.translate(Vector3(yMod + yOff*($CairoDisabled.TOP_POINT__RIGHT + $CairoDisabled.TOP_POINT__UP), 
-		0, xOff*(Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - xMod))
+	spatial.position = Vector3(yMod + yOff*($CairoDisabled.TOP_POINT__RIGHT + $CairoDisabled.TOP_POINT__UP), 
+		0, xOff*(Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - xMod)
 	var physics_body_a := StaticBody3D.new() # TL
 	var physics_body_b := StaticBody3D.new() # BL
 	var physics_body_c := StaticBody3D.new() # BR
@@ -93,12 +93,12 @@ func add_cluster(xOff : int, yOff : int):
 	physics_body_b.set_script(tile_script)
 	physics_body_c.set_script(tile_script)
 	physics_body_d.set_script(tile_script)
-	physics_body_a.translate(Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0))
-	physics_body_b.translate(Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0))
-	physics_body_c.translate(Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
-		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT))
-	physics_body_d.translate(Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
-		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT))
+	physics_body_a.position = Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0)
+	physics_body_b.position = Vector3(Cairo.UNIT, -Global.TILE_OFFSET, 0)
+	physics_body_c.position = Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
+		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT)
+	physics_body_d.position = Vector3(Cairo.UNIT + Cairo.RIGHT_POINT__UP,
+		-Global.TILE_OFFSET, Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT)
 	physics_body_b.rotate_y(deg_to_rad(-90.0))
 	physics_body_c.rotate_y(deg_to_rad(180.0))
 	physics_body_d.rotate_y(deg_to_rad(90.0))
@@ -199,10 +199,9 @@ func apply_loaded_level():
 				4: mcp_type = %BuildingManager.Type.MCP_4
 				_: printerr("Unknown player number ", player_number)
 			%BuildingManager.place_building(tile, player_number, mcp_type)
-			pass
 		elif tile.get_id() in Global.LEVEL.LOWERED:
 			tile.set_lowered()
-		%TileManager.recompute_aoe()
+	%TileManager.recompute_aoe()
 
 func recompute_aoe():
 	for t in tiles():

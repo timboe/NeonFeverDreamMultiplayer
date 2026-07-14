@@ -28,7 +28,6 @@ func _process(delta : float):
 func draw_jaggy_to(dist : float):
 	imm_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	imm_mesh.surface_set_color(Color.WHITE)
-	imm_mesh.surface_add_vertex(Vector3.ZERO)
 	var pos := Vector3.ZERO
 	imm_mesh.surface_add_vertex(pos)
 	while pos.y < dist:

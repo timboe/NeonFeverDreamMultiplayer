@@ -276,7 +276,6 @@ func rpc_toggle_animation(mode : int, thunk_distance : float = 0, thunk_time : f
 		toggle_tween = create_tween()
 		toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOUR, HOVER_REMOVE_COLOUR, TOGGLE_COUNTDOWN_TIME)\
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
-		toggle_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
 	elif mode == 1: # Cancel
 		toggle_tween.kill()
 		toggle_tween = create_tween()
@@ -333,7 +332,7 @@ func get_access_tiles(require_aoe : int = 0) -> Array:
 			continue
 		if require_aoe and require_aoe not in n.aoe:
 			continue
-		array.push_back(n)
+		array.append(n)
 	return array
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx):

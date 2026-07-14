@@ -53,8 +53,8 @@ func _ready():
 	var grid_mesh_instance : MeshInstance3D = $"../Grid"
 	var grid_mesh : Mesh = grid_mesh_instance.mesh.duplicate()
 	var materials : Array = []
-	materials.push_back( load("res://materials/floor/grid_faces.tres").duplicate() )
-	materials.push_back( load("res://materials/floor/grid_edges.tres").duplicate() )
+	materials.append( load("res://materials/floor/grid_faces.tres").duplicate() )
+	materials.append( load("res://materials/floor/grid_edges.tres").duplicate() )
 	for m in materials:
 		m.set_shader_parameter("SPEED", 1.0)
 		m.set_shader_parameter("SHAPE_SIZE", grid_mesh_instance.STEP_SIZE)
@@ -93,7 +93,7 @@ func generate_mountain() -> Array:
 		custom.b = mountain_range(custom.g)
 		custom.a = mountain_range(custom.b)
 		previous_mountain = custom.a
-		array.push_back(custom)
+		array.append(custom)
 	return array
 
 func _on_Timer_timeout():

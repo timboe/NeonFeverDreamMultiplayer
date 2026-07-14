@@ -9,7 +9,7 @@ var player_owner : int # Building owner. Cannot be infered from tile
 var default_mat = preload("res://materials/player/player1_material.tres")
 var updated_mat
 
-enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTIOfN}
+enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTION}
 var state : int
 var type : BuildingManager.Type
 
@@ -27,6 +27,9 @@ var my_blueprint:
 	set(value): _my_blueprint = value
 
 var _build_tween: Tween
+
+func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):
+	initialise_base(tile, pnum, t)
 
 func initialise_base(tile : TileElement, pnum : int, t : BuildingManager.Type):
 	type = t
@@ -56,6 +59,9 @@ func find_unit_spawn_location():
 	
 func get_aoe_radius():
 	return Config.BUILDING_AOE[ type ]
+
+func check_work():
+	pass
 		
 #func update_monorail():
 	#assert(location != null)
@@ -94,7 +100,7 @@ func set_constructed_a(by_whome):
 	assert(state == State.UNDER_CONSTRUCTION)
 	assert(my_blueprint != null)
 	state = State.CONSTRUCTED
-	by_whome.job_finished(true)
+	by_whome.job_finished()
 	_build_tween = create_tween()
 	_build_tween.tween_callback(set_constructed_b).set_delay(1.0)
 	
