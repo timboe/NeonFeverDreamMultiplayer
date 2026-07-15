@@ -11,8 +11,16 @@ var _job_timer := 0.0
 
 var _snapshots: Array = []
 
+const AVATAR_SEND_INTERVAL := 0.05
+var _avatar_snapshot_timer := 0.0
+var _avatar_snapshots: Dictionary = {}
+
 func _process(delta):
 	if not multiplayer.is_server():
+		_avatar_snapshot_timer += delta
+		while _avatar_snapshot_timer >= AVATAR_SEND_INTERVAL:
+			_avatar_snapshot_timer -= AVATAR_SEND_INTERVAL
+			_send_avatar_snapshot()
 		_interpolate()
 		return
 	_snapshot_timer += delta
@@ -20,6 +28,7 @@ func _process(delta):
 	while _snapshot_timer >= SNAPSHOT_INTERVAL:
 		_snapshot_timer -= SNAPSHOT_INTERVAL
 		_send_snapshot()
+	_interpolate_avatars()
 	while _job_timer >= JOB_TICK_INTERVAL:
 		_job_timer -= JOB_TICK_INTERVAL
 		%JobManager.assign_jobs()
@@ -35,6 +44,17 @@ func _send_snapshot():
 		data.append(u.type)
 		_pack_unit(data, u)
 	rpc("apply_snapshot", data)
+
+func _send_avatar_snapshot():
+	var avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
+	if not avatar:
+		return
+	var cam = get_node_or_null("/root/World/CameraManager")
+	if cam and cam.camera_status != cam.CameraStatus.FPS:
+		return
+	var data := PackedFloat64Array()
+	_pack_unit(data, avatar)
+	rpc_id(1, "receive_avatar_snapshot", data)
 
 func _pack_unit(data: PackedFloat64Array, u: Unit):
 	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -74,6 +94,25 @@ func apply_snapshot(data: PackedFloat64Array):
 	if _snapshots.size() > 4:
 		_snapshots.pop_front()
 
+@rpc("any_peer", "call_remote", "unreliable")
+func receive_avatar_snapshot(data: PackedFloat64Array):
+	var caller = multiplayer.get_remote_sender_id()
+	var srv = Global.network_manager.server
+	if not srv:
+		return
+	var pnum = srv.peer_to_player.get(caller)
+	if pnum == null:
+		return
+	var slots: Array[float] = []
+	for i in 8:
+		slots.append(data[i])
+	if not _avatar_snapshots.has(pnum):
+		_avatar_snapshots[pnum] = []
+	var snaps = _avatar_snapshots[pnum]
+	snaps.append({"time": Time.get_ticks_usec() / 1e6, "slots": slots})
+	if snaps.size() > 4:
+		snaps.pop_front()
+
 func _interpolate():
 	if _snapshots.is_empty():
 		return
@@ -98,6 +137,8 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float):
 	for id_val in s1["units"]:
 		var u = ud.get(id_val) as Unit
 		if not u:
+			continue
+		if u.type == UnitManager.Type.AVATAR and u.building and u.building.player_owner == Global.my_player_number:
 			continue
 		var e1 = s1["units"][id_val]
 		var e0 = s0["units"].get(id_val)
@@ -129,8 +170,13 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 func _apply_snapshot_units(snapshot: Dictionary):
 	var ud = %UnitManager.unit_dictionary
 	for id_val in snapshot["units"]:
+		var u = ud.get(id_val) as Unit
+		if not u:
+			continue
+		if u.type == UnitManager.Type.AVATAR and u.building and u.building.player_owner == Global.my_player_number:
+			continue
 		var e = snapshot["units"][id_val]
-		_apply_unit(ud.get(id_val) as Unit, e["type"] as UnitManager.Type, e["slots"])
+		_apply_unit(u, e["type"] as UnitManager.Type, e["slots"])
 
 func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array):
 	if not u:
@@ -149,6 +195,29 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array):
 			body.global_position = Vector3(slots[0], slots[1], slots[2])
 			body.rotation.y = slots[3]
 			u.health = slots[4]
+
+func _interpolate_avatars():
+	var render_time = Time.get_ticks_usec() / 1e6 - INTERPOLATION_DELAY
+	for pnum in _avatar_snapshots:
+		var snaps = _avatar_snapshots[pnum]
+		while snaps.size() >= 2 and snaps[1]["time"] < render_time:
+			snaps.pop_front()
+		if snaps.is_empty():
+			continue
+		var avatar = get_tree().get_first_node_in_group("avatar_player" + str(pnum))
+		if not avatar:
+			continue
+		var s0 = snaps[0]
+		if snaps.size() >= 2 and s0["time"] <= render_time:
+			var s1 = snaps[1]
+			var interval = s1["time"] - s0["time"]
+			if interval > 0:
+				var t = clamp((render_time - s0["time"]) / interval, 0.0, 1.0)
+				var e0 = {"type": UnitManager.Type.AVATAR, "slots": s0["slots"]}
+				var e1 = {"type": UnitManager.Type.AVATAR, "slots": s1["slots"]}
+				_apply_interpolated_unit(avatar, e0, e1, t, UnitManager.Type.AVATAR)
+				continue
+		_apply_unit(avatar, UnitManager.Type.AVATAR, s0["slots"])
 
 static func _lerp_angle(from: float, to: float, t: float) -> float:
 	var diff = fmod(to - from, TAU)

@@ -68,7 +68,7 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 | `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D pathfinding, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, debug renderer (ImmediateMesh) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven tile toggle |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Slot config: LOCAL, REMOTE, AI, CLOSED |
-| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshot/interpolation manager for network state |
+| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshot/interpolation manager: server→client unit sync + client→server avatar relay, per-player avatar interpolation |
 | `CameraController` | `scripts/world/camera/CameraRTS.gd` | Middle-click drag, scroll zoom, WASD pan, pitch/yaw limits |
 | `CameraManager` | `scripts/world/camera/CameraManager.gd` | Stub (~99% commented dead code, not converted) |
 | `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | Building type enum, placement validation, blueprint visibility, dictionary of all buildings, `new_building_instance()` returns correct scene per type |
@@ -354,7 +354,7 @@ dr_mesh.surface_end()
 
 ### Core / Network scripts
 
-- `GameManager.gd`: `_apply_unit()` — client only; server never reaches it (early return in `_process` + `apply_snapshot` is `call_remote`). Client no longer mutates `server_state` or `health` — those fields only written by server.
+- `GameManager.gd`: `_apply_unit()` — client only; server never reaches it (early return in `_process` + `apply_snapshot` is `call_remote`). Client no longer mutates `server_state` or `health` — those fields only written by server. Client→avatar relay: clients send `receive_avatar_snapshot` (20 Hz, `camera_status == FPS` only) via `rpc_id(1, ...)`. Server stores per-pnum snapshots and interpolates with `_interpolate_avatars()`. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_units` to avoid control cycles.
 - `AIController.gd`: Filters to `interactive` group tiles instead of random from all tiles.
 - `Lobby.gd`: Guards `disconnect()` calls with `is_connected()` checks.
 - `Global.gd`: Fixed comment typo "of time" → "of tile".
