@@ -74,20 +74,13 @@ func _flash_ring(pnum : int, idx : int):
 	var color : Color = Config.PLAYER_COLORS[pnum - 1]
 	var em := _emission(idx, rings.size())
 	for tile in rings[idx]:
-		if _can_modify(tile):
-			tile.set_tile_mm_color(color)
-			tile.set_tile_mm_emission(em)
+		tile.request_emission(TileElement.EmissionEffect.PULSE_ANIMATION, color, em)
 
 func _clear_ring(pnum : int, idx : int, rings : Array):
 	if idx >= rings.size():
 		return
 	for tile in rings[idx]:
-		if _can_modify(tile):
-			tile.set_tile_mm_emission(0.0)
-
-func _can_modify(tile : TileElement) -> bool:
-	return not (tile.toggle_tween and tile.toggle_tween.is_valid() and tile.toggle_tween.is_running()) \
-		and not (Global.my_player_number in tile.selected_by)
+		tile.release_emission(TileElement.EmissionEffect.PULSE_ANIMATION)
 
 func _tick_time(idx : int, max_rings : int) -> float:
 	if max_rings <= 1:

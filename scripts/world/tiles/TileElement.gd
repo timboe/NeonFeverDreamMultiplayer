@@ -41,22 +41,24 @@ var tile_mm_id : int # This tile's index within the MM
 # Set to a vec3 if this tile is participating in the pathing. Note: in global coordinates
 var pathing_centre = null
 
-var _hovered := false
 var pathing_manager
 
 @onready var HEIGHT : float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
-const DEFAULT_COLOUR : Color = Color.WHITE
-#const HOVER_COLOUR : Color = Color.YELLOW
 const SELECT_COLOUR : Color = Color(1, 1, 1)
 const HOVER_REMOVE_COLOUR : Color = Color(160/255.0, 0/255.0, 56/255.0)
 
-
-#const PULSE_TIME := 0.1 # Time in seconds to pulse for
-#const PULSE_DECAY := 0.001 # Amount to reduce pulse by per tile
-#const CAPTURE_TIME = 1.5 # Time in seconds to capture per enemy neighbour
 const FADE_TIME : float = 5.0 # Time to allow revoke of destroy order
 const TOGGLE_COUNTDOWN_TIME : float = 2.0
+
+enum EmissionEffect {
+	GENERATOR_CATCHMENT, # highest priority
+	TILE_SELECTED,
+	TILE_HOVER,
+	PULSE_ANIMATION,     # lowest priority
+}
+
+var _emission_requests : Dictionary = {} # EmissionEffect (int) → {color: Color, strength: float}
 
 func set_building(b):
 	assert(building == null)
@@ -82,7 +84,8 @@ func toggle_selected_by(player_n : int):
 	
 func set_lowered():
 	state = TileManager.State.LOWERED
-	set_tile_mm_emission(0.0)
+	_emission_requests.clear()
+	_apply_emission()
 	var t = transform
 	t.origin.y = -HEIGHT
 	transform = t
@@ -168,17 +171,12 @@ func update_selection_and_aoe_visual():
 		elif p == 4: mask.a = 1.0
 	set_tile_mm_selecting_mask(mask)
 
-	# COLOR.rgb → grid_edges ALBEDO (local hover)
-	# TODO - figure out an alternate way of doing this
-	#set_tile_mm_color(HOVER_COLOUR if _hovered else DEFAULT_COLOUR)
-
-	# NOTE: Don't mess with the emission here if a zoomba is "doing work" on this tile
-	# Detectable on client and server via the toggle_tween currently running 
-	if not (toggle_tween and toggle_tween.is_valid() and toggle_tween.is_running()):
-		var is_selected = (Global.my_player_number in selected_by)
-		if is_selected:
-			set_tile_mm_color(Color.WHITE)
-		set_tile_mm_emission(0.4 if is_selected else 0.0)
+	# Emission priority system — toggle_tween guard is inside _apply_emission
+	var is_selected = (Global.my_player_number in selected_by)
+	if is_selected:
+		request_emission(EmissionEffect.TILE_SELECTED, Color.WHITE, 0.4)
+	else:
+		release_emission(EmissionEffect.TILE_SELECTED)
 		
 # Called when one of MY neighbors is lowered. Check if I was queued for destruction
 #func a_neighbour_just_fell():
@@ -215,6 +213,34 @@ func set_tile_mm_emission(value : float):
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	c.a = value
 	tile_mm.set_instance_color(tile_mm_id, c)
+
+func request_emission(effect : EmissionEffect, color : Color, strength : float) -> void:
+	_emission_requests[effect] = {"color": color, "strength": strength}
+	_apply_emission()
+
+func release_emission(effect : EmissionEffect) -> void:
+	var was_active = not _emission_requests.is_empty() and _get_active_effect() == effect
+	_emission_requests.erase(effect)
+	if was_active:
+		_apply_emission()
+
+func _apply_emission() -> void:
+	if toggle_tween and toggle_tween.is_valid() and toggle_tween.is_running():
+		return
+	var effect = _get_active_effect()
+	if effect != -1:
+		var req = _emission_requests[effect]
+		set_tile_mm_color(req.color)
+		set_tile_mm_emission(req.strength)
+	else:
+		set_tile_mm_emission(0.0)
+
+func _get_active_effect() -> int:
+	var best := -1
+	for effect in _emission_requests:
+		if best == -1 or effect < best:
+			best = effect
+	return best
 
 func do_toggle_countdown(z : Zoomba):
 	if not multiplayer.is_server():
@@ -282,25 +308,26 @@ func rpc_toggle_animation(mode : int, thunk_distance : float = 0, thunk_time : f
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	elif mode == 1: # Cancel
 		toggle_tween.kill()
-		toggle_tween = create_tween()
-		set_tile_mm_emission(0.0)
+		toggle_tween = null
+		_apply_emission()
 	elif mode == 2: # Commit
 		$Particles.emitting = true
-		var t = create_tween()
+		toggle_tween = create_tween()
 		# Need to alter collision box and nav mesh
-		t.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
+		toggle_tween.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		t.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
+		toggle_tween.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		t.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
+		toggle_tween.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		#
-		t.parallel().tween_property(self, "position:y", dest, fall_time)\
+		toggle_tween.parallel().tween_property(self, "position:y", dest, fall_time)\
 			.from(dest * thunk_distance).set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		t.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
+		toggle_tween.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
 			.set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
+		toggle_tween.tween_callback(_apply_emission)
 
 func done_toggle():
 	if not multiplayer.is_server():
@@ -315,16 +342,15 @@ func done_toggle():
 	working_unit = null
 
 func _on_StaticBody_mouse_entered():
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		var hud = get_tree().get_first_node_in_group("hud") as HUD
-		if hud and hud.can_toggle_tile(self) and hud.should_toggle(self):
+	var hud = get_tree().get_first_node_in_group("hud") as HUD
+	if hud and hud.can_toggle_tile(self):
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and hud.should_toggle(self):
 			Global.send_command_me("toggle_tile", [id])
-	_hovered = true
-	#print("Tile AoE ", aoe, ". Selected by ", selected_by)
+		request_emission(EmissionEffect.TILE_HOVER, Color.WHITE, 0.1)
 	update_selection_and_aoe_visual()
 
 func _on_StaticBody_mouse_exited():
-	_hovered = false
+	release_emission(EmissionEffect.TILE_HOVER)
 	update_selection_and_aoe_visual()
 
 # From one lowered tile to another	

@@ -342,6 +342,4 @@ func enabled_tiles_to_multimesh():
 		enabled[i].get_child(0).queue_free()
 		enabled[i].tile_mm = tile_mm.multimesh
 		enabled[i].tile_mm_id = count
-		enabled[i].set_tile_mm_emission(0.0)
-		enabled[i].set_tile_mm_color(Color.CYAN)
 		count += 1
