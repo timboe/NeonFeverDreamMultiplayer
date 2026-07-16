@@ -30,10 +30,9 @@ var move_tween : Tween
 var quat_from : Quaternion
 var quat_to : Quaternion
 
-func initialise_base(b : Building, t : UnitManager.Type):
+func initialise(b : Building):
 	building = b
 	location = b.location
-	type = t
 	global_transform.origin = building.find_unit_spawn_location()
 	add_to_group("unit")
 	add_to_group("unit_player"+str(b.player_owner))
@@ -45,8 +44,6 @@ func initialise_base(b : Building, t : UnitManager.Type):
 
 	var tw = create_tween()
 	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
-	if t == UnitManager.Type.AVATAR:
-		return
 	tw.tween_callback(idle_callback)
 
 func assign_job(new_job : Dictionary):

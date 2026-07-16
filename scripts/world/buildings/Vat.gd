@@ -21,8 +21,9 @@ func _ready():
 	if has_node("Liquid"):
 		liquid = $Liquid
 
-func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
-	super.initialise(pnum, tile, t)
+func initialise(pnum : int, tile : TileElement):
+	super.initialise(pnum, tile)
+	type = BuildingManager.Type.VAT
 	add_to_group("vat")
 
 func get_capacity():

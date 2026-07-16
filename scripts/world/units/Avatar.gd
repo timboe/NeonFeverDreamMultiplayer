@@ -149,6 +149,10 @@ func _input(event):
 		rotation_helper.rotation_degrees = camera_rot
 
 func initialise(b : Building):
-	initialise_base(b, UnitManager.Type.AVATAR)
+	super.initialise(b)
+	type = UnitManager.Type.AVATAR
 	add_to_group("avatar")
 	add_to_group("avatar_player" + str(building.player_owner))
+
+func idle_callback():
+	pass # Avatar uses FPS controls, not the idle/pathing system

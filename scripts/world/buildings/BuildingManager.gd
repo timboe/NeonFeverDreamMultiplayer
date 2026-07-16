@@ -105,7 +105,7 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 	add_to_dict_and_scene(bid, new_building)
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
-	new_building.initialise(player_number, tile, type)
+	new_building.initialise(player_number, tile)
 	#
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
@@ -129,7 +129,7 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 func place_building(pnum : int, tile : TileElement, type : BuildingManager.Type):
 	var b = new_building_instance(type)
 	add_to_dict_and_scene(get_inc_next_building_id(), b)
-	b.initialise(pnum, tile, type)
+	b.initialise(pnum, tile)
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()

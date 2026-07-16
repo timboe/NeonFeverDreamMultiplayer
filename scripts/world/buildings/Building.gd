@@ -18,13 +18,9 @@ var _construction_timer := 0.0
 var _construction_energy_spent := 0.0
 var _construction_cost := 0.0
 
-func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
-	initialise_base(pnum, tile, t)
-
-func initialise_base(pnum : int, tile : TileElement, t : BuildingManager.Type):
-	type = t
-	location = tile
-	tile.set_building(self)
+func initialise(pnum : int, tile : TileElement):
+	location = tile # Two way link
+	tile.set_building(self)  # Two way link
 	player_owner = pnum
 	state = State.BLUEPRINT
 	global_transform = tile.get_global_transform()

@@ -22,7 +22,7 @@ var SENSITIVITY = 0.5
 var SMOOTHNESS = 0.5
 
 func _input(event):
-	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(2):
+	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_mouse_offset = event.relative
 	if (event is InputEventMouseButton):
 		var wheel : float = WHEEL_MOD * (Input.get_action_strength("ui_zoom_out") - Input.get_action_strength("ui_zoom_in"))

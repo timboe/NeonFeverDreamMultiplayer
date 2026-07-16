@@ -49,8 +49,16 @@ func check_work():
 		var uid = um.get_inc_next_unit_id() # Server dictates the ID for extra safety
 		um.rpc("rpc_spawn_unit", uid, to_spawn, self.id)
 
-func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
-	initialise_base(pnum, tile, t)
+const NAME_TO_TYPE = {
+	"MCP_1": BuildingManager.Type.MCP_1,
+	"MCP_2": BuildingManager.Type.MCP_2,
+	"MCP_3": BuildingManager.Type.MCP_3,
+	"MCP_4": BuildingManager.Type.MCP_4,
+}
+
+func initialise(pnum : int, tile : TileElement):
+	super.initialise(pnum, tile)
+	type = NAME_TO_TYPE[name]
 	add_to_group("generator")
 	add_to_group("generator_player"+str(pnum))
 	add_to_group("mcp")

@@ -18,7 +18,8 @@ func _ready():
 	$Zapper.visible = false
 
 func initialise(b : Building):
-	initialise_base(b, UnitManager.Type.ZOOMBA)
+	super.initialise(b)
+	type = UnitManager.Type.ZOOMBA
 	add_to_group("zoomba")
 	var updated_mat = load("res://materials/player/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
