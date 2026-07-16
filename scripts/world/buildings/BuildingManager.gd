@@ -120,6 +120,8 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 		enabled_blueprints[type].transform.origin.y = HIDE_DEPTH # hide the hover one
 		var hud = get_tree().get_first_node_in_group("hud")
 		hud.build_mode = HUD.Mode.NONE
+	if multiplayer.is_server():
+		%EnergyManager.recalculate_capacity()
 
 # Place a pre-constructed building. Used in setting up thhe level
 # Note: Does NOT call recompute_aoe. Call this once done with place_building
@@ -131,6 +133,7 @@ func place_building(pnum : int, tile : TileElement, type : BuildingManager.Type)
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
+	%EnergyManager.recalculate_capacity()
 
 func get_inc_next_building_id() -> int:
 	var nbid := _next_building_id
@@ -147,6 +150,8 @@ func remove_building(id: int):
 	if b:
 		building_dictionary.erase(id)
 		b.queue_free()
+		if multiplayer.is_server():
+			%EnergyManager.recalculate_capacity()
 
 func get_building_by_id(id: int) -> Building:
 	return building_dictionary.get(id)

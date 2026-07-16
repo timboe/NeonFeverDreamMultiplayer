@@ -10,7 +10,7 @@ func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	add_to_group("generator")
 	add_to_group("generator_player"+str(pnum))
 
-func get_tick_energy() -> float:
+func get_energy() -> float:
 	if state != State.CONSTRUCTED:
 		return 0.0
 	return BASE_GENERATION + generation

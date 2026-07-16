@@ -7,7 +7,9 @@ class_name MCP
 var to_rotate : Array
 const A_VELOCITY = 100
 
-const BASE_GENERATION := 100.0
+const BASE_GENERATION := 27.0
+const BASE_CAPACITY := 1000.0
+
 const ZOOMBA_CREATION_COOLDOWN_TICKS := 10
 const AVATAR_CREATION_COOLDOWN_TICKS := 10
 
@@ -53,6 +55,11 @@ func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	add_to_group("generator_player"+str(pnum))
 	add_to_group("mcp")
 	add_to_group("mcp_player"+str(pnum))
+	add_to_group("vat")
+	add_to_group("vat_player"+str(pnum))
 
-func get_tick_energy() -> float:
+func get_energy() -> float:
 	return BASE_GENERATION
+	
+func get_capacity():
+	return BASE_CAPACITY

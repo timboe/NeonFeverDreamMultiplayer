@@ -166,10 +166,10 @@ func _process(_delta: float):
 
 
 func _get_player_energy() -> Dictionary:
-	var t := Time.get_ticks_msec() / 1000.0
-	var current := 3000.0 + sin(t * 0.5) * 2000.0
-	var rate := cos(t * 0.3) * 150.0
-	return {"current": current, "capacity": 6000.0, "rate": rate}
+	var em = get_node_or_null("/root/World/EnergyManager")
+	if em:
+		return em.get_player_energy(Global.my_player_number)
+	return {"current": 0.0, "capacity": 0.0, "rate": 0.0}
 
 
 func add_notification(text: String, duration: float = 5.0) -> void:

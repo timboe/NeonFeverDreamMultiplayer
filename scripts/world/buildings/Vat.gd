@@ -16,27 +16,29 @@ var contains: float:
 	set(value): _contains_val = value
 
 var liquid = null
-var _liquid_tween: Tween
 
 func _ready():
-	if location != null:
-		add_to_group("vat")
 	if has_node("Liquid"):
 		liquid = $Liquid
+
+func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
+	super.initialise(pnum, tile, t)
+	add_to_group("vat")
 
 func get_capacity():
 	return CAPACITY + capacity_mod
 	
-func animate(time : float, total_energy_cache : Array):
-	if location != null and state == State.CONSTRUCTED:
-		total_energy_cache[ player_owner ].x += get_capacity()
-		total_energy_cache[ player_owner ].y += _contains_val
-	if liquid != null:
-		if _liquid_tween and _liquid_tween.is_valid():
-			_liquid_tween.kill()
-		_liquid_tween = create_tween()
-		_liquid_tween.tween_property(liquid, "position:y",
-			EMPTY_Y + (_contains_val / CAPACITY) * HEIGHT, time)
+func _process(_delta: float) -> void:
+	if liquid == null or state != State.CONSTRUCTED:
+		return
+	var em = get_node_or_null("/root/World/EnergyManager")
+	if em == null:
+		return
+	var e = em.get_player_energy(player_owner)
+	var fraction := 0.0
+	if e.capacity > 0:
+		fraction = e.current / e.capacity
+	liquid.position.y = EMPTY_Y + fraction * HEIGHT
 		
 func set_contains(c : float):
 	_contains_val = c
