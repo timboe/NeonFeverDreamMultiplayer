@@ -343,13 +343,27 @@ func done_toggle():
 
 func _on_StaticBody_mouse_entered():
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
-	if hud and hud.can_toggle_tile(self):
+	if not hud:
+		update_selection_and_aoe_visual()
+		return
+	if hud.is_placing():
+		get_node_or_null("/root/World/BuildingManager").update_blueprint(Global.my_player_number, self, hud.building_being_placed())
+		request_emission(EmissionEffect.TILE_HOVER, Color.WHITE, 0.1)
+		update_selection_and_aoe_visual()
+		return
+	if hud.can_toggle_tile(self):
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and hud.should_toggle(self):
 			Global.send_command_me("toggle_tile", [id])
 		request_emission(EmissionEffect.TILE_HOVER, Color.WHITE, 0.1)
 	update_selection_and_aoe_visual()
 
 func _on_StaticBody_mouse_exited():
+	var hud = get_tree().get_first_node_in_group("hud") as HUD
+	if hud and hud.is_placing():
+		var type = hud.building_being_placed()
+		var bm = get_node_or_null("/root/World/BuildingManager")
+		bm.enabled_blueprints[type].transform.origin.y = BuildingManager.HIDE_DEPTH
+		bm.disabled_blueprints[type].transform.origin.y = BuildingManager.HIDE_DEPTH
 	release_emission(EmissionEffect.TILE_HOVER)
 	update_selection_and_aoe_visual()
 
@@ -370,6 +384,11 @@ func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, 
 	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
 		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
-	if hud and hud.can_toggle_tile(self):
+	if not hud:
+		return
+	if hud.is_placing():
+		Global.send_command_me("place_blueprint", [id, hud.building_being_placed()])
+		return
+	if hud.can_toggle_tile(self):
 		hud.begin_drag(self)
 		Global.send_command_me("toggle_tile", [id])

@@ -21,31 +21,27 @@ var capture_in_progress = false
 var spawn_particles
 var zoomba_constructing_me
 
-var _my_blueprint
-var my_blueprint:
-	get: return _my_blueprint
-	set(value): _my_blueprint = value
+var my_blueprint
 
 var _build_tween: Tween
 
-func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):
-	initialise_base(tile, pnum, t)
+func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
+	initialise_base(pnum, tile, t)
 
-func initialise_base(tile : TileElement, pnum : int, t : BuildingManager.Type):
+func initialise_base(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	type = t
 	location = tile # Two way link
 	tile.set_building(self)  # Two way link
 	player_owner = pnum
 	state = State.BLUEPRINT
-	transform = tile.get_global_transform()
-	transform.origin.y = 0
+	global_transform = tile.get_global_transform()
+	global_position.y = 0
 	add_to_group("building")
 	add_to_group("building_player"+str(pnum))
 
 func set_blueprint(b):
 	my_blueprint = b
 	set_visible(false)
-	#update_monorail()
 	state = State.BLUEPRINT
 	
 func _ready():

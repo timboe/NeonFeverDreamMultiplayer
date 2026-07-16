@@ -22,28 +22,33 @@ func unit_count(pnum : int, type : Type) -> int:
 			c += 1
 	return c
 
-func spawn_unit(type : Type, building : Building) -> void:
+# Note: Ownership of the unit is known via the building
+func spawn_unit(uid : int, type : Type, building : Building) -> void:
 	var u = null
 	match type:
 		Type.ZOOMBA: u = $UnitFactory/Zoomba.duplicate()
 		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
-	add_to_dict_and_scene(u)
+	add_to_dict_and_scene(uid, u)
 	u.initialise(building)
-	
-func add_to_dict_and_scene(u : Unit) -> void:
-	u.id = _next_unit_id
+
+func get_inc_next_unit_id() -> int:
+	var nuid := _next_unit_id
 	_next_unit_id += 1
+	return nuid
+	
+func add_to_dict_and_scene(uid : int, u : Unit) -> void:
+	u.id = uid
 	unit_dictionary[u.id] = u
 	add_child(u)
 
 @rpc("authority", "call_local")
-func rpc_spawn_unit(type: int, building_id: int):
+func rpc_spawn_unit(uid : int, type: int, building_id: int):
 	var bm = get_node_or_null("%BuildingManager")
 	if not bm:
 		return
 	var building = bm.get_building_by_id(building_id)
 	if building:
-		spawn_unit(type as Type, building)
+		spawn_unit(uid, type as Type, building)
 
 func displace_units_on_tile(tile : TileElement):
 	var displaced : Array = []

@@ -24,12 +24,12 @@ script = ExtResource("2")
 [node name="MCP_2" parent="." unique_id=1983162617 instance=ExtResource("5_a17sx")]
 script = ExtResource("6_mtnla")
 
-[node name="MCP_3" parent="." instance=ExtResource("7_mcp3")]
+[node name="MCP_3" parent="." unique_id=279320592 instance=ExtResource("7_mcp3")]
 
-[node name="MCP_4" parent="." instance=ExtResource("8_mcp4")]
+[node name="MCP_4" parent="." unique_id=579000063 instance=ExtResource("8_mcp4")]
 
-[node name="Garage" parent="." instance=ExtResource("9_garage")]
+[node name="Garage" parent="." unique_id=1278843030 instance=ExtResource("9_garage")]
 
-[node name="Beacon" parent="." instance=ExtResource("10_beacon")]
+[node name="Beacon" parent="." unique_id=1447526134 instance=ExtResource("10_beacon")]
 
-[node name="Nest" parent="." instance=ExtResource("11_nest")]
+[node name="Nest" parent="." unique_id=1254225084 instance=ExtResource("11_nest")]

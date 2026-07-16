@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://cp05lr438pv0l" path="res://scenes/world/buildings/BuildingManager.tscn" id="4_i1jm3"]
 [ext_resource type="PackedScene" uid="uid://be7arljxe4ohx" path="res://scenes/world/tiles/TileManager.tscn" id="4_qxiha"]
 [ext_resource type="Script" uid="uid://bgrswk647snuu" path="res://scripts/world/buildings/BuildingManager.gd" id="5_252at"]
+[ext_resource type="Script" uid="uid://dwjvyalier0pa" path="res://scripts/core/game/EnergyManager.gd" id="6_fe1rh"]
 [ext_resource type="Script" uid="uid://bd3u1fgrfgqha" path="res://scripts/world/camera/CameraManager.gd" id="6_qh0kd"]
 [ext_resource type="PackedScene" uid="uid://gnuq7frg6asq" path="res://scenes/world/units/UnitManager.tscn" id="6_yr1n6"]
 [ext_resource type="Script" uid="uid://c3i58cfvskf37" path="res://scripts/world/camera/OmniLight.gd" id="7_252at"]
@@ -35,6 +36,10 @@ script = ExtResource("3_ckp8c")
 [node name="BuildingManager" parent="." unique_id=825272559 instance=ExtResource("4_i1jm3")]
 unique_name_in_owner = true
 script = ExtResource("5_252at")
+
+[node name="EnergyManager" type="Node3D" parent="." unique_id=551651682]
+unique_name_in_owner = true
+script = ExtResource("6_fe1rh")
 
 [node name="TileManager" parent="." unique_id=347718040 instance=ExtResource("4_qxiha")]
 unique_name_in_owner = true

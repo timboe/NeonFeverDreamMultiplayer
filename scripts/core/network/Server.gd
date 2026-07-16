@@ -55,6 +55,18 @@ func _on_peer_disconnected(peer_id: int):
 		peer_to_player.erase(peer_id)
 		player_to_peer.erase(pnum)
 
+func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int):
+	var tm = get_node_or_null("/root/World/TileManager")
+	if not tm:
+		return
+	var tile = tm.get_tile_by_id(tile_id)
+	if not tile:
+		return
+	var bm = get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	bm.place_blueprint(player_number, tile, building_type)
+
 func _cmd_toggle_tile(player_number: int, tile_id: int):
 	print("Server._cmd_toggle_tile  pnum=", player_number, "  tile_id=", tile_id)
 	var tm = get_node_or_null("/root/World/TileManager")

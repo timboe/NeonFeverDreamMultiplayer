@@ -35,18 +35,24 @@ func check_work():
 		cooldown_ticks -= 1
 		return
 	var um = get_node_or_null("/root/World/UnitManager")
+	var to_spawn = UnitManager.Type.NONE
 	if um.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
-		um.rpc("rpc_spawn_unit", UnitManager.Type.AVATAR, self.id)
+		to_spawn = UnitManager.Type.AVATAR
 		cooldown_ticks = AVATAR_CREATION_COOLDOWN_TICKS
 	elif um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
-		um.rpc("rpc_spawn_unit", UnitManager.Type.ZOOMBA, self.id)
+		to_spawn = UnitManager.Type.ZOOMBA
 		cooldown_ticks = ZOOMBA_CREATION_COOLDOWN_TICKS
 		print("new zoomba for player ",player_owner," (cap is ",zoomba_cap(),")")
+	if to_spawn != UnitManager.Type.NONE:
+		var uid = um.get_inc_next_unit_id() # Server dictates the ID for extra safety
+		um.rpc("rpc_spawn_unit", uid, to_spawn, self.id)
 
-func initialise(tile : TileElement, pnum : int, t : BuildingManager.Type):
-	initialise_base(tile, pnum, t)
+func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
+	initialise_base(pnum, tile, t)
 	add_to_group("generator")
+	add_to_group("generator_player"+str(pnum))
 	add_to_group("mcp")
+	add_to_group("mcp_player"+str(pnum))
 
 func get_tick_energy() -> float:
 	return BASE_GENERATION

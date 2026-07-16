@@ -1,12 +1,11 @@
 [gd_scene format=3 uid="uid://caqalcgdkn0fg"]
 
-[ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="1"]
+[ext_resource type="Script" uid="uid://chqkn81mc25uf" path="res://scripts/world/buildings/Generator.gd" id="1_4ab57"]
 [ext_resource type="PackedScene" uid="uid://b1d53jlc4oj3s" path="res://scenes/world/buildings/Zapper.tscn" id="2"]
 [ext_resource type="Material" path="res://materials/chrome.tres" id="3"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="5"]
 [ext_resource type="Texture2D" uid="uid://cmkiwu35depya" path="res://images/circle_03.png" id="7"]
-[ext_resource type="Script" uid="uid://bbbc6djyvt75c" path="res://scripts/world/buildings/Building.gd" id="8"]
 
 [sub_resource type="ConcavePolygonShape3D" id="1"]
 data = PackedVector3Array(0, 0, 0, 2, 1, 2, 1.7321, 1, 9, 0, 0, 0, 1.7321, 1, 9, 0, 0, 10, 0, 0, 10, 1.7321, 1, 9, 6.3397, 1, 11.6603, 0, 0, 10, 6.3397, 1, 11.6603, 6.3397, 0, 13.6603, 6.3397, 0, 13.6603, 6.3397, 1, 11.6603, 13, 1, 8.1603, 6.3397, 0, 13.6603, 13, 1, 8.1603, 15, 0, 8.6603, 15, 0, 8.6603, 13, 1, 8.1603, 9, 1, 1.7321, 15, 0, 8.6603, 9, 1, 1.7321, 10, 0, 0, 10, 0, 0, 9, 1, 1.7321, 2, 1, 2, 10, 0, 0, 2, 1, 2, 0, 0, 0, 2, 1, 2, 6.3397, 1, 11.6603, 1.7321, 1, 9, 2, 1, 2, 13, 1, 8.1603, 6.3397, 1, 11.6603, 2, 1, 2, 9, 1, 1.7321, 13, 1, 8.1603)
@@ -143,13 +142,12 @@ color = Color(0, 1, 1, 1)
 
 [node name="Generator" type="StaticBody3D" unique_id=1961258344]
 input_ray_pickable = false
-script = ExtResource("8")
+script = ExtResource("1_4ab57")
 
 [node name="BuildinConstructedParticles" parent="." unique_id=1157080294 instance=ExtResource("5")]
 
 [node name="Plinth" type="MeshInstance3D" parent="." unique_id=20584139]
 mesh = ExtResource("4")
-script = ExtResource("1")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=609567797]
 shape = SubResource("1")

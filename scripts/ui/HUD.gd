@@ -25,6 +25,20 @@ var _prev_energy: float = 5000.0
 var _notification_count: int = 0
 const MAX_NOTIFICATIONS := 5
 
+const MODE_TO_BUILDING_TYPE := {
+	Mode.GEN: BuildingManager.Type.GEN,
+	Mode.VAT: BuildingManager.Type.VAT,
+	Mode.GARAGE: BuildingManager.Type.GARAGE,
+	Mode.BEACON: BuildingManager.Type.BEACON,
+	Mode.NEST: BuildingManager.Type.NEST,
+}
+
+func building_being_placed() -> int:
+	return MODE_TO_BUILDING_TYPE.get(build_mode, BuildingManager.Type.NONE)
+
+func is_placing() -> bool:
+	return build_mode != Mode.NONE
+
 func _ready():
 	add_to_group("hud")
 	_tile_buttons = {Mode.RAISE: %RaiseBtn, Mode.LOWER: %LowerBtn}

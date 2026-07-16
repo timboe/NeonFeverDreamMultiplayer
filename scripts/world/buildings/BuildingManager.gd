@@ -9,50 +9,62 @@ var building_dictionary : Dictionary
 
 var _next_building_id: int = 0
 
-var building_being_placed : int = Type.NONE # TODO - move this to the UI
-#var placement_player : int = -1
-
 const HIDE_DEPTH = -50
 
 var enabled_blueprints := {}
 var disabled_blueprints := {}
 
+var _blueprint_enabled_mat : ShaderMaterial = preload("res://materials/blueprint_enabled.tres")
+
+func apply_blueprint_material(node, mat : ShaderMaterial):
+	for c in node.get_children():
+		apply_blueprint_material(c, mat)
+	if node is MeshInstance3D and node.mesh:
+		for i in range(node.mesh.get_surface_count()):
+			node.set_surface_override_material(i, mat)
+	elif node is CSGCombiner3D:
+		node.material_override = mat
+	elif node is GPUParticles3D or node is Zapper:
+		node.queue_free()
+
 func _ready():
 	enabled_blueprints[Type.GEN] = $BlueprintsEnabled/Generator
 	enabled_blueprints[Type.VAT] = $BlueprintsEnabled/Vat
+	enabled_blueprints[Type.GARAGE] = $BlueprintsEnabled/Garage
+	enabled_blueprints[Type.BEACON] = $BlueprintsEnabled/Beacon
+	enabled_blueprints[Type.NEST] = $BlueprintsEnabled/Nest
 	#
 	disabled_blueprints[Type.GEN] = $BlueprintsDisabled/Generator
 	disabled_blueprints[Type.VAT] = $BlueprintsDisabled/Vat
+	disabled_blueprints[Type.GARAGE] = $BlueprintsDisabled/Garage
+	disabled_blueprints[Type.BEACON] = $BlueprintsDisabled/Beacon
+	disabled_blueprints[Type.NEST] = $BlueprintsDisabled/Nest
 
 func buildings():
 	return building_dictionary.values()
 
-func show_blueprint(type : int):
-	building_being_placed = type
-
 func can_place_here(tile : TileElement):
-	return (tile.state == TileManager.State.LOWERED)
+	return (tile.state == TileManager.State.LOWERED && tile.building == null)
 		
-func check_under_aoe(tile : TileElement):
-	return (Global.my_player_number in tile.aoe)
+func check_under_aoe(player_number : int, tile : TileElement):
+	return (player_number in tile.aoe)
 		
 func check_access(tile : TileElement):
 	return tile.get_access_tiles()
 
-func update_blueprint(tile : TileElement):
-	assert(building_being_placed != Type.NONE)
-	if not can_place_here(tile) or tile.building != null:
-		enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
-		disabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
+func update_blueprint(player_number : int, tile : TileElement, type : int):
+	if not can_place_here(tile):
+		enabled_blueprints[type].transform.origin.y = HIDE_DEPTH
+		disabled_blueprints[type].transform.origin.y = HIDE_DEPTH
 		return
-	if check_under_aoe(tile) and check_access(tile).size() > 0: # and %EnergyManager.can_afford(placement_player, 10.0):
-		enabled_blueprints[building_being_placed].transform = tile.get_global_transform()
-		enabled_blueprints[building_being_placed].transform.origin.y = -HIDE_DEPTH
-		disabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
+	if check_under_aoe(player_number, tile) and check_access(tile).size() > 0:
+		enabled_blueprints[type].global_transform = tile.get_global_transform()
+		enabled_blueprints[type].global_position.y = 0
+		disabled_blueprints[type].transform.origin.y = HIDE_DEPTH
 	else:
-		disabled_blueprints[building_being_placed].transform = tile.get_global_transform()
-		disabled_blueprints[building_being_placed].transform.origin.y = -HIDE_DEPTH
-		enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH
+		disabled_blueprints[type].global_transform = tile.get_global_transform()
+		disabled_blueprints[type].global_position.y = 0
+		enabled_blueprints[type].transform.origin.y = HIDE_DEPTH
 
 func new_building_instance(t : BuildingManager.Type):
 	match t:
@@ -67,50 +79,66 @@ func new_building_instance(t : BuildingManager.Type):
 		BuildingManager.Type.NEST: return $BuildingFactory/Nest.duplicate()
 	return null	
 
-func place_blueprint(tile : TileElement):
-	assert(building_being_placed != Type.NONE)
-	update_blueprint(tile)
-	if not can_place_here(tile):
+# This is a server only function
+func place_blueprint(player_number : int, tile : TileElement, type : Type):
+	if not multiplayer.is_server():
 		return
-	if tile.building != null:
+	update_blueprint(player_number, tile, type)
+	if not can_place_here(tile): # Tile needs to be lowered and not have another building on it
 		return
-	if not check_under_aoe(tile):
+	if not check_under_aoe(player_number, tile): # Tile needs to be under the player's AoE
 		return
-	#if not %EnergyManager.can_afford(placement_player, 10.0):
-		#return
-	if check_access(tile).size() == 0:
+	if check_access(tile).size() == 0: # Tile must have at least one vantage point
 		return
-	#
-	var b = new_building_instance(building_being_placed)
-	b.initialise(tile, Global.my_player_number, building_being_placed)
-	add_to_dict_and_scene(b)
-	#
-	# Set building before set blueprint (to update monorail correctly)
-	var new_blueprint = enabled_blueprints[building_being_placed].duplicate()
-	new_blueprint.transform.origin.y = 0
-	b.set_blueprint(new_blueprint)
-	add_child(new_blueprint)
-	#
-	enabled_blueprints[building_being_placed].transform.origin.y = HIDE_DEPTH # hide the hover one
-	#
+	# Pathing grid change only needs to happen on server
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
-	#
-	building_being_placed = Type.NONE
+	var bid = get_inc_next_building_id()
+	rpc("broadcast_place_blueprint", bid, player_number, tile.id, type)
 
-# Place a pre-constructed building. Used in setting up the level
+# Server has validated the request is all OK. Place using server-specified ID
+@rpc("authority", "call_local", "reliable")
+func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type : Type):
+	var tm = get_node_or_null("/root/World/TileManager")
+	var tile = tm.get_tile_by_id(tid)
+	var new_building = new_building_instance(type)
+	new_building.visible = false
+	add_to_dict_and_scene(bid, new_building)
+	new_building.global_transform = tile.get_global_transform()
+	new_building.global_position.y = 0
+	new_building.initialise(player_number, tile, type)
+	#
+	var new_blueprint = enabled_blueprints[type].duplicate()
+	new_blueprint.name = "Blueprint_" + str(bid)
+	new_blueprint.visible = true
+	apply_blueprint_material(new_blueprint, _blueprint_enabled_mat)
+	add_child(new_blueprint)
+	new_blueprint.global_transform = tile.get_global_transform()
+	new_blueprint.global_position.y = 0
+	new_building.set_blueprint(new_blueprint)
+	# Only if I happen to be the person who is placing this do we reset these UI elements
+	if player_number == Global.my_player_number:
+		enabled_blueprints[type].transform.origin.y = HIDE_DEPTH # hide the hover one
+		var hud = get_tree().get_first_node_in_group("hud")
+		hud.build_mode = HUD.Mode.NONE
+
+# Place a pre-constructed building. Used in setting up thhe level
 # Note: Does NOT call recompute_aoe. Call this once done with place_building
-func place_building(tile : TileElement, pnum : int, t : BuildingManager.Type):
-	var b = new_building_instance(t)
-	b.initialise(tile, pnum, t)
-	add_to_dict_and_scene(b)
+func place_building(pnum : int, tile : TileElement, type : BuildingManager.Type):
+	var b = new_building_instance(type)
+	add_to_dict_and_scene(get_inc_next_building_id(), b)
+	b.initialise(pnum, tile, type)
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
 
-func add_to_dict_and_scene(b : Building):
-	b.id = _next_building_id
+func get_inc_next_building_id() -> int:
+	var nbid := _next_building_id
 	_next_building_id += 1
+	return nbid
+
+func add_to_dict_and_scene(bid : int, b : Building):
+	b.id = bid
 	building_dictionary[b.id] = b
 	add_child(b)
 
@@ -122,6 +150,3 @@ func remove_building(id: int):
 
 func get_building_by_id(id: int) -> Building:
 	return building_dictionary.get(id)
-
-func is_placing() -> bool:
-	return building_being_placed != Type.NONE

@@ -5,19 +5,8 @@ extends Node3D
 
 func _ready():
 	if name == "BlueprintsEnabled":
-		recursive_set_blueprint(self, blueprint_enabled)
-		get_child(0).queue_free()
+		get_parent().apply_blueprint_material(self, blueprint_enabled)
 	elif name == "BlueprintsDisabled":
-		recursive_set_blueprint(self, blueprint_disabled)
-		get_child(0).queue_free()
-
-func recursive_set_blueprint(node, mat : ShaderMaterial):
-	for c in range(node.get_child_count()):
-		recursive_set_blueprint(node.get_child(c), mat)
-	if node is MeshInstance3D and node.mesh:
-		for i in range(node.mesh.get_surface_count()):
-			node.set_surface_override_material(i, mat)
-	elif node is CSGCombiner3D:
-		node.material_override = mat
-	elif node is GPUParticles3D or node is Zapper:
-		node.queue_free()
+		get_parent().apply_blueprint_material(self, blueprint_disabled)
+	for c in get_children(): # Hide
+		c.transform.origin.y = BuildingManager.HIDE_DEPTH

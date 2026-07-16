@@ -8,7 +8,5 @@
 visible = false
 
 [node name="BlueprintsEnabled" parent="." unique_id=1700115566 instance=ExtResource("1_6ek85")]
-visible = false
 
 [node name="BlueprintsDisabled" parent="." unique_id=283134426 instance=ExtResource("1_6ek85")]
-visible = false

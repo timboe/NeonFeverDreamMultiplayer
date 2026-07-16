@@ -198,7 +198,7 @@ func apply_loaded_level():
 				3: mcp_type = %BuildingManager.Type.MCP_3
 				4: mcp_type = %BuildingManager.Type.MCP_4
 				_: printerr("Unknown player number ", player_number)
-			%BuildingManager.place_building(tile, player_number, mcp_type)
+			%BuildingManager.place_building(player_number, tile, mcp_type)
 		elif tile.get_id() in Global.LEVEL.LOWERED:
 			tile.set_lowered()
 	%TileManager.recompute_aoe()
@@ -269,7 +269,10 @@ func recompute_aoe():
 
 # Register click on tile to select. Toggle selection for pnum
 # WARNING: Do not call directly. Use Global.send_command(player_number, "toggle_tile", [tile_id])
+# This is a server only function
 func apply_toggle(pnum: int, toggle_tile_id: int):
+	if not multiplayer.is_server():
+		return
 	if not tile_dictionary.has(toggle_tile_id):
 		print("TileManager.apply_toggle: unknown tile_id ", toggle_tile_id)
 		return
@@ -289,6 +292,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int):
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 		
 # NOTE - "selected by" is only strictly needed on the original client and server - not all other nodes.
+# But we don't want to be sending different payloads to different clients
 @rpc("authority", "call_remote", "reliable")
 func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	if not tile_dictionary.has(update_tile_id):
