@@ -152,17 +152,18 @@ func _process(_delta : float):
 		return
 	debug_mesh.clear_surfaces()
 	debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var added := false
 	for job in jobs_dict.values():
 		if not job["assigned"] or not job.has("path_dest"):
 			continue
-		added = true
 		var a = job["path_dest"].pathing_centre
 		var b = job["assigned"].location.pathing_centre
 		match job["type"]:
 			Type.TOGGLE_TILE:
-				
 				debug_mesh.surface_set_color(Color.GREEN)
+				debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
+				debug_mesh.surface_add_vertex(Vector3(b.x, b.y + 5, b.z))
+			Type.CONSTRUCT_BUILDING:
+				debug_mesh.surface_set_color(Color.CYAN)
 				debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
 				debug_mesh.surface_add_vertex(Vector3(b.x, b.y + 5, b.z))
 			#Type.CLAIM_TILE:

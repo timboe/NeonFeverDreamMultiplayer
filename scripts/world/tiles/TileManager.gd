@@ -107,10 +107,22 @@ func add_cluster(xOff : int, yOff : int):
 	spatial.add_child(physics_body_c)
 	spatial.add_child(physics_body_d)
 	$Tiles.add_child(spatial)
-	physics_body_a.queue_free() if check_disabled(physics_body_a) else populate(physics_body_a, "tilesA")
-	physics_body_b.queue_free() if check_disabled(physics_body_b) else populate(physics_body_b, "tilesB")
-	physics_body_c.queue_free() if check_disabled(physics_body_c) else populate(physics_body_c, "tilesC")
-	physics_body_d.queue_free() if check_disabled(physics_body_d) else populate(physics_body_d, "tilesD")
+	if check_disabled(physics_body_a):
+		physics_body_a.queue_free()
+	else:
+		populate(physics_body_a, "tilesA")
+	if check_disabled(physics_body_b):
+		physics_body_b.queue_free()
+	else:
+		populate(physics_body_b, "tilesB")
+	if check_disabled(physics_body_c):
+		physics_body_c.queue_free()
+	else:
+		populate(physics_body_c, "tilesC")
+	if check_disabled(physics_body_d):
+		physics_body_d.queue_free()
+	else:
+		populate(physics_body_d, "tilesD")
 
 func _generate():
 	tile_id = 0
@@ -189,8 +201,8 @@ func set_neighbours():
 
 func apply_loaded_level():
 	for tile in get_tree().get_nodes_in_group("tiles"):
-		if tile.get_id() in Global.LEVEL.MCP:
-			var player_number = (Global.LEVEL.MCP.find(tile.get_id()) + 1)
+		if tile.get_id() in Global.LEVEL.MCP_ARRAY:
+			var player_number = (Global.LEVEL.MCP_ARRAY.find(tile.get_id()) + 1)
 			var mcp_type = %BuildingManager.Type.MCP_1
 			match player_number:
 				1: mcp_type = %BuildingManager.Type.MCP_1
@@ -241,7 +253,7 @@ func recompute_aoe():
 	# player_aoe_rings: BFS from each player's MCP, restricted to their AoE
 	player_aoe_rings.clear()
 	for pnum in player_aoe_totals:
-		var mcp_tile_id = Global.LEVEL.MCP[pnum - 1]
+		var mcp_tile_id = Global.LEVEL.MCP_ARRAY[pnum - 1]
 		if not tile_dictionary.has(mcp_tile_id):
 			continue
 		var mcp_tile = tile_dictionary[mcp_tile_id]
@@ -302,10 +314,10 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array):
 	tile.update_selection_and_aoe_visual()
 
 @rpc("authority", "call_local")
-func rpc_toggle_animation(tile_id: int, mode : int, thunk_distance: float = 0, thunk_time: float = 0, fall_time: float = 0, dest: float = 0):
-	if not tile_dictionary.has(tile_id):
+func rpc_toggle_animation(rpc_tile_id: int, mode : int, thunk_distance: float = 0, thunk_time: float = 0, fall_time: float = 0, dest: float = 0):
+	if not tile_dictionary.has(rpc_tile_id):
 		return
-	tile_dictionary[tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
+	tile_dictionary[rpc_tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
 
 func disabled_tiles_to_multimesh():
 	var disabled := get_tree().get_nodes_in_group("disabled")

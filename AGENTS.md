@@ -31,8 +31,8 @@ send_command_me / send_command
   ├─ Server exists? → Server.handle_command(pnum, command, args)
   │                     └─ reflection → _cmd_toggle_cell / _cmd_toggle_tile / ...
   └─ No server (remote client)? → rpc_id(1, "_on_remote_command", ...)
-                                   └─ Server._on_remote_command()
-                                      └─ peer_to_player[caller] → handle_command(pnum, ...)
+								   └─ Server._on_remote_command()
+									  └─ peer_to_player[caller] → handle_command(pnum, ...)
 ```
 
 **Key points**:
@@ -48,9 +48,9 @@ Functions that must only run on the server use an early return guard at the top:
 
 ```gdscript
 func new_unit_callback(new_unit):
-    if not multiplayer.is_server():
-        return
-    ...
+	if not multiplayer.is_server():
+		return
+	...
 ```
 
 This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to prevent duplicate unit creation on clients. The `_physics_process` in `TileManager` runs on all peers — any server-only logic called from there must be self-guarded.
@@ -97,22 +97,22 @@ Every unit has exactly one of three states. State transitions are the core of th
 ### State transitions
 
 ```
-                    ┌──────────────────────────────────────────────────┐
-                    │                                                  │
+					┌──────────────────────────────────────────────────┐
+					│                                                  │
   ┌─────────┐   assign_job()   ┌─────────┐   start_work()   ┌─────────┐
   │  IDLE   │ ───────────────→ │ PATHING │ ───────────────→ │ WORKING │
   └─────────┘                  └─────────┘                  └─────────┘
-       ↑                            │    │                        │  │
-       │                            │    │                        │  │
-       │  remove_job()              │    │  remove_job()          │  │  remove_job()
-       │  abandon_job_while_pathing │    │  abandon_job_while_    │  │  abandon_job_while_working
-       │  job_finished()            │    │  pathing               │  │  job_finished()
-       │                            │    │                        │  │
-       └────────────────────────────┘    └────────────────────────┘  │
-                                                                     │
-       ┌─────────────────────────────────────────────────────────────┘
-       │
-       └──→ IDLE (unit resumes wandering)
+	   ↑                            │    │                        │  │
+	   │                            │    │                        │  │
+	   │  remove_job()              │    │  remove_job()          │  │  remove_job()
+	   │  abandon_job_while_pathing │    │  abandon_job_while_    │  │  abandon_job_while_working
+	   │  job_finished()            │    │  pathing               │  │  job_finished()
+	   │                            │    │                        │  │
+	   └────────────────────────────┘    └────────────────────────┘  │
+																	 │
+	   ┌─────────────────────────────────────────────────────────────┘
+	   │
+	   └──→ IDLE (unit resumes wandering)
 ```
 
 All transitions are server-only (`if not multiplayer.is_server(): return` guard at top of every function).
@@ -270,10 +270,10 @@ All three are independent: `set_tile_mm_color` preserves `a`, `set_tile_mm_emiss
 var value: int = 0 setget set_value, get_value
 # Godot 4
 var value: int = 0:
-    set(v):
-        value = v
-    get:
-        return value
+	set(v):
+		value = v
+	get:
+		return value
 ```
 
 Use underscore-backed var to avoid recursion: `var _contains_val` backed by `contains` set/get.

@@ -2,36 +2,29 @@ extends StaticBody3D
 
 class_name Building
 
-var id : int # My ID within the BuildingManager dict. TODO - not needed?
-var location : TileElement # My tile, bi-directional linked
-var player_owner : int # Building owner. Cannot be infered from tile
-
-var default_mat = preload("res://materials/player/player1_material.tres")
-var updated_mat
+var id : int
+var location : TileElement
+var player_owner : int
 
 enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTION}
 var state : int
 var type : BuildingManager.Type
 
-const SPAWN_TIME : float = 5.0
 const CONSTRUCTION_TIME : float = 5.0
-const CAPTURE_TIME : float = 10.0
-var capture_in_progress = false
 
-var spawn_particles
-var zoomba_constructing_me
+var _working_unit : Unit = null
 
-var my_blueprint
-
-var _build_tween: Tween
+var _construction_timer := 0.0
+var _construction_energy_spent := 0.0
+var _construction_cost := 0.0
 
 func initialise(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	initialise_base(pnum, tile, t)
 
 func initialise_base(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	type = t
-	location = tile # Two way link
-	tile.set_building(self)  # Two way link
+	location = tile
+	tile.set_building(self)
 	player_owner = pnum
 	state = State.BLUEPRINT
 	global_transform = tile.get_global_transform()
@@ -39,77 +32,74 @@ func initialise_base(pnum : int, tile : TileElement, t : BuildingManager.Type):
 	add_to_group("building")
 	add_to_group("building_player"+str(pnum))
 
-func set_blueprint(b):
-	my_blueprint = b
-	set_visible(false)
-	state = State.BLUEPRINT
-	
 func _ready():
-	set_livery()
+	pass
+
+func _process(delta : float) -> void:
+	if not multiplayer.is_server():
+		return
+	if state != State.UNDER_CONSTRUCTION:
+		return
+	_construction_timer += delta
+	var energy_per_tick := _construction_cost / CONSTRUCTION_TIME * delta
+	var em = get_node_or_null("/root/World/EnergyManager")
+	if em:
+		_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
+	if _construction_energy_spent >= _construction_cost:
+		set_constructed()
 
 func find_unit_spawn_location():
 	for n in location.neighbours:
 		if n.state == TileManager.State.LOWERED:
 			return n.pathing_centre
 	return null
-	
+
 func get_aoe_radius():
 	return Config.BUILDING_AOE[ type ]
 
 func check_work():
 	pass
 
-func set_livery():
-	# TODO - tile can now have multiple AoE players, this does not work anymore to select the owner
-	pass
-	#if location != null and location.player > 0:
-		#updated_mat = load("res://materials/player" + str(location.player) + "_material.tres")
-		#recursive_set_livery(self)
-
-# TODO - fix set_livery first
-#func recursive_set_livery(var node):
-	#for c in range(node.get_child_count()):
-		#recursive_set_livery(node.get_child(c))
-	#var rid = node.get_surface_material(0).get_rid() if node is MeshInstance and node.get_surface_material(0) != null else null
-	#if rid != null and rid == default_mat.get_rid():
-		#node.set_surface_material(0, updated_mat)
-
-
-func start_construction(by_whome):
+func start_construction(unit : Unit):
+	if not multiplayer.is_server():
+		return
 	assert(state == State.BLUEPRINT)
 	state = State.UNDER_CONSTRUCTION
-	_build_tween = create_tween()
-	_build_tween.tween_callback(set_constructed_a.bind(by_whome)).set_delay(CONSTRUCTION_TIME)
+	_working_unit = unit
+	_construction_timer = 0.0
+	_construction_energy_spent = 0.0
+	_construction_cost = Config.CONSTRUCTION_COST.get(type, 0.0)
+	if _construction_cost <= 0.0:
+		set_constructed()
 
-func abandon_construction():
+func cancel_construction():
+	if not multiplayer.is_server():
+		return
 	assert(state == State.UNDER_CONSTRUCTION)
-	if _build_tween and _build_tween.is_valid():
-		_build_tween.kill()
 	state = State.BLUEPRINT
+	_working_unit = null
+	_construction_timer = 0.0
+	_construction_energy_spent = 0.0
 
-func set_constructed_a(by_whome):
+func set_constructed():
+	if not multiplayer.is_server():
+		return
 	assert(state == State.UNDER_CONSTRUCTION)
-	assert(my_blueprint != null)
 	state = State.CONSTRUCTED
-	by_whome.job_finished()
-	_build_tween = create_tween()
-	_build_tween.tween_callback(set_constructed_b).set_delay(1.0)
-	
-func set_constructed_b():
-	# Now with cloud cover
+	if is_instance_valid(_working_unit):
+		_working_unit.job_finished()
+	_working_unit = null
+	rpc("rpc_constructed", id)
+	var em = get_node_or_null("/root/World/EnergyManager")
+	if em:
+		em.recalculate_capacity()
+
+@rpc("authority", "call_local", "reliable")
+func rpc_constructed(bid : int):
+	var bm = get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var bp = bm.get_node_or_null("Blueprint_" + str(bid))
+	if bp:
+		bp.queue_free()
 	set_visible(true)
-	my_blueprint.queue_free()
-	
-	
-func queue_construction_jobs(_placement_player : int):
-	pass
-	# TODO
-	#assert(state == State.BLUEPRINT)
-	#if placement_player == -1:
-		## Called from set_captured, we can be sure we're not building a barrier then. Safe to do...
-		#placement_player = location.player
-	#var access_tiles = location.get_access_tiles_wall(placement_player) if type == BuildingManager.Type.BAR else location.get_access_tiles()
-	#assert(access_tiles.size() > 0)
-	#for access in access_tiles:
-		#job_manager.add_job(placement_player, job_manager.JobType.CONSTRUCT_BUILDING, access, location)
-	

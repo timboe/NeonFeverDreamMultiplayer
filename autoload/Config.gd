@@ -26,6 +26,11 @@ static var HOME_TERRITORY_UNITS : Array = [
 	UnitManager.Type.AERIAL_PATROL,
 ]
 
+static var CONSTRUCTION_COST : Dictionary = {
+	BuildingManager.Type.GEN: 900.0,
+	BuildingManager.Type.VAT: 400.0,
+}
+
 static var PLAYER_COLORS : Array[Color] = [
 	Color.RED,
 	Color.PURPLE,

@@ -144,20 +144,25 @@ func start_work():
 			if has_node("Zapper"):
 				$Zapper.target_position.y = Cairo.UNIT
 			job["location"].do_toggle_countdown(self)
-		#JobManager.JobType.CONSTRUCT_BUILDING:
-			#$Zapper.target_position.y = Cairo.UNIT
-			#var building = job["target"].building
-			#assert(building != null)
-			#building.start_construction(self)
+		JobManager.Type.CONSTRUCT_BUILDING:
+			if has_node("Zapper"):
+				$Zapper.target_position.y = Cairo.UNIT
+			var b = job["location"].building
+			if b:
+				b.start_construction(self)
 		_:
 			print("UNKNOWN JOB TYPE")
 			assert(false)
 
-func check_job_still_valid() -> bool: # TODO
+func check_job_still_valid() -> bool:
 	if not multiplayer.is_server():
 		return false
 	if job.is_empty():
 		return false
+	if job["type"] == JobManager.Type.CONSTRUCT_BUILDING:
+		var b = job["location"].building
+		if not b or b.state != Building.State.BLUEPRINT:
+			return false
 	return true
 
 func check_pathing_valid() -> bool:
@@ -196,6 +201,11 @@ func remove_job():
 		match job["type"]:
 			JobManager.Type.TOGGLE_TILE:
 				job["location"].cancel_toggle_countdown(self)
+			JobManager.Type.CONSTRUCT_BUILDING:
+				var b = job["location"].building
+				if b and b.state == Building.State.UNDER_CONSTRUCTION:
+					b.cancel_construction()
+					b._working_unit = null
 	state = State.IDLE
 	if has_node("Zapper"):
 		$Zapper.visible = false
@@ -229,9 +239,11 @@ func abandon_job_while_working():
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
 			job["location"].cancel_toggle_countdown(self)
-		_:
-			print("UNKNOWN JOB TYPE")
-			assert(false)
+		JobManager.Type.CONSTRUCT_BUILDING:
+			var b = job["location"].building
+			if b and b.state == Building.State.UNDER_CONSTRUCTION:
+				b.cancel_construction()
+				b._working_unit = null
 	state = State.IDLE
 	var j_id = job["id"]
 	print("ABANDONING JOB WHILE WORKIN ", id)

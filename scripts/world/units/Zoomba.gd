@@ -20,7 +20,7 @@ func _ready():
 func initialise(b : Building):
 	initialise_base(b, UnitManager.Type.ZOOMBA)
 	add_to_group("zoomba")
-	var updated_mat = load("res://materials/player" + str(building.player_owner) + "_material.tres")
+	var updated_mat = load("res://materials/player/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
 	
 func scram():

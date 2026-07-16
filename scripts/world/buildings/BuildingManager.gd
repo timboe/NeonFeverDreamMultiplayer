@@ -114,7 +114,6 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 	add_child(new_blueprint)
 	new_blueprint.global_transform = tile.get_global_transform()
 	new_blueprint.global_position.y = 0
-	new_building.set_blueprint(new_blueprint)
 	# Only if I happen to be the person who is placing this do we reset these UI elements
 	if player_number == Global.my_player_number:
 		enabled_blueprints[type].transform.origin.y = HIDE_DEPTH # hide the hover one
@@ -122,6 +121,8 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 		hud.build_mode = HUD.Mode.NONE
 	if multiplayer.is_server():
 		%EnergyManager.recalculate_capacity()
+		if type in Config.CONSTRUCTION_COST:
+			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
 
 # Place a pre-constructed building. Used in setting up thhe level
 # Note: Does NOT call recompute_aoe. Call this once done with place_building
