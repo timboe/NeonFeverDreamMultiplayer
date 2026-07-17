@@ -2,30 +2,41 @@ extends RayCast3D
 
 class_name Zapper
 
-@onready var ray_render : MeshInstance3D = $RayRender
+# --- Constants ---
+
+const JAGGIES_UPDATE: float = 0.1
+
+# --- Nodes ---
+
+@onready var ray_render: MeshInstance3D = $RayRender
 @onready var imm_mesh := ImmediateMesh.new()
-@onready var rand = RandomNumberGenerator.new()
+@onready var rand := RandomNumberGenerator.new()
 
-const JAGGIES_UPDATE := 0.1
-var jaggies : float = 0.0
+# --- State ---
 
-func _ready():
+var jaggies: float = 0.0
+
+# --- Lifecycle ---
+
+func _ready() -> void:
 	ray_render.mesh = imm_mesh
 
-func _process(delta : float):
+func _process(delta: float) -> void:
 	jaggies += delta
 	if jaggies <= JAGGIES_UPDATE:
 		return
 	jaggies -= JAGGIES_UPDATE
-	
+
 	if not visible:
 		imm_mesh.clear_surfaces()
 		return
-	
+
 	imm_mesh.clear_surfaces()
 	draw_jaggy_to(target_position.y)
-	
-func draw_jaggy_to(dist : float):
+
+# --- Rendering ---
+
+func draw_jaggy_to(dist: float) -> void:
 	imm_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	imm_mesh.surface_set_color(Color.WHITE)
 	var pos := Vector3.ZERO

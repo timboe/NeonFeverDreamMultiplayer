@@ -2,50 +2,69 @@ extends Unit
 
 class_name Avatar
 
-const GRAVITY = -60
-var vel = Vector3()
-const MAX_SPEED = 20
-const JUMP_SPEED = 18
-const ACCEL = 4.5
-
-var dir = Vector3()
-var jaggies : float = 0
-var mouse_initial : bool = true
-
+const GRAVITY := -60.0
+const MAX_SPEED := 20.0
+const JUMP_SPEED := 18.0
+const ACCEL := 4.5
+const DEACCEL := 16.0
+const MAX_SLOPE_ANGLE := 40.0
 const JAGGIES_UPDATE := 0.05
+const MOUSE_SENSITIVITY := 0.4
 
-const DEACCEL= 16
-const MAX_SLOPE_ANGLE = 40
-
-@onready var fps_body : CharacterBody3D = $FPSBody
-@onready var camera : Camera3D = $FPSBody/Rotation_Helper/FPSCamera
-@onready var rotation_helper : Node3D = $FPSBody/Rotation_Helper
-@onready var ray : RayCast3D = $FPSBody/Rotation_Helper/RayCast
-@onready var ray_render : MeshInstance3D = $FPSBody/Rotation_Helper/RayRender
+@onready var fps_body: CharacterBody3D = $FPSBody
+@onready var camera: Camera3D = $FPSBody/Rotation_Helper/FPSCamera
+@onready var rotation_helper: Node3D = $FPSBody/Rotation_Helper
+@onready var ray: RayCast3D = $FPSBody/Rotation_Helper/RayCast
+@onready var ray_render: MeshInstance3D = $FPSBody/Rotation_Helper/RayRender
 @onready var rand := RandomNumberGenerator.new()
 
 var ray_mesh := ImmediateMesh.new()
+var vel := Vector3()
+var dir := Vector3()
+var jaggies: float = 0
+var mouse_initial: bool = true
 
-func _ready():
+# --- Lifecycle ---
+
+func _ready() -> void:
 	ray_render.mesh = ray_mesh
 
-var MOUSE_SENSITIVITY = 0.4
-
-func _physics_process(delta):
+func _physics_process(delta: float) -> void:
 	process_input(delta)
 	process_movement(delta)
 
-func process_input(delta):
-	if !camera.current:
+func _input(event: InputEvent) -> void:
+	if not camera.current:
 		return
-	
-	# ----------------------------------
+	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		rotation_helper.rotate_x(deg_to_rad(event.relative.y * MOUSE_SENSITIVITY * -1))
+		fps_body.rotate_y(deg_to_rad(event.relative.x * MOUSE_SENSITIVITY) * -1)
+		var camera_rot = rotation_helper.rotation_degrees
+		camera_rot.x = clamp(camera_rot.x, -70, 70)
+		rotation_helper.rotation_degrees = camera_rot
+
+func initialise(b: Building) -> void:
+	super.initialise(b)
+	type = UnitManager.Type.AVATAR
+	_health_bar.set_bar_size(3.0, 0.3)
+	_health_bar.reparent(fps_body)
+	_health_bar.position = Vector3(0, 5.0, 0)
+	add_to_group("avatar")
+	add_to_group("avatar_player" + str(building.player_owner))
+
+func idle_callback() -> void:
+	pass # Avatar uses FPS controls, not the idle/pathing system
+
+# --- Input ---
+
+func process_input(delta: float) -> void:
+	if not camera.current:
+		return
+
 	# Walking
 	dir = Vector3()
 	var cam_xform = camera.get_global_transform()
-
-	var input_movement_vector = Vector2()
-
+	var input_movement_vector := Vector2()
 	if Input.is_action_pressed("ui_movement_forward"):
 		input_movement_vector.y += 1
 	if Input.is_action_pressed("ui_movement_backward"):
@@ -54,30 +73,23 @@ func process_input(delta):
 		input_movement_vector.x -= 1
 	if Input.is_action_pressed("ui_movement_right"):
 		input_movement_vector.x += 1
-
 	input_movement_vector = input_movement_vector.normalized()
-
 	# Basis vectors are already normalized.
 	dir += -cam_xform.basis.z * input_movement_vector.y
 	dir += cam_xform.basis.x * input_movement_vector.x
-	# ----------------------------------
 
-	# ----------------------------------
 	# Jumping
 	if fps_body.is_on_floor():
 		if Input.is_action_just_pressed("ui_movement_jump"):
 			vel.y = JUMP_SPEED
-	# ----------------------------------
 
-	# ----------------------------------
 	# Capturing/Freeing the cursor
 	if Input.is_action_just_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	# ----------------------------------
-	
+
 	# Casting and selecting
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		jaggies += delta
@@ -91,38 +103,24 @@ func process_input(delta):
 	else:
 		ray_mesh.clear_surfaces()
 		mouse_initial = true
-		
-func draw_jaggy_to(dist : float):
-	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	ray_mesh.surface_set_color(Color.WHITE)
-	ray_mesh.surface_add_vertex(Vector3.ZERO)
-	var pos := Vector3.ZERO
-	ray_mesh.surface_add_vertex(pos)
-	while pos.y > dist:
-		pos.x += rand.randf_range(-0.1, 0.1)
-		pos.z += rand.randf_range(-0.1, 0.1)
-		pos.y += rand.randf_range(-3.0, 1.0) if pos.y > -5.0 else rand.randf_range(-3.0, 0.0)
-		if pos.y <= dist:
-			pos = Vector3(0, dist, 0)
-		ray_mesh.surface_add_vertex(pos)
-	ray_mesh.surface_end()
 
-func process_movement(delta):
-	if !camera.current:
+# --- Movement ---
+
+func process_movement(delta: float) -> void:
+	if not camera.current:
 		return
-		
+
 	dir.y = 0
 	dir = dir.normalized()
-
 	vel.y += delta * GRAVITY
 
-	var hvel = vel
+	var hvel := vel
 	hvel.y = 0
 
-	var target = dir
+	var target := dir
 	target *= MAX_SPEED
 
-	var accel
+	var accel: float
 	if dir.dot(hvel) > 0:
 		accel = ACCEL
 	else:
@@ -136,26 +134,19 @@ func process_movement(delta):
 	fps_body.move_and_slide()
 	vel = fps_body.velocity
 
-func _input(event):
-	if !camera.current:
-		return
+# --- Visual ---
 
-	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		rotation_helper.rotate_x(deg_to_rad(event.relative.y * MOUSE_SENSITIVITY * -1))
-		fps_body.rotate_y(deg_to_rad(event.relative.x * MOUSE_SENSITIVITY) * -1)
-
-		var camera_rot = rotation_helper.rotation_degrees
-		camera_rot.x = clamp(camera_rot.x, -70, 70)
-		rotation_helper.rotation_degrees = camera_rot
-
-func initialise(b : Building):
-	super.initialise(b)
-	type = UnitManager.Type.AVATAR
-	_health_bar.set_bar_size(3.0, 0.3)
-	_health_bar.reparent(fps_body)
-	_health_bar.position = Vector3(0, 5.0, 0)
-	add_to_group("avatar")
-	add_to_group("avatar_player" + str(building.player_owner))
-
-func idle_callback():
-	pass # Avatar uses FPS controls, not the idle/pathing system
+func draw_jaggy_to(dist: float) -> void:
+	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	ray_mesh.surface_set_color(Color.WHITE)
+	ray_mesh.surface_add_vertex(Vector3.ZERO)
+	var pos := Vector3.ZERO
+	ray_mesh.surface_add_vertex(pos)
+	while pos.y > dist:
+		pos.x += rand.randf_range(-0.1, 0.1)
+		pos.z += rand.randf_range(-0.1, 0.1)
+		pos.y += rand.randf_range(-3.0, 1.0) if pos.y > -5.0 else rand.randf_range(-3.0, 0.0)
+		if pos.y <= dist:
+			pos = Vector3(0, dist, 0)
+		ray_mesh.surface_add_vertex(pos)
+	ray_mesh.surface_end()

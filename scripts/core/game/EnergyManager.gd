@@ -1,5 +1,7 @@
 extends Node3D
 
+class_name EnergyManager
+
 const TICK_INTERVAL := 0.05
 const SECOND_INTERVAL := 1.0
 
@@ -14,7 +16,9 @@ var _ratio: Dictionary = {}
 var _tick_timer := 0.0
 var _second_timer := 0.0
 
-func _ready():
+# --- Lifecycle ---
+
+func _ready() -> void:
 	for p in Global.MAX_PLAYERS:
 		energy[p] = 0.0
 		capacity[p] = 0.0
@@ -35,7 +39,9 @@ func _process(delta: float) -> void:
 		_second_timer -= SECOND_INTERVAL
 		_second_tick()
 
-func _energy_tick():
+# --- Tick functions ---
+
+func _energy_tick() -> void:
 	for p in Global.MAX_PLAYERS:
 		if capacity[p] <= 0.0:
 			continue
@@ -47,7 +53,7 @@ func _energy_tick():
 		_generated[p] += tick_gen
 	_broadcast_energy()
 
-func _second_tick():
+func _second_tick() -> void:
 	for p in Global.MAX_PLAYERS:
 		rate_of_change[p] = _generated[p] - _requested[p]
 		if _requested[p] > 0.0:
@@ -56,6 +62,8 @@ func _second_tick():
 			_ratio[p] = 1.0
 		_generated[p] = 0.0
 		_requested[p] = 0.0
+
+# --- Public API ---
 
 func request_energy(pnum: int, amount: float) -> float:
 	if not multiplayer.is_server():
@@ -68,7 +76,7 @@ func request_energy(pnum: int, amount: float) -> float:
 	_requested[pnum] += amount
 	return allocated
 
-func recalculate_capacity():
+func recalculate_capacity() -> void:
 	for p in Global.MAX_PLAYERS:
 		capacity[p] = 0.0
 	for v in get_tree().get_nodes_in_group("vat"):
@@ -78,7 +86,9 @@ func recalculate_capacity():
 		if energy[p] > capacity[p]:
 			energy[p] = capacity[p]
 
-func _broadcast_energy():
+# --- Network ---
+
+func _broadcast_energy() -> void:
 	var data := PackedFloat64Array()
 	data.append(Global.MAX_PLAYERS)
 	for p in Global.MAX_PLAYERS:
@@ -89,7 +99,7 @@ func _broadcast_energy():
 	rpc("apply_energy", data)
 
 @rpc("authority", "call_remote", "unreliable")
-func apply_energy(data: PackedFloat64Array):
+func apply_energy(data: PackedFloat64Array) -> void:
 	var count := int(data[0])
 	var idx := 1
 	for _i in range(count):
@@ -97,6 +107,8 @@ func apply_energy(data: PackedFloat64Array):
 		energy[pnum] = data[idx]; idx += 1
 		capacity[pnum] = data[idx]; idx += 1
 		rate_of_change[pnum] = data[idx]; idx += 1
+
+# --- Queries ---
 
 func get_player_energy(pnum: int) -> Dictionary:
 	return {

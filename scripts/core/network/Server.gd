@@ -5,20 +5,22 @@ class_name Server
 # on the host machine only. Remote clients never have this node.
 #
 # All commands arrive through handle_command():
-#   Local (host/AI) → Global.send_command() → handle_command()
-#   Remote          → Global._on_remote_command() → handle_command()
+#   Local (host/AI) -> Global.send_command() -> handle_command()
+#   Remote          -> Global._on_remote_command() -> handle_command()
 #
 # Command handlers use the _cmd_ prefix for automatic dispatch via
-# reflection — see handle_command().
+# reflection -- see handle_command().
 
 var enet_peer: ENetMultiplayerPeer
 var peer_to_player: Dictionary = {}
 var player_to_peer: Dictionary = {}
 var next_player_num: int = 1
 
-func start(config: GameConfig):
+# --- Lifecycle ---
+
+func start(config: GameConfig) -> void:
 	enet_peer = ENetMultiplayerPeer.new()
-	var err = enet_peer.create_server(config.port, config.player_count)
+	var err := enet_peer.create_server(config.port, config.player_count)
 	if err != OK:
 		push_error("Failed to start server: ", err)
 		return
@@ -26,20 +28,24 @@ func start(config: GameConfig):
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
-func stop():
+func stop() -> void:
 	multiplayer.multiplayer_peer = null
 	if enet_peer:
 		enet_peer.close()
 
-func handle_command(pnum: int, command: String, args: Array):
-	var method_name = "_cmd_" + command
+# --- Command dispatch ---
+
+func handle_command(pnum: int, command: String, args: Array) -> void:
+	var method_name := "_cmd_" + command
 	if has_method(method_name):
 		callv(method_name, [pnum] + args)
 	else:
 		push_error("Server: unknown command: ", command)
 
-func _on_peer_connected(peer_id: int):
-	var pnum = next_player_num
+# --- Peer management ---
+
+func _on_peer_connected(peer_id: int) -> void:
+	var pnum := next_player_num
 	next_player_num += 1
 	peer_to_player[peer_id] = pnum
 	player_to_peer[pnum] = peer_id
@@ -48,29 +54,33 @@ func _on_peer_connected(peer_id: int):
 	# TODO: sync full tile state to reconnecting mid-game peer
 	#   tm.rpc_id(peer_id, "set_tile_selection", id, selected_by) for every tile with selectors
 
-func _on_peer_disconnected(peer_id: int):
+func _on_peer_disconnected(peer_id: int) -> void:
 	var pnum = peer_to_player.get(peer_id)
-	if pnum:
+	if pnum != null:
 		print("Server._on_peer_disconnected  peer_id=", peer_id, "  pnum=", pnum)
 		peer_to_player.erase(peer_id)
 		player_to_peer.erase(pnum)
 
-func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int):
-	var tm = get_node_or_null("/root/World/TileManager")
+# --- Command handlers ---
+
+func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int) -> void:
+	var tm := get_node_or_null("/root/World/TileManager")
 	if not tm:
+		push_warning("Server._cmd_place_blueprint: TileManager not found")
 		return
 	var tile = tm.get_tile_by_id(tile_id)
 	if not tile:
+		push_warning("Server._cmd_place_blueprint: tile not found: ", tile_id)
 		return
-	var bm = get_node_or_null("/root/World/BuildingManager")
+	var bm := get_node_or_null("/root/World/BuildingManager")
 	if not bm:
+		push_warning("Server._cmd_place_blueprint: BuildingManager not found")
 		return
 	bm.place_blueprint(player_number, tile, building_type)
 
-func _cmd_toggle_tile(player_number: int, tile_id: int):
-	print("Server._cmd_toggle_tile  pnum=", player_number, "  tile_id=", tile_id)
-	var tm = get_node_or_null("/root/World/TileManager")
+func _cmd_toggle_tile(player_number: int, tile_id: int) -> void:
+	var tm := get_node_or_null("/root/World/TileManager")
 	if not tm:
-		print("  -> TileManager not found!")
+		push_warning("Server._cmd_toggle_tile: TileManager not found")
 		return
 	tm.apply_toggle(player_number, tile_id)

@@ -1,31 +1,29 @@
 extends Node3D
 
+class_name PulseEffect
+
 const CYCLE_TIME := 1.0
 const BASE_TICK_TIME := 0.1
 const MIN_TICK_TIME := 0.04
 const BASE_EMISSION := 0.1
 const MIN_EMISSION := 0.05
 
-var tile_manager : TileManager
+var tile_manager: TileManager
 
-var _cycle_timers : Dictionary = {}
-var _ring_timers : Dictionary = {}
-var _ring_index : Dictionary = {}
-var _active : Dictionary = {}
+var _cycle_timers: Dictionary = {}
+var _ring_timers: Dictionary = {}
+var _ring_index: Dictionary = {}
+var _active: Dictionary = {}
 
-func _ready():
-	set_physics_process(true)
+func _ready() -> void:
+	tile_manager = get_parent() as TileManager
+	set_physics_process(tile_manager != null)
 
-func _physics_process(delta : float):
-	if tile_manager == null:
-		tile_manager = get_parent() as TileManager
-		if tile_manager == null:
-			return
-
+func _physics_process(delta: float) -> void:
 	for pnum in range(1, Global.MAX_PLAYERS + 1):
 		_tick(pnum, delta)
 
-func _tick(pnum : int, delta : float):
+func _tick(pnum: int, delta: float) -> void:
 	if not _active.get(pnum, false):
 		_cycle_timers[pnum] = _cycle_timers.get(pnum, CYCLE_TIME) - delta
 		if _cycle_timers[pnum] <= 0.0:
@@ -36,10 +34,10 @@ func _tick(pnum : int, delta : float):
 	if _ring_timers[pnum] <= 0.0:
 		_advance(pnum)
 
-func _get_rings(pnum : int) -> Array:
+func _get_rings(pnum: int) -> Array:
 	return tile_manager.player_aoe_rings.get(pnum, [])
 
-func _start(pnum : int):
+func _start(pnum: int) -> void:
 	var rings := _get_rings(pnum)
 	if rings.is_empty():
 		_cycle_timers[pnum] = CYCLE_TIME
@@ -49,9 +47,9 @@ func _start(pnum : int):
 	_ring_timers[pnum] = _tick_time(0, rings.size())
 	_flash_ring(pnum, 0)
 
-func _advance(pnum : int):
+func _advance(pnum: int) -> void:
 	var rings := _get_rings(pnum)
-	var prev : int = _ring_index.get(pnum, 0)
+	var prev: int = _ring_index.get(pnum, 0)
 	_clear_ring(prev, rings)
 
 	var next := prev + 1
@@ -63,31 +61,31 @@ func _advance(pnum : int):
 	_ring_timers[pnum] = _tick_time(next, rings.size())
 	_flash_ring(pnum, next)
 
-func _finish(pnum : int):
+func _finish(pnum: int) -> void:
 	_active[pnum] = false
 	_cycle_timers[pnum] = CYCLE_TIME
 
-func _flash_ring(pnum : int, idx : int):
+func _flash_ring(pnum: int, idx: int) -> void:
 	var rings := _get_rings(pnum)
 	if idx >= rings.size():
 		return
-	var color : Color = Config.PLAYER_COLORS[pnum - 1]
+	var color: Color = Config.PLAYER_COLORS[pnum - 1]
 	var em := _emission(idx, rings.size())
 	for tile in rings[idx]:
 		tile.request_emission(TileElement.EmissionEffect.PULSE_ANIMATION, color, em)
 
-func _clear_ring(idx : int, rings : Array):
+func _clear_ring(idx: int, rings: Array) -> void:
 	if idx >= rings.size():
 		return
 	for tile in rings[idx]:
 		tile.release_emission(TileElement.EmissionEffect.PULSE_ANIMATION)
 
-func _tick_time(idx : int, max_rings : int) -> float:
+func _tick_time(idx: int, max_rings: int) -> float:
 	if max_rings <= 1:
 		return BASE_TICK_TIME
 	return lerpf(BASE_TICK_TIME, MIN_TICK_TIME, float(idx) / float(max_rings - 1))
 
-func _emission(idx : int, max_rings : int) -> float:
+func _emission(idx: int, max_rings: int) -> float:
 	if max_rings <= 1:
 		return BASE_EMISSION
 	return lerpf(BASE_EMISSION, MIN_EMISSION, float(idx) / float(max_rings - 1))

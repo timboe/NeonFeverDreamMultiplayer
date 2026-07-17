@@ -9,10 +9,12 @@ var server: Server
 var ai_controllers: Array[AIController] = []
 var config: GameConfig
 
-func start_server(server_config: GameConfig):
+# --- Server (host) ---
+
+func start_server(server_config: GameConfig) -> void:
 	# Called on the host machine. Creates an authoritative ENet server and
 	# spawns an AIController for each AI slot.
-	# Local (host human) players don't need a controller node — they send
+	# Local (host human) players don't need a controller node -- they send
 	# commands directly via Global.send_command_me().
 	# Remote clients connect via ENet and send commands as RPCs.
 	self.config = server_config
@@ -20,50 +22,46 @@ func start_server(server_config: GameConfig):
 	add_child(server)
 	server.start(self.config)
 
-	# Initialize next_player_num so remote clients get the correct player number,
-	# accounting for LOCAL and AI slots that already claimed lower numbers.
-	server.next_player_num = 1
+	# Assign player numbers: LOCAL and AI slots claim numbers first,
+	# then remote peers get numbers starting after them.
+	var player_num := 1
 	for slot in config.slots:
-		if slot == GameConfig.SlotType.REMOTE:
-			break
-		if slot != GameConfig.SlotType.CLOSED:
-			server.next_player_num += 1
+		match slot:
+			GameConfig.SlotType.LOCAL:
+				Global.my_player_number = player_num
+				player_num += 1
+			GameConfig.SlotType.AI:
+				var ai := AIController.new(player_num)
+				add_child(ai)
+				ai_controllers.append(ai)
+				player_num += 1
+			GameConfig.SlotType.REMOTE:
+				player_num += 1
+	server.next_player_num = player_num
 
-	var player_num = 1
-	for i in range(config.slots.size()):
-		var slot = config.slots[i]
-		if slot == GameConfig.SlotType.LOCAL:
-			# Host human — no controller node, just remember "me"
-			Global.my_player_number = player_num
-			player_num += 1
-		elif slot == GameConfig.SlotType.AI:
-			var ai = AIController.new(player_num)
-			add_child(ai)
-			ai_controllers.append(ai)
-			player_num += 1
-		elif slot == GameConfig.SlotType.REMOTE:
-			player_num += 1
+# --- Client (remote) ---
 
 @rpc("authority", "call_remote", "reliable")
-func set_my_player_number(pnum: int):
+func set_my_player_number(pnum: int) -> void:
 	Global.my_player_number = pnum
 
-func connect_to_server(ip: String, port: int):
-	# Called on a remote machine. Sets the default multiplayer API to an
-	# ENet client peer so that rpc_id(1, ...) calls on any node reach the
-	# server. The server responds with rpc("set_tile_selection", ...) broadcasts.
-	var peer = ENetMultiplayerPeer.new()
-	var err = peer.create_client(ip, port)
+func connect_to_server(ip: String, port: int) -> void:
+	# Sets the default multiplayer API to an ENet client peer so that
+	# rpc_id(1, ...) calls on any node reach the server.
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_client(ip, port)
 	if err != OK:
 		push_error("Failed to connect: ", err)
 		return
 	multiplayer.multiplayer_peer = peer
 	multiplayer.connected_to_server.connect(_on_connected)
 
-func _on_connected():
+func _on_connected() -> void:
 	print("Connected to server")
 
-func stop():
+# --- Teardown ---
+
+func stop() -> void:
 	for ai in ai_controllers:
 		ai.queue_free()
 	ai_controllers.clear()

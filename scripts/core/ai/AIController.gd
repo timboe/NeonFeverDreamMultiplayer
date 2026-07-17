@@ -4,31 +4,31 @@ class_name AIController
 var player_number: int
 var timer: Timer
 
-func _init(pnum: int):
+func _init(pnum: int) -> void:
 	player_number = pnum
 
-func _ready():
+func _ready() -> void:
 	timer = Timer.new()
-	timer.wait_time = 1.0 + randf() * 2.0
 	timer.timeout.connect(_on_timer)
 	add_child(timer)
-	timer.start()
+	_restart_timer()
 
-func _on_timer():
+func _on_timer() -> void:
 	var srv = Global.network_manager.server
 	if not srv:
+		_restart_timer()
 		return
 	var tm = get_node_or_null("%TileManager")
 	if not tm:
-		timer.wait_time = 1.0 + randf() * 2.0
-		timer.start()
+		_restart_timer()
 		return
-	var interactive : Array = get_tree().get_nodes_in_group("interactive")
+	var interactive: Array = get_tree().get_nodes_in_group("interactive")
 	if interactive.is_empty():
-		timer.wait_time = 1.0 + randf() * 2.0
-		timer.start()
+		_restart_timer()
 		return
-	var tile : TileElement = interactive[randi() % interactive.size()]
+	var tile: TileElement = interactive.pick_random()
 	Global.send_command(player_number, "toggle_tile", [tile.get_id()])
-	timer.wait_time = 1.0 + randf() * 2.0
-	timer.start()
+	_restart_timer()
+
+func _restart_timer() -> void:
+	timer.start(1.0 + randf() * 2.0)

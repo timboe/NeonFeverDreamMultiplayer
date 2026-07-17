@@ -1,25 +1,27 @@
 extends Node
 
-const SEED : int = -6398989897141750821
+# --- Level data: skirmish_01 ---
 
-const TRIPLETS : int = 5
-const BORDER_TRIPLETS : int = 2
-const MOUNTAINS : int = 5
+const SEED: int = -6398989897141750821
 
-const MCP_ARRAY : Array = [173, 892]
+const TRIPLETS: int = 5
+const BORDER_TRIPLETS: int = 2
+const MOUNTAINS: int = 5
 
-const LOWERED : Array = [
+const MCP_ARRAY: Array[int] = [173, 892]
+
+const LOWERED: Array[int] = [
 	109, 108, 174, 893, 953, 954,
-	641, 709, 714, 644, 712, 777, 782, 715, 716, 781, 786, 719, 645, 713, 718, 648
+	641, 709, 714, 644, 712, 777, 782, 715, 716, 781, 786, 719, 645, 713, 718, 648,
 ]
 
-const IMMUTABLE : Array = [
+const IMMUTABLE: Array[int] = [
 	650, 585, 588, 589, 592, 590, 595, 527, 532, 465, 464, 468, 466, 471, 175,
-	176, 178, 889, 891, 890
+	176, 178, 889, 891, 890,
 ]
 
-const INVISIBLE : Array = [
+const INVISIBLE: Array[int] = [
 	405, 470, 472, 469, 536, 531, 533, 594, 596, 593, 658, 659, 654, 655, 656,
 	653, 652, 651, 584, 582, 587, 586, 591, 525, 526, 523, 460, 461, 458, 463,
-	462, 467, 400, 401, 404, 535
+	462, 467, 400, 401, 404, 535,
 ]

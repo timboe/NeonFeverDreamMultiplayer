@@ -4,45 +4,45 @@ class_name UnitManager
 
 enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL_PATROL, AERIAL_SCOUT, VIRUS}
 
-# Multiplayer synchronised
-var unit_dictionary : Dictionary
-
+var unit_dictionary: Dictionary # int (id) -> Unit
 var _next_unit_id: int = 0
 
-func _ready() -> void:
-	pass # Replace with function body.
-	
+# --- Accessors ---
+
 func units() -> Array:
 	return unit_dictionary.values()
-	
-func unit_count(pnum : int, type : Type) -> int:
+
+func unit_count(pnum: int, type: Type) -> int:
 	var c := 0
 	for u in units():
 		if u.building.player_owner == pnum and u.type == type:
 			c += 1
 	return c
 
+# --- Spawning ---
+
 # Note: Ownership of the unit is known via the building
-func spawn_unit(uid : int, type : Type, building : Building) -> void:
+func spawn_unit(uid: int, type: Type, building: Building) -> void:
 	var u = null
 	match type:
 		Type.ZOOMBA: u = $UnitFactory/Zoomba.duplicate()
 		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
+		_: push_error("UnitManager.spawn_unit: unknown type ", type); return
 	add_to_dict_and_scene(uid, u)
 	u.initialise(building)
 
-func get_inc_next_unit_id() -> int:
+func next_unit_id() -> int:
 	var nuid := _next_unit_id
 	_next_unit_id += 1
 	return nuid
-	
-func add_to_dict_and_scene(uid : int, u : Unit) -> void:
+
+func add_to_dict_and_scene(uid: int, u: Unit) -> void:
 	u.id = uid
 	unit_dictionary[u.id] = u
 	add_child(u)
 
 @rpc("authority", "call_local")
-func rpc_spawn_unit(uid : int, type: int, building_id: int):
+func rpc_spawn_unit(uid: int, type: int, building_id: int) -> void:
 	var bm = get_node_or_null("%BuildingManager")
 	if not bm:
 		return
@@ -50,21 +50,23 @@ func rpc_spawn_unit(uid : int, type: int, building_id: int):
 	if building:
 		spawn_unit(uid, type as Type, building)
 
-func displace_units_on_tile(tile : TileElement):
-	var displaced : Array = []
+# --- Displacement ---
+
+func displace_units_on_tile(tile: TileElement) -> void:
+	var displaced: Array = []
 	for u in units():
 		if u.location == tile:
 			displaced.append(u)
 	for u in displaced:
 		_displace_unit(u, tile)
 
-func _displace_unit(unit : Unit, tile : TileElement):
+func _displace_unit(unit: Unit, tile: TileElement) -> void:
 	if not unit.job.is_empty():
 		unit.abandon_job()
 	if unit.move_tween and unit.move_tween.is_valid():
 		unit.move_tween.kill()
 	# Find first adjacent valid tile
-	var best_tile : TileElement = null
+	var best_tile: TileElement = null
 	for n in tile.get_access_tiles():
 		best_tile = n
 		break
@@ -75,7 +77,7 @@ func _displace_unit(unit : Unit, tile : TileElement):
 		rpc("rpc_remove_unit", unit.id)
 
 @rpc("authority", "call_local")
-func rpc_remove_unit(unit_id: int):
+func rpc_remove_unit(unit_id: int) -> void:
 	var u = unit_dictionary.get(unit_id)
 	if u:
 		unit_dictionary.erase(unit_id)

@@ -2,45 +2,53 @@ extends Node3D
 
 class_name Unit
 
-# Class constants
 const QUICK_ROTATE_TIME := 0.2
 const SPAWN_TIME := 2.0
+const SCRAM: int = 10
 
-# Immutable properties
-var id : int # My ID within the UnitManager
-var type : UnitManager.Type # My type
-var building : Building # Building which spawned me (designates owner)
+# --- Identity ---
 
-# Mutabl properties
+var id: int # My ID within the UnitManager
+var type: UnitManager.Type # My type
+var building: Building # Building which spawned me (designates owner)
+
+# --- State machine ---
+
 enum State {IDLE, PATHING, WORKING}
-var state : State = State.IDLE
-var job : Dictionary = {}
-var health : float = 100.0
 
-# Pathfinding variables
-var path : PackedInt64Array = []
-var progress : int
+var state: State = State.IDLE
+var job: Dictionary = {}
+var health: float = 100.0
+var scram_count: int = 0
 
-const SCRAM : int = 10
-var scram_count : int
+# --- Pathfinding ---
 
-# Current (and previous) locations on the pathing grid
-var location : TileElement
-var previous_location : TileElement
-var move_tween : Tween
+var path: PackedInt64Array = []
+var progress: int
 
-# Used for rotation
-var quat_from : Quaternion
-var quat_to : Quaternion
+# --- Location ---
 
-var _health_bar : HealthBar3D
+var location: TileElement
+var previous_location: TileElement
+var move_tween: Tween
 
-func initialise(b : Building):
+# --- Rotation ---
+
+var quat_from: Quaternion
+var quat_to: Quaternion
+
+# --- UI ---
+
+var _health_bar: HealthBar3D
+
+# --- Lifecycle ---
+
+func initialise(b: Building) -> void:
 	building = b
 	location = b.location
 	global_transform.origin = building.find_unit_spawn_location()
 	add_to_group("unit")
-	add_to_group("unit_player"+str(b.player_owner))
+	add_to_group("unit_player" + str(b.player_owner))
 	position.y = -1 # hide
 	_health_bar = preload("res://scripts/ui/HealthBar3D.gd").new()
 	_health_bar.position.y = 2.5
@@ -54,11 +62,13 @@ func initialise(b : Building):
 	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
 	tw.tween_callback(idle_callback)
 
-func _process(_delta):
+func _process(_delta: float) -> void:
 	if _health_bar:
 		_health_bar.set_health(health, Config.UNIT_MAX_HP.get(type, 100.0))
 
-func assign_job(new_job : Dictionary):
+# --- Job assignment ---
+
+func assign_job(new_job: Dictionary) -> void:
 	if not multiplayer.is_server():
 		return
 	assert(job.is_empty())
@@ -66,9 +76,10 @@ func assign_job(new_job : Dictionary):
 	assert(new_job["pnum"] == building.player_owner)
 	state = State.PATHING
 	job = new_job
-	print("Unit ",self," assigned job ", job)
 
-func idle_callback():
+# --- Idle state ---
+
+func idle_callback() -> void:
 	if not multiplayer.is_server():
 		return
 	if not job.is_empty(): # Do pathing for job
@@ -77,15 +88,15 @@ func idle_callback():
 		path.resize(0)
 		pathing_callback()
 		return
-	
+
 	# Get possible ways out of this tile. Only wander on to AoE tiles
-	var territory_check := building.player_owner if type in Config.HOME_TERRITORY_UNITS else 0	
+	var territory_check := building.player_owner if type in Config.HOME_TERRITORY_UNITS else 0
 	var possible_destinations := location.get_access_tiles(territory_check)
-	# If not possible to stay on owned tiles, the relax this
+	# If not possible to stay on owned tiles, then relax this
 	if possible_destinations.size() == 0:
 		possible_destinations = location.get_access_tiles()
-			
-	# Special consderations if scraming, always head towards home
+
+	# Special considerations if scrambling, always head towards home
 	if scram_count > 0:
 		scram_count -= 1
 		var lowest_dist := 9999
@@ -93,39 +104,40 @@ func idle_callback():
 		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for d in possible_destinations:
-			var dist = pm.distance(location, mcp.location)
+			var dist = pm.distance(d, mcp.location)
 			if dist < lowest_dist:
 				lowest_dist = dist
 				best_target = d
 		if best_target:
 			possible_destinations.clear()
 			possible_destinations.append(best_target)
-				
+
 	# Avoid backtracking, if possible
 	var backtrack = possible_destinations.find(previous_location)
 	if possible_destinations.size() > 1 and backtrack != -1:
 		possible_destinations.remove_at(backtrack)
-		
+
 	# Remember current tile, for the next backtrack check
 	previous_location = location
-	
+
 	# Assign new location if available
 	if possible_destinations.size() > 0:
-		location = possible_destinations[ Global.rand.randi() % possible_destinations.size() ]
+		location = possible_destinations[Global.rand.randi() % possible_destinations.size()]
 
 	# Go to new location. In extreme cases may be the same tile (possible_destinations.size() == 0)
 	move(idle_callback)
-	
-func pathing_callback():
+
+# --- Pathing state ---
+
+func pathing_callback() -> void:
 	if not multiplayer.is_server():
 		return
 	# First - check we didn't scram while moving.
-	# If we did then we want to redirect to the idle callback
 	if scram_count > 0:
 		assert(state == State.IDLE)
 		return idle_callback()
 	assert(state == State.PATHING)
-	# Second - check our job is stil valid
+	# Second - check our job is still valid
 	if not check_job_still_valid():
 		return job_finished()
 	# Third check if at destination - path_dest is always a neighbour of location
@@ -140,32 +152,9 @@ func pathing_callback():
 	# Fifth, move to next location
 	assert(progress < path.size())
 	var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
-	location = pm.get_tile( path[progress] )
+	location = pm.get_tile(path[progress])
 	progress += 1
 	move(pathing_callback)
-	
-func start_work():
-	if not multiplayer.is_server():
-		return
-	assert(state == State.PATHING)
-	state = State.WORKING
-	quick_rotate()
-	if has_node("Zapper"):
-		$Zapper.visible = true
-	match job["type"]:
-		JobManager.Type.TOGGLE_TILE:
-			if has_node("Zapper"):
-				$Zapper.target_position.y = Cairo.UNIT
-			job["location"].do_toggle_countdown(self)
-		JobManager.Type.CONSTRUCT_BUILDING:
-			if has_node("Zapper"):
-				$Zapper.target_position.y = Cairo.UNIT
-			var b = job["location"].building
-			if b:
-				b.start_construction(self)
-		_:
-			print("UNKNOWN JOB TYPE")
-			assert(false)
 
 func check_job_still_valid() -> bool:
 	if not multiplayer.is_server():
@@ -190,14 +179,40 @@ func check_pathing_valid() -> bool:
 				job["path_dest"] = n
 		progress = 1 # 0 is our starting location
 		if path.size() < 2:
-			# path.size() == 1 means we're already on an access tile — start_work will catch it
+			# path.size() == 1 means we're already on an access tile -- start_work will catch it
 			if path.size() == 1 and job.has("path_dest") and job["path_dest"].id == location.id:
 				return true
 			return false # We were unable to path
 	return true
-		
-# Remove the job as it is finished
-func job_finished():
+
+# --- Working state ---
+
+func start_work() -> void:
+	if not multiplayer.is_server():
+		return
+	assert(state == State.PATHING)
+	state = State.WORKING
+	quick_rotate()
+	if has_node("Zapper"):
+		$Zapper.visible = true
+	match job["type"]:
+		JobManager.Type.TOGGLE_TILE:
+			if has_node("Zapper"):
+				$Zapper.target_position.y = Cairo.UNIT
+			job["location"].do_toggle_countdown(self)
+		JobManager.Type.CONSTRUCT_BUILDING:
+			if has_node("Zapper"):
+				$Zapper.target_position.y = Cairo.UNIT
+			var b = job["location"].building
+			if b:
+				b.start_construction(self)
+		_:
+			push_error("Unit.start_work: unknown job type ", job["type"])
+			assert(false)
+
+# --- Job completion ---
+
+func job_finished() -> void:
 	if not multiplayer.is_server():
 		return
 	if job.is_empty():
@@ -209,7 +224,7 @@ func job_finished():
 	jm.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
 
 # Job was removed - we could be in any state
-func remove_job():
+func remove_job() -> void:
 	if not multiplayer.is_server():
 		return
 	if state == State.WORKING:
@@ -221,7 +236,7 @@ func remove_job():
 	job = {}
 	idle_callback()
 
-func _cleanup_working_state():
+func _cleanup_working_state() -> void:
 	if has_node("Zapper"):
 		$Zapper.visible = false
 	match job["type"]:
@@ -232,7 +247,9 @@ func _cleanup_working_state():
 			if b and b.state == Building.State.UNDER_CONSTRUCTION:
 				b.cancel_construction()
 
-func abandon_job():
+func abandon_job() -> void:
+	if not multiplayer.is_server():
+		return
 	assert(state == State.PATHING or state == State.WORKING)
 	assert(not job.is_empty())
 	if state == State.WORKING:
@@ -248,26 +265,30 @@ func abandon_job():
 		jm.abandon_job(j_id)
 	idle_callback()
 
-func scram():
+func scram() -> void:
 	scram_count = SCRAM
 	if state != State.IDLE:
 		abandon_job()
 
-func move(callback):
+# --- Movement ---
+
+func move(callback: Callable) -> void:
 	if not multiplayer.is_server():
 		return
 	setup_rotation(location, null if job.is_empty() else job["location"])
-	var time = Config.UNIT_SPEED[ type ] 
+	var time: float = Config.UNIT_SPEED[type]
 	if scram_count > 0:
-		time *=  0.5
+		time *= 0.5
 	elif state == State.IDLE:
-		time *= 2.0 
+		time *= 2.0
 	move_tween = create_tween()
 	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
 	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
 	move_tween.parallel().tween_callback(callback).set_delay(time)
 
-func quick_rotate():
+# --- Rotation ---
+
+func quick_rotate() -> void:
 	if not multiplayer.is_server():
 		return
 	if job["location"] == null:
@@ -275,13 +296,13 @@ func quick_rotate():
 	setup_rotation(job["location"], null)
 	create_tween().tween_method(quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
 
-func quat_transform(amount : float):
+func quat_transform(amount: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var mid = quat_from.slerp(quat_to, amount)
 	transform.basis = Basis(mid)
 
-func setup_rotation(target, look_at_from_target):
+func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> void:
 	if not multiplayer.is_server():
 		return
 	quat_from = Quaternion(transform.basis)
@@ -293,9 +314,7 @@ func setup_rotation(target, look_at_from_target):
 		look_at(look_at_from_target.pathing_centre, Vector3.UP)
 		transform.origin = cache_origin
 	else:
-		# Note: Sometimes, if stuck, we path to our own tile
-		#if transform.origin.distance_to( location.pathing_centre ) > 1e-3:
 		look_at(target.pathing_centre, Vector3.UP)
-	rotation.y -= PI/2.0
+	rotation.y -= PI / 2.0
 	quat_to = Quaternion(transform.basis)
 	transform.basis = cache_rot
