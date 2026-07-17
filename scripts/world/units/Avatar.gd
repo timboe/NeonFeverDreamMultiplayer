@@ -79,7 +79,7 @@ func process_input(delta):
 	# ----------------------------------
 	
 	# Casting and selecting
-	if Input.is_mouse_button_pressed(1):
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		jaggies += delta
 		ray.force_raycast_update()
 		if jaggies > JAGGIES_UPDATE:

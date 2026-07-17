@@ -52,7 +52,7 @@ func _start(pnum : int):
 func _advance(pnum : int):
 	var rings := _get_rings(pnum)
 	var prev : int = _ring_index.get(pnum, 0)
-	_clear_ring(pnum, prev, rings)
+	_clear_ring(prev, rings)
 
 	var next := prev + 1
 	if next >= rings.size():
@@ -76,7 +76,7 @@ func _flash_ring(pnum : int, idx : int):
 	for tile in rings[idx]:
 		tile.request_emission(TileElement.EmissionEffect.PULSE_ANIMATION, color, em)
 
-func _clear_ring(pnum : int, idx : int, rings : Array):
+func _clear_ring(idx : int, rings : Array):
 	if idx >= rings.size():
 		return
 	for tile in rings[idx]:

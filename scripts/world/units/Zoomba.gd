@@ -2,16 +2,8 @@ extends Unit
 
 class_name Zoomba
 
-const SCRAM : int = 10
-
-var scram_count : int = 0
-
 var pathing_manager
 #@onready var job_manager : JobManager = $"../../JobManager"
-
-
-
-#var mr_class = load("res://scripts/Monorail.gd")
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -25,16 +17,6 @@ func initialise(b : Building):
 	var updated_mat = load("res://materials/player/player" + str(building.player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat
 	
-func scram():
-	pass
-	#scram_count = SCRAM
-	#if state != State.IDLE:
-		#abandon_job(true)
-		
-
-
-
-
 #func pathing_callback():
 	## First - check we didn't scram while moving.
 	## If we did then we want to redirect to the idle callback

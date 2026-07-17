@@ -21,6 +21,9 @@ var health : float = 100.0
 var path : PackedInt64Array = []
 var progress : int
 
+const SCRAM : int = 10
+var scram_count : int
+
 # Current (and previous) locations on the pathing grid
 var location : TileElement
 var previous_location : TileElement
@@ -47,7 +50,6 @@ func initialise(b : Building):
 	# This all happens only the server.
 	if not multiplayer.is_server():
 		return
-
 	var tw = create_tween()
 	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
 	tw.tween_callback(idle_callback)
@@ -71,7 +73,7 @@ func idle_callback():
 		return
 	if not job.is_empty(): # Do pathing for job
 		assert(state == State.PATHING)
-		#assert(scram_count == 0)
+		assert(scram_count == 0)
 		path.resize(0)
 		pathing_callback()
 		return
@@ -83,17 +85,21 @@ func idle_callback():
 	if possible_destinations.size() == 0:
 		possible_destinations = location.get_access_tiles()
 			
-	# Special consderations if scraming
-	#if scram_count > 0:
-		#scram_count -= 1
-		#var enemy_tiles := []
-		#for d in possible_destinations:
-			#if d.player != player:
-				#enemy_tiles.append(d)
-		#if possible_destinations.size() - enemy_tiles.size() > 0: # If at lease one way out isn't to enemy land
-			#for e in enemy_tiles:
-				#var loc = possible_destinations.find( e )
-				#possible_destinations.remove_at(loc)
+	# Special consderations if scraming, always head towards home
+	if scram_count > 0:
+		scram_count -= 1
+		var lowest_dist := 9999
+		var best_target = null
+		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
+		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
+		for d in possible_destinations:
+			var dist = pm.distance(location, mcp.location)
+			if dist < lowest_dist:
+				lowest_dist = dist
+				best_target = d
+		if best_target:
+			possible_destinations.clear()
+			possible_destinations.append(best_target)
 				
 	# Avoid backtracking, if possible
 	var backtrack = possible_destinations.find(previous_location)
@@ -115,9 +121,9 @@ func pathing_callback():
 		return
 	# First - check we didn't scram while moving.
 	# If we did then we want to redirect to the idle callback
-	#if scram_count > 0:
-		#assert(state == State.IDLE)
-		#return idle_callback()
+	if scram_count > 0:
+		assert(state == State.IDLE)
+		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is stil valid
 	if not check_job_still_valid():
@@ -196,6 +202,8 @@ func job_finished():
 		return
 	if job.is_empty():
 		return
+	if has_node("Zapper"):
+		$Zapper.visible = false
 	state = State.IDLE
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
 	jm.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
@@ -205,42 +213,15 @@ func remove_job():
 	if not multiplayer.is_server():
 		return
 	if state == State.WORKING:
-		match job["type"]:
-			JobManager.Type.TOGGLE_TILE:
-				job["location"].cancel_toggle_countdown(self)
-			JobManager.Type.CONSTRUCT_BUILDING:
-				var b = job["location"].building
-				if b and b.state == Building.State.UNDER_CONSTRUCTION:
-					b.cancel_construction()
-					b._working_unit = null
+		_cleanup_working_state()
 	state = State.IDLE
-	if has_node("Zapper"):
-		$Zapper.visible = false
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
+	move_tween = null
 	job = {}
-	if not move_tween or not move_tween.is_running():
-		idle_callback()
+	idle_callback()
 
-func abandon_job():
-	assert(state == State.PATHING or state == State.WORKING)
-	assert(not job.is_empty())
-	match state:
-		State.PATHING:
-			return abandon_job_while_pathing()
-		State.WORKING:
-			return abandon_job_while_working()
-
-func abandon_job_while_pathing():
-	state = State.IDLE
-	var j_id = job["id"]
-	print("ABANDONING JOB WHILE PATHING ", job)
-	job = {}
-	var jm = get_node_or_null("/root/World/JobManager")
-	if jm:
-		jm.abandon_job(j_id)
-	if not move_tween or move_tween.is_running():
-		idle_callback()
-		
-func abandon_job_while_working():
+func _cleanup_working_state():
 	if has_node("Zapper"):
 		$Zapper.visible = false
 	match job["type"]:
@@ -250,28 +231,37 @@ func abandon_job_while_working():
 			var b = job["location"].building
 			if b and b.state == Building.State.UNDER_CONSTRUCTION:
 				b.cancel_construction()
-				b._working_unit = null
+
+func abandon_job():
+	assert(state == State.PATHING or state == State.WORKING)
+	assert(not job.is_empty())
+	if state == State.WORKING:
+		_cleanup_working_state()
 	state = State.IDLE
 	var j_id = job["id"]
-	print("ABANDONING JOB WHILE WORKIN ", id)
 	job = {}
-	var jm2 = get_node_or_null("/root/World/JobManager")
-	if jm2:
-		jm2.abandon_job(j_id)
-	# If we abandoned while we were working - then we were waiting for the end-of
-	# job callback which will now never come. Hence we now need to call idle_callback
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
+	move_tween = null
+	var jm = get_node_or_null("/root/World/JobManager")
+	if jm:
+		jm.abandon_job(j_id)
 	idle_callback()
+
+func scram():
+	scram_count = SCRAM
+	if state != State.IDLE:
+		abandon_job()
 
 func move(callback):
 	if not multiplayer.is_server():
 		return
 	setup_rotation(location, null if job.is_empty() else job["location"])
 	var time = Config.UNIT_SPEED[ type ] 
-	#if scram_count > 0:
-		#time *=  0.5
-	if state == State.IDLE:
+	if scram_count > 0:
+		time *=  0.5
+	elif state == State.IDLE:
 		time *= 2.0 
-	# else - pathing, time *= 1.0
 	move_tween = create_tween()
 	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
 	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)

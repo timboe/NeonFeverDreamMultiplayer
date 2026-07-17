@@ -59,8 +59,11 @@ func disconnect_tile(tile : TileElement):
 	for conn_id in astar.get_point_connections(tile_id):
 		astar.disconnect_points(tile_id, conn_id, true)
 
+func distance(a : TileElement, b : TileElement) -> int:
+	return pathfind(a, b).size()
+
 func are_tiles_connected(a : TileElement, b : TileElement) -> bool:
-	return (pathfind(a, b).size() > 0)
+	return (distance(a, b) > 0)
 
 func connect_tiles(from : TileElement, to : TileElement, bidirectional : bool = true):
 	astar.connect_points(from.get_id(), to.get_id(), bidirectional) 

@@ -21,7 +21,6 @@ var _drag_action: DragAction = DragAction.NONE
 
 var _tile_buttons: Dictionary = {}
 var _build_buttons: Dictionary = {}
-var _prev_energy: float = 5000.0
 var _notification_count: int = 0
 const MAX_NOTIFICATIONS := 5
 
@@ -197,6 +196,9 @@ func _input(event: InputEvent):
 		end_drag()
 	if event.is_action_pressed("ui_capture_toggle"):
 		toggle_camera.emit()
+	if event.is_action_pressed("ui_scram"):
+		for zoomba in get_tree().get_nodes_in_group("zoomba"):
+			zoomba.scram()
 
 
 func can_toggle_tile(tile: TileElement) -> bool:

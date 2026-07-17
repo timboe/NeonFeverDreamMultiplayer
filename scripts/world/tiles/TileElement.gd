@@ -256,6 +256,9 @@ func do_toggle_countdown(z : Zoomba):
 func cancel_toggle_countdown(z : Zoomba):
 	if not multiplayer.is_server():
 		return
+	if toggle_zoomba_player == 0:
+		# begin_toggle already ran — nothing to cancel, done_toggle will handle cleanup
+		return
 	assert(toggle_zoomba_player == z.building.player_owner)
 	toggle_zoomba_player = 0
 	working_unit = null
@@ -263,7 +266,9 @@ func cancel_toggle_countdown(z : Zoomba):
 		_countdown_tween.kill()
 		_countdown_tween = null
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1) # MODE 1
-	
+
+# Point of no return - raising or lowering if this gets called.
+# Even if the zoomba gets called away
 func begin_toggle():
 	if not multiplayer.is_server():
 		return

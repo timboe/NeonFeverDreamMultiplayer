@@ -137,6 +137,8 @@ func assign_jobs():
 			continue
 		if unit.type == UnitManager.Type.AVATAR:
 			continue
+		if unit.scram_count > 0:
+			continue
 		if assign_nearest_job(unit):
 			unassigned -= 1
 

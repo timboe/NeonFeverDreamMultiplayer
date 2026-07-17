@@ -105,8 +105,8 @@ Every unit has exactly one of three states. State transitions are the core of th
 	   ↑                            │    │                        │  │
 	   │                            │    │                        │  │
 	   │  remove_job()              │    │  remove_job()          │  │  remove_job()
-	   │  abandon_job_while_pathing │    │  abandon_job_while_    │  │  abandon_job_while_working
-	   │  job_finished()            │    │  pathing               │  │  job_finished()
+	   │  abandon_job()             │    │  abandon_job()         │  │  abandon_job()
+	   │  job_finished()            │    │  job_finished()        │  │  job_finished()
 	   │                            │    │                        │  │
 	   └────────────────────────────┘    └────────────────────────┘  │
 																	 │
@@ -143,13 +143,17 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 - Calls `JobManager.remove_job(job["id"])` which calls `Unit.remove_job()` → handles tile cleanup and idle resumption.
 
 **`remove_job()`** — Called by `JobManager.remove_job()` when a job is deleted from the pool.
-- If `state == WORKING`: cancels the tile's countdown via `cancel_toggle_countdown(self)` (kills `_countdown_tween`, clears `working_unit`, kills visual via RPC).
-- Sets `state = IDLE`, hides zapper, clears `job`.
-- Calls `idle_callback()` if `move_tween` is finished or null (same guard as `abandon_job_while_pathing`).
+- If `state == WORKING`: calls `_cleanup_working_state()` (cancels tile countdown / construction).
+- Sets `state = IDLE`, hides zapper, kills `move_tween`, clears `job`.
+- Calls `idle_callback()` unconditionally (tween is killed, no stale callback risk).
 
-**`abandon_job()`** — Dispatches based on current state.
-- `abandon_job_while_pathing()`: sets IDLE, clears job, calls `JobManager.abandon_job(id)` (job stays in pool), calls `idle_callback()` if move_tween finished.
-- `abandon_job_while_working()`: hides zapper, cancels tile countdown, sets IDLE, clears job, calls `JobManager.abandon_job(id)`, calls `idle_callback()` unconditionally (move_tween not relevant — unit was stationary while working).
+**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Cancels tile countdown via `cancel_toggle_countdown(self)` or cancels building construction.
+
+**`abandon_job()`** — Inlined logic for both pathing and working states:
+- If `state == WORKING`: calls `_cleanup_working_state()` (hides zapper, cancels tile countdown / construction).
+- Sets `state = IDLE`, clears `job`, kills `move_tween` (prevents stale `pathing_callback` from firing after state change).
+- Calls `JobManager.abandon_job(id)` (job stays in pool, reassignable after timer).
+- Calls `idle_callback()` unconditionally.
 
 **`move(callback)`** — Creates a tween that slerps rotation and moves to `location.pathing_centre`. Calls `callback` when done. IDLE units move at 2x speed.
 
@@ -198,8 +202,8 @@ Two independent tweens exist on each tile during a toggle:
 |---|---|---|---|---|
 | **Finish** | Tile animation completes → `done_toggle` → `job_finished()` | Removed from pool (`remove_job`) | → IDLE via `remove_job` → `idle_callback` | `done_toggle` completes state change, clears `working_unit` |
 | **Cancel** | Human deselects tile → `cancel_job` → `remove_job` | Removed from pool | → IDLE via `remove_job` → `idle_callback` | `remove_job` calls `cancel_toggle_countdown` if WORKING |
-| **Abandon (pathing)** | Path invalid → `abandon_job_while_pathing` | Stays in pool (`abandon_job`), reassignable after timer | → IDLE → `idle_callback` | N/A (unit never reached tile) |
-| **Abandon (working)** | Unit gives up → `abandon_job_while_working` | Stays in pool (`abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, `working_unit` cleared |
+| **Abandon (pathing)** | Path invalid → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | N/A (unit never reached tile) |
+| **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, `working_unit` cleared |
 | **Displacement** | Tile removed from pathing → `_displace_unit` | Stays in pool (`abandon_job`) | Teleported to adjacent tile or destroyed | N/A |
 
 ### Tile disconnection / unit displacement
@@ -340,7 +344,7 @@ dr_mesh.surface_end()
 
 ### Unit scripts
 
-- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. Added `abandon_job`, `abandon_job_while_pathing`, `abandon_job_while_working`, `move_tween` var. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `remove_job` cancels tile countdown if WORKING, then resumes idle loop. `initialise(b)` — subclasses call `super.initialise(b)` then set `self.type` and add their own groups.
+- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. `abandon_job()` inlines both pathing and working cleanup, kills `move_tween` to prevent stale callbacks. `_cleanup_working_state()` shared helper for tile countdown / construction cancellation. `remove_job` uses same helper, kills tween unconditionally. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `initialise(b)` — subclasses call `super.initialise(b)` then set `self.type` and add their own groups.
 - `Zoomba.gd`: Removed `@onready var tween`, added `pathing_manager`. `PoolIntArray`→`PackedInt64Array`. `interpolate_method`→`create_tween().tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback().set_delay()`. `Quat`→`Quaternion`, `translation`→`position`, `GlobalVars`→`Global`, `push_back`→`append`, `remove`→`remove_at`, `cast_to`→`target_position`. Most pathing/work logic is commented out.
 - `UnitManager.gd`: Added `units()`, `_next_unit_id`, `rpc_remove_unit` (replaces `remove_unit`) with `@rpc("authority", "call_local")`, `displace_units_on_tile` + `_displace_unit` for tile disconnection handling. Server guard on `spawn_unit`.
 - `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer. Flipped assignment to worker-centric: `try_and_assign(job)` → `assign_nearest_job(unit)`. `assign_jobs()` now has two-pass structure (timer decrement then worker iteration).
