@@ -24,6 +24,9 @@ func _ready():
 func initialise(pnum : int, tile : TileElement):
 	super.initialise(pnum, tile)
 	type = BuildingManager.Type.VAT
+	_health_bar.global_position.y = 22.0
+	max_health = Config.BUILDING_MAX_HP[type]
+	health = max_health
 	add_to_group("vat")
 
 func get_capacity():

@@ -37,3 +37,20 @@ static var PLAYER_COLORS : Array[Color] = [
 	Color.YELLOW,
 	Color.GREEN,
 ]
+
+static var BUILDING_MAX_HP : Dictionary = {
+	BuildingManager.Type.MCP_1: 15000.0,
+	BuildingManager.Type.MCP_2: 15000.0,
+	BuildingManager.Type.MCP_3: 15000.0,
+	BuildingManager.Type.MCP_4: 15000.0,
+	BuildingManager.Type.GEN: 2000.0,
+	BuildingManager.Type.VAT: 1500.0,
+	BuildingManager.Type.GARAGE: 2000.0,
+	BuildingManager.Type.BEACON: 2000.0,
+	BuildingManager.Type.NEST: 2000.0,
+}
+
+static var UNIT_MAX_HP : Dictionary = {
+	UnitManager.Type.ZOOMBA: 50.0,
+	UnitManager.Type.AVATAR: 200.0,
+}

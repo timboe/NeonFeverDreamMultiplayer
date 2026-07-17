@@ -106,6 +106,8 @@ func broadcast_place_blueprint(bid : int, player_number : int, tid : int, type :
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
+	new_building.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
+	new_building.health = new_building.max_health
 	#
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
@@ -130,6 +132,8 @@ func place_building(pnum : int, tile : TileElement, type : BuildingManager.Type)
 	var b = new_building_instance(type)
 	add_to_dict_and_scene(get_inc_next_building_id(), b)
 	b.initialise(pnum, tile)
+	b.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
+	b.health = b.max_health
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()

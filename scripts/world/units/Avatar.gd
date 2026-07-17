@@ -151,6 +151,9 @@ func _input(event):
 func initialise(b : Building):
 	super.initialise(b)
 	type = UnitManager.Type.AVATAR
+	_health_bar.set_bar_size(3.0, 0.3)
+	_health_bar.reparent(fps_body)
+	_health_bar.position = Vector3(0, 5.0, 0)
 	add_to_group("avatar")
 	add_to_group("avatar_player" + str(building.player_owner))
 

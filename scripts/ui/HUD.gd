@@ -195,7 +195,7 @@ func add_notification(text: String, duration: float = 5.0) -> void:
 func _input(event: InputEvent):
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		end_drag()
-	if event.is_action_pressed("capture_toggle"):
+	if event.is_action_pressed("ui_capture_toggle"):
 		toggle_camera.emit()
 
 

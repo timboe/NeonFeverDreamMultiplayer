@@ -18,6 +18,10 @@ var _construction_timer := 0.0
 var _construction_energy_spent := 0.0
 var _construction_cost := 0.0
 
+var health : float = 0.0
+var max_health : float = 0.0
+var _health_bar : HealthBar3D
+
 func initialise(pnum : int, tile : TileElement):
 	location = tile # Two way link
 	tile.set_building(self)  # Two way link
@@ -27,22 +31,41 @@ func initialise(pnum : int, tile : TileElement):
 	global_position.y = 0
 	add_to_group("building")
 	add_to_group("building_player"+str(pnum))
+	_health_bar = preload("res://scripts/ui/HealthBar3D.gd").new()
+	var container = get_node_or_null("/root/World/BuildingManager/HealthBars")
+	container.add_child(_health_bar)
+	_health_bar.global_position.x = tile.pathing_centre.x
+	_health_bar.global_position.z = tile.pathing_centre.z
+	_health_bar.global_position.y = 3.0
+	_health_bar.set_bar_size(4.0, 0.4)
 
 func _ready():
 	pass
 
+func _exit_tree():
+	if _health_bar and is_instance_valid(_health_bar):
+		_health_bar.queue_free()
+
 func _process(delta : float) -> void:
-	if not multiplayer.is_server():
-		return
-	if state != State.UNDER_CONSTRUCTION:
-		return
-	_construction_timer += delta
-	var energy_per_tick := _construction_cost / CONSTRUCTION_TIME * delta
-	var em = get_node_or_null("/root/World/EnergyManager")
-	if em:
-		_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
-	if _construction_energy_spent >= _construction_cost:
-		set_constructed()
+	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
+		_construction_timer += delta
+		var energy_per_tick := _construction_cost / CONSTRUCTION_TIME * delta
+		var em = get_node_or_null("/root/World/EnergyManager")
+		if em:
+			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
+		if _construction_energy_spent >= _construction_cost:
+			set_constructed()
+	if _health_bar:
+		match state:
+			State.UNDER_CONSTRUCTION:
+				if _construction_cost > 0.0:
+					_health_bar.set_health(_construction_energy_spent, _construction_cost)
+				else:
+					_health_bar.set_health(1.0, 1.0)
+			State.CONSTRUCTED, State.UNDER_DESTRUCTION:
+				_health_bar.set_health(health, max_health)
+			_:
+				_health_bar.set_health(0.0, 1.0)
 
 func find_unit_spawn_location():
 	for n in location.neighbours:

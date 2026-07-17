@@ -59,6 +59,9 @@ const NAME_TO_TYPE = {
 func initialise(pnum : int, tile : TileElement):
 	super.initialise(pnum, tile)
 	type = NAME_TO_TYPE[name]
+	_health_bar.global_position.y = 22.0
+	max_health = Config.BUILDING_MAX_HP[type]
+	health = max_health
 	add_to_group("generator")
 	add_to_group("generator_player"+str(pnum))
 	add_to_group("mcp")

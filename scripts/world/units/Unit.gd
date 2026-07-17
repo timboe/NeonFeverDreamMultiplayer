@@ -30,6 +30,8 @@ var move_tween : Tween
 var quat_from : Quaternion
 var quat_to : Quaternion
 
+var _health_bar : HealthBar3D
+
 func initialise(b : Building):
 	building = b
 	location = b.location
@@ -37,6 +39,10 @@ func initialise(b : Building):
 	add_to_group("unit")
 	add_to_group("unit_player"+str(b.player_owner))
 	position.y = -1 # hide
+	_health_bar = preload("res://scripts/ui/HealthBar3D.gd").new()
+	_health_bar.position.y = 2.5
+	add_child(_health_bar)
+	_health_bar.set_bar_size(1.6, 0.2)
 	# Following animates the unit in and starts the callback loop.
 	# This all happens only the server.
 	if not multiplayer.is_server():
@@ -45,6 +51,10 @@ func initialise(b : Building):
 	var tw = create_tween()
 	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
 	tw.tween_callback(idle_callback)
+
+func _process(_delta):
+	if _health_bar:
+		_health_bar.set_health(health, Config.UNIT_MAX_HP.get(type, 100.0))
 
 func assign_job(new_job : Dictionary):
 	if not multiplayer.is_server():
@@ -227,7 +237,7 @@ func abandon_job_while_pathing():
 	var jm = get_node_or_null("/root/World/JobManager")
 	if jm:
 		jm.abandon_job(j_id)
-	if not move_tween or not move_tween.is_finished():
+	if not move_tween or move_tween.is_running():
 		idle_callback()
 		
 func abandon_job_while_working():
