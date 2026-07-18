@@ -1,7 +1,8 @@
 [gd_scene format=3 uid="uid://cynpi02upwnhe"]
 
 [ext_resource type="Script" uid="uid://bq4str8644pvy" path="res://scripts/world/buildings/MCP.gd" id="2"]
-[ext_resource type="Material" path="res://materials/chrome.tres" id="3"]
+[ext_resource type="Material" uid="uid://bgoiv0d233t4m" path="res://materials/chrome.tres" id="3"]
+[ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_c0mty"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="5"]
 [ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="6"]
@@ -104,6 +105,8 @@ input_ray_pickable = false
 script = ExtResource("2")
 
 [node name="BuildinConstructedParticles" parent="." unique_id=435620358 instance=ExtResource("5")]
+
+[node name="Terminal" parent="." unique_id=838365299 instance=ExtResource("3_c0mty")]
 
 [node name="Plinth" type="MeshInstance3D" parent="." unique_id=766597083]
 mesh = ExtResource("4")

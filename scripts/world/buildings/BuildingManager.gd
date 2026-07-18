@@ -52,6 +52,10 @@ func check_under_aoe(player_number: int, tile: TileElement) -> bool:
 func check_access(tile: TileElement) -> Array:
 	return tile.get_access_tiles()
 
+func position_all_terminals() -> void:
+	for b in building_dictionary.values():
+		b.position_terminal()
+
 # --- Blueprint material ---
 
 func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
@@ -130,6 +134,7 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
+	new_building.position_terminal()
 	new_building.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
 	new_building.health = new_building.max_health
 	var new_blueprint = enabled_blueprints[type].duplicate()
@@ -152,6 +157,7 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	var b := new_building_instance(type)
 	add_to_dict_and_scene(next_building_id(), b)
 	b.initialise(pnum, tile)
+	b.position_terminal()
 	b.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
 	b.health = b.max_health
 	b.state = b.State.CONSTRUCTED

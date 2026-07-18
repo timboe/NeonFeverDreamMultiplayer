@@ -1,8 +1,9 @@
 [gd_scene format=3 uid="uid://d2cn5emv1ypif"]
 
 [ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="1"]
-[ext_resource type="Script" uid="uid://bbbc6djyvt75c" path="res://scripts/world/buildings/Building.gd" id="2"]
-[ext_resource type="Material" path="res://materials/chrome.tres" id="3"]
+[ext_resource type="Script" uid="uid://bq4str8644pvy" path="res://scripts/world/buildings/MCP.gd" id="2"]
+[ext_resource type="Material" uid="uid://bgoiv0d233t4m" path="res://materials/chrome.tres" id="3"]
+[ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_r3vkf"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="5"]
 [ext_resource type="Texture2D" uid="uid://dmow8oto4mckv" path="res://images/star_05.png" id="7"]
@@ -74,11 +75,13 @@ particles_anim_loop = false
 [sub_resource type="QuadMesh" id="14"]
 material = SubResource("13")
 
-[node name="MCP_1" type="StaticBody3D" unique_id=1983162617]
+[node name="MCP_2" type="StaticBody3D" unique_id=1983162617]
 input_ray_pickable = false
 script = ExtResource("2")
 
 [node name="BuildinConstructedParticles" parent="." unique_id=718982089 instance=ExtResource("5")]
+
+[node name="Terminal" parent="." unique_id=838365299 instance=ExtResource("3_r3vkf")]
 
 [node name="Plinth" type="MeshInstance3D" parent="." unique_id=1599147881]
 mesh = ExtResource("4")

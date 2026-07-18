@@ -1,22 +1,25 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bh1ee03lqwwjq"]
 
 [ext_resource type="Script" uid="uid://bbbc6djyvt75c" path="res://scripts/world/buildings/Building.gd" id="1"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="2"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_7dib3"]
 [ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="4"]
 
 [sub_resource type="BoxShape3D" id="1"]
 size = Vector3(15, 1, 15)
 
-[node name="Nest" type="StaticBody3D"]
+[node name="Nest" type="StaticBody3D" unique_id=921205812]
 input_ray_pickable = false
 script = ExtResource("1")
 
-[node name="BuildinConstructedParticles" parent="." instance=ExtResource("3")]
+[node name="BuildinConstructedParticles" parent="." unique_id=881696904 instance=ExtResource("3")]
 
-[node name="Plinth" type="MeshInstance3D" parent="."]
+[node name="Terminal" parent="." unique_id=838365299 instance=ExtResource("3_7dib3")]
+
+[node name="Plinth" type="MeshInstance3D" parent="." unique_id=11852181]
 mesh = ExtResource("2")
 script = ExtResource("4")
 
-[node name="CollisionShape" type="CollisionShape3D" parent="."]
+[node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=1637843513]
 shape = SubResource("1")

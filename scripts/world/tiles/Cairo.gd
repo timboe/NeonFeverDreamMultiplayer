@@ -40,6 +40,16 @@ const RIGHT_POINT__UP: float = UNIT * (SMALL_HYPOT * cos(deg_to_rad(30)))
 const UV_SCALE: float = 0.5
 const UV_MAX_HEIGHT: float = (HEIGHT / UNIT) * UV_SCALE
 
+# The 5 vertices of the base pentagon (no rotation), used for edge-midpoint
+# computation when positioning building Terminals on shared tile edges.
+const BASE_VERTICES: Array = [
+	Vector3(0, 0, 0),
+	Vector3(UNIT, 0, 0),
+	Vector3(0, 0, UNIT),
+	Vector3(TOP_POINT__UP, 0, TOP_POINT__RIGHT),
+	Vector3(RIGHT_POINT__UP, 0, RIGHT_POINT__RIGHT),
+]
+
 # --- Mesh generation (disabled) ---
 
 var cairo_mesh: ArrayMesh

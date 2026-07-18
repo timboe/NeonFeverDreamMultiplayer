@@ -326,6 +326,9 @@ func done_toggle() -> void:
 		set_lowered()
 	elif state == TileManager.State.RISING:
 		state = TileManager.State.RAISED
+		var bm = get_node_or_null("/root/World/BuildingManager") as BuildingManager
+		if bm:
+			bm.position_all_terminals()
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
 	if jm and _working_job_id >= 0:
 		jm.remove_job(_working_job_id)

@@ -87,6 +87,53 @@ func get_aoe_radius() -> float:
 func check_work() -> void:
 	pass
 
+# --- Terminal positioning ---
+
+func position_terminal() -> void:
+	var terminal := get_node_or_null("Terminal")
+	if not terminal:
+		return
+	var candidates: Array[TileElement] = location.get_access_tiles(player_owner)
+	if candidates.is_empty():
+		candidates = location.get_access_tiles()
+	if candidates.is_empty():
+		if location.neighbours.size() > 0:
+			candidates = [location.neighbours[0]]
+		else:
+			return
+	var mcp_nodes := get_tree().get_nodes_in_group("mcp_player" + str(player_owner))
+	if mcp_nodes.is_empty():
+		return
+	var mcp_tile: TileElement = mcp_nodes[0].location
+	var best := candidates[0]
+	var best_dist := best.pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
+	for i in range(1, candidates.size()):
+		var d := candidates[i].pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
+		if d < best_dist:
+			best_dist = d
+			best = candidates[i]
+	var mid := _compute_edge_midpoint(best)
+	terminal.global_position = Vector3(mid.x, 0.0, mid.z)
+	var dir := (best.pathing_centre - location.pathing_centre).normalized()
+	terminal.rotation.y = atan2(-dir.z, dir.x)
+
+func _compute_edge_midpoint(neighbour: TileElement) -> Vector3:
+	var a_xform := location.global_transform
+	var b_xform := neighbour.global_transform
+	var shared: Array[Vector3] = []
+	for v in Cairo.BASE_VERTICES:
+		var av: Vector3 = a_xform * v
+		for w in Cairo.BASE_VERTICES:
+			var bw: Vector3 = b_xform * w
+			if av.distance_squared_to(bw) < 0.01:
+				shared.append(av)
+				break
+		if shared.size() == 2:
+			break
+	if shared.size() == 2:
+		return (shared[0] + shared[1]) * 0.5
+	return (location.pathing_centre + neighbour.pathing_centre) * 0.5
+
 # --- Construction ---
 
 func start_construction(unit: Unit) -> void:
