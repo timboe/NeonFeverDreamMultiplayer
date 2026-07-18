@@ -36,7 +36,7 @@ func start_server(server_config: GameConfig) -> void:
 				ai_controllers.append(ai)
 				player_num += 1
 			GameConfig.SlotType.REMOTE:
-				player_num += 1
+				pass  # numbers assigned by Server._on_peer_connected
 	server.next_player_num = player_num
 
 # --- Client (remote) ---

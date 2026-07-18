@@ -1,0 +1,7 @@
+[gd_resource type="BoxMesh" format=3 uid="uid://cfd8ft3hdhxtr"]
+
+[ext_resource type="Material" path="res://materials/chrome.tres" id="1"]
+
+[resource]
+material = ExtResource("1")
+size = Vector3(12.667, 0.5, 0.5)

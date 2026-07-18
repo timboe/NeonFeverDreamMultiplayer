@@ -163,9 +163,13 @@ func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	set_neighbours()
+	$MonorailMultimesh.setup(tile_dictionary)
+	$MonorailMultimesh.cap_setup(tile_dictionary, $MonorailCapMultimesh)
+	$PathingManager.monorail = $MonorailMultimesh
 	disabled_tiles_to_multimesh()
 	enabled_tiles_to_multimesh()
 	apply_loaded_level()
+	$MonorailMultimesh.finish_setup()
 
 # --- Neighbour + pathing setup ---
 

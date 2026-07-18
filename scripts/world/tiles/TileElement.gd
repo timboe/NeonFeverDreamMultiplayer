@@ -25,6 +25,7 @@ var building: Building = null # What is built here
 
 var toggle_zoomba_player: int # player who is raising or lowering me
 var working_unit: Unit = null # unit currently toggling this tile
+var _working_job_id: int = -1 # job id stored so done_toggle can clean up orphaned jobs
 var toggle_tween: Tween # Visual countdown animation — synced to clients via rpc_toggle_animation RPC
 var _countdown_tween: Tween # Server-only — fires begin_toggle after TOGGLE_COUNTDOWN_TIME; never synced
 
@@ -236,6 +237,7 @@ func do_toggle_countdown(z: Unit) -> void:
 	assert(working_unit == null)
 	toggle_zoomba_player = z.building.player_owner
 	working_unit = z
+	_working_job_id = z.job["id"]
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0) # MODE 0
 	_countdown_tween = create_tween()
 	_countdown_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
@@ -324,9 +326,10 @@ func done_toggle() -> void:
 		set_lowered()
 	elif state == TileManager.State.RISING:
 		state = TileManager.State.RAISED
-	# Notify the unit that its job is complete
-	if is_instance_valid(working_unit):
-		working_unit.job_finished()
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if jm and _working_job_id >= 0:
+		jm.remove_job(_working_job_id)
+	_working_job_id = -1
 	working_unit = null
 
 # --- Input handlers ---

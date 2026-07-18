@@ -10,8 +10,9 @@ height = 4.8
 [sub_resource type="BoxMesh" id="3"]
 size = Vector3(1.6, 0.2, 1.6)
 
-[sub_resource type="ConvexPolygonShape3D" id="4"]
-points = PackedVector3Array(-0.8, 0.1, 0.8, 0.8, 0.1, -0.8, 0.8, 0.1, 0.8, -0.8, 0.1, -0.8, -0.8, -0.1, 0.8, 0.8, -0.1, -0.8, 0.8, -0.1, 0.8, -0.8, -0.1, -0.8, 0.8, 0.1, 0.8, -0.8, 0.1, -0.8, 0.8, 0.1, -0.8, -0.8, 0.1, 0.8, 0.8, -0.1, 0.8, -0.8, -0.1, -0.8, 0.8, -0.1, -0.8, -0.8, -0.1, 0.8, 0.8, 0.1, 0.8, -0.8, -0.1, 0.8, -0.8, 0.1, 0.8, 0.8, -0.1, 0.8, 0.8, 0.1, -0.8, -0.8, -0.1, -0.8, -0.8, 0.1, -0.8, 0.8, -0.1, -0.8)
+[sub_resource type="CapsuleShape3D" id="4"]
+radius = 1.2
+height = 4.8
 
 [node name="Avatar" type="Node3D" unique_id=2088159802]
 script = ExtResource("1")
@@ -26,8 +27,8 @@ mesh = SubResource("1")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
 mesh = SubResource("3")
 
-[node name="FeetCollisionShape" type="CollisionShape3D" parent="FPSBody" unique_id=862417888]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+[node name="BodyCollisionShape" type="CollisionShape3D" parent="FPSBody" unique_id=862417888]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
 shape = SubResource("4")
 
 [node name="Rotation_Helper" type="Node3D" parent="FPSBody" unique_id=1112214522]
