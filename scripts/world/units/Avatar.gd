@@ -104,6 +104,9 @@ func process_input(delta: float) -> void:
 		ray_mesh.clear_surfaces()
 		mouse_initial = true
 
+	# Screen cursor
+	_update_screen_cursor()
+
 # --- Movement ---
 
 func process_movement(delta: float) -> void:
@@ -135,6 +138,32 @@ func process_movement(delta: float) -> void:
 	vel = fps_body.velocity
 
 # --- Visual ---
+
+func _update_screen_cursor() -> void:
+	ray.force_raycast_update()
+	if not ray.is_colliding():
+		_hide_all_hud_cursors()
+		return
+	var col := ray.get_collider()
+	if col and col.name == "ScreenBody":
+		var screen_mesh := col.get_parent() as MeshInstance3D
+		if screen_mesh:
+			var terminal := screen_mesh.get_parent()
+			if terminal:
+				var parent_building := terminal.get_parent()
+				if parent_building:
+					var mcp_hud_root := parent_building.get_node_or_null("MCPHUD/Root")
+					if mcp_hud_root:
+						var uv: Vector2 = mcp_hud_root.uv_from_collision(screen_mesh, ray.get_collision_point())
+						mcp_hud_root.show_cursor_at_uv(uv)
+						return
+	_hide_all_hud_cursors()
+
+func _hide_all_hud_cursors() -> void:
+	for b in get_tree().get_nodes_in_group("mcp"):
+		var mcp_hud_root := b.get_node_or_null("MCPHUD/Root")
+		if mcp_hud_root and mcp_hud_root.has_method("hide_cursor"):
+			mcp_hud_root.hide_cursor()
 
 func draw_jaggy_to(dist: float) -> void:
 	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)

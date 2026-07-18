@@ -11,7 +11,7 @@ var jobs_dict: Dictionary # int (id) -> job dict
 var unassigned := 0
 var job_id := -1
 
-var debug_enabled := true
+var debug_enabled := false
 var debug_mesh: ImmediateMesh
 var debug_mesh_instance: MeshInstance3D
 

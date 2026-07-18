@@ -112,12 +112,12 @@ func position_terminal() -> void:
 		if d < best_dist:
 			best_dist = d
 			best = candidates[i]
-	var mid := _compute_edge_midpoint(best)
-	terminal.global_position = Vector3(mid.x, 0.0, mid.z)
-	var dir := (best.pathing_centre - location.pathing_centre).normalized()
-	terminal.rotation.y = atan2(-dir.z, dir.x)
+	var edge_data := _compute_edge(best)
+	terminal.global_position = Vector3(edge_data.midpoint.x, 0.0, edge_data.midpoint.z)
+	terminal.rotation.y = atan2(-edge_data.normal.z, edge_data.normal.x) + PI - location.rotation.y
+	print("position_terminal: ", name, " neighbor=", best.name, " normal=", edge_data.normal, " rot_y=", rad_to_deg(terminal.rotation.y))
 
-func _compute_edge_midpoint(neighbour: TileElement) -> Vector3:
+func _compute_edge(neighbour: TileElement) -> Dictionary:
 	var a_xform := location.global_transform
 	var b_xform := neighbour.global_transform
 	var shared: Array[Vector3] = []
@@ -131,8 +131,15 @@ func _compute_edge_midpoint(neighbour: TileElement) -> Vector3:
 		if shared.size() == 2:
 			break
 	if shared.size() == 2:
-		return (shared[0] + shared[1]) * 0.5
-	return (location.pathing_centre + neighbour.pathing_centre) * 0.5
+		var midpoint := (shared[0] + shared[1]) * 0.5
+		var edge := shared[1] - shared[0]
+		var perp := Vector3(edge.z, 0.0, -edge.x).normalized()
+		var outward := (midpoint - location.pathing_centre).normalized()
+		if perp.dot(outward) < 0.0:
+			perp = -perp
+		return {"midpoint": midpoint, "normal": perp}
+	var fallback_dir := (neighbour.pathing_centre - location.pathing_centre).normalized()
+	return {"midpoint": (location.pathing_centre + neighbour.pathing_centre) * 0.5, "normal": fallback_dir}
 
 # --- Construction ---
 

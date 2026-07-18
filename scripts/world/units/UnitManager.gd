@@ -73,6 +73,8 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 	if best_tile:
 		unit.location = best_tile
 		unit.global_position = best_tile.pathing_centre
+		if unit.job.is_empty():
+			unit.idle_callback()
 	else:
 		rpc("rpc_remove_unit", unit.id)
 
