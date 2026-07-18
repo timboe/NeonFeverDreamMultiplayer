@@ -1,0 +1,140 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MCPHUD.gd" id="1_mcp"]
+[ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
+
+[sub_resource type="StyleBoxFlat" id="empower_normal"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0.3, 0.35, 0.7)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 1, 0.8)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+
+[sub_resource type="StyleBoxFlat" id="empower_hover"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0.4, 0.45, 0.8)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 1, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 1, 1, 0.4)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="empower_pressed"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0.5, 0.55, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 1, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 1, 1, 0.6)
+shadow_size = 12
+
+[node name="MCPHUD" type="SubViewport"]
+size = Vector2i(512, 512)
+render_target_update_mode = 3
+transparent_bg = false
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_mcp")
+
+[node name="Window" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/Window"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Root/Window/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/Window/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "MCP"
+theme_override_font_sizes/font_size = 24
+
+[node name="EmpowerBtn" type="Button" parent="Root/Window/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(64, 64)
+size_flags_horizontal = 10
+theme_override_styles/normal = SubResource("empower_normal")
+theme_override_styles/hover = SubResource("empower_hover")
+theme_override_styles/pressed = SubResource("empower_pressed")
+theme_override_font_sizes/font_size = 24
+
+[node name="Sep" type="HSeparator" parent="Root/Window/VBox"]
+layout_mode = 2
+
+[node name="ZoombaRow" type="HBoxContainer" parent="Root/Window/VBox"]
+layout_mode = 2
+
+[node name="ZoombaLabel" type="Label" parent="Root/Window/VBox/ZoombaRow"]
+layout_mode = 2
+text = "Zoombas"
+
+[node name="CountLabel" type="Label" parent="Root/Window/VBox/ZoombaRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0 / 0"
+horizontal_alignment = 2
+
+[node name="SpawnRow" type="VBoxContainer" parent="Root/Window/VBox"]
+layout_mode = 2
+
+[node name="SpawnLabel" type="Label" parent="Root/Window/VBox/SpawnRow"]
+layout_mode = 2
+text = "Next Unit"
+
+[node name="SpawnBar" type="ProgressBar" parent="Root/Window/VBox/SpawnRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 24)
+max_value = 100.0
+value = 0.0
+show_percentage = false

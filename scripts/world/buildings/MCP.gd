@@ -21,6 +21,7 @@ const AVATAR_CREATION_COOLDOWN_TICKS: int = 10
 
 var to_rotate: Array = []
 var cooldown_ticks: int = 0
+var _mcp_hud: SubViewport
 
 # --- Lifecycle ---
 
@@ -47,6 +48,16 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	add_to_group("mcp_player" + str(pnum))
 	add_to_group("vat")
 	add_to_group("vat_player" + str(pnum))
+	_mcp_hud = get_node_or_null("MCPHUD")
+	if _mcp_hud:
+		var hud_root = _mcp_hud.get_node_or_null("Root")
+		if hud_root:
+			hud_root.mcp = self
+		var screen = get_node_or_null("Terminal/Screen")
+		if screen:
+			var mat = screen.get_surface_override_material(0)
+			if mat:
+				mat.albedo_texture = _mcp_hud.get_texture()
 
 # --- Queries ---
 

@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_jwrpb"]
 [ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MCPHUD.tscn" id="5_hud"]
 
 [sub_resource type="BoxShape3D" id="1"]
 size = Vector3(15, 1, 15)
@@ -23,3 +24,5 @@ script = ExtResource("4")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=545559386]
 shape = SubResource("1")
+
+[node name="MCPHUD" parent="." instance=ExtResource("5_hud")]
