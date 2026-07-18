@@ -15,6 +15,7 @@ const MOUSE_SENSITIVITY := 0.4
 @onready var camera: Camera3D = $FPSBody/Rotation_Helper/FPSCamera
 @onready var rotation_helper: Node3D = $FPSBody/Rotation_Helper
 @onready var ray: RayCast3D = $FPSBody/Rotation_Helper/RayCast
+@onready var screen_ray: RayCast3D = $FPSBody/Rotation_Helper/FPSCamera/ScreenRay
 @onready var ray_render: MeshInstance3D = $FPSBody/Rotation_Helper/RayRender
 @onready var rand := RandomNumberGenerator.new()
 
@@ -23,6 +24,7 @@ var vel := Vector3()
 var dir := Vector3()
 var jaggies: float = 0
 var mouse_initial: bool = true
+var _prev_left_mouse: bool = false
 
 # --- Lifecycle ---
 
@@ -140,11 +142,14 @@ func process_movement(delta: float) -> void:
 # --- Visual ---
 
 func _update_screen_cursor() -> void:
-	ray.force_raycast_update()
-	if not ray.is_colliding():
+	screen_ray.force_raycast_update()
+	var left_mouse := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var just_clicked := left_mouse and not _prev_left_mouse
+	_prev_left_mouse = left_mouse
+	if not screen_ray.is_colliding():
 		_hide_all_hud_cursors()
 		return
-	var col := ray.get_collider()
+	var col := screen_ray.get_collider()
 	if col and col.name == "ScreenBody":
 		var screen_mesh := col.get_parent() as MeshInstance3D
 		if screen_mesh:
@@ -154,8 +159,10 @@ func _update_screen_cursor() -> void:
 				if parent_building:
 					var mcp_hud_root := parent_building.get_node_or_null("MCPHUD/Root")
 					if mcp_hud_root:
-						var uv: Vector2 = mcp_hud_root.uv_from_collision(screen_mesh, ray.get_collision_point())
+						var uv: Vector2 = mcp_hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())
 						mcp_hud_root.show_cursor_at_uv(uv)
+						if just_clicked:
+							mcp_hud_root.click_at_uv(uv)
 						return
 	_hide_all_hud_cursors()
 

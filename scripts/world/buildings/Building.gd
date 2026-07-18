@@ -115,7 +115,6 @@ func position_terminal() -> void:
 	var edge_data := _compute_edge(best)
 	terminal.global_position = Vector3(edge_data.midpoint.x, 0.0, edge_data.midpoint.z)
 	terminal.rotation.y = atan2(-edge_data.normal.z, edge_data.normal.x) + PI - location.rotation.y
-	print("position_terminal: ", name, " neighbor=", best.name, " normal=", edge_data.normal, " rot_y=", rad_to_deg(terminal.rotation.y))
 
 func _compute_edge(neighbour: TileElement) -> Dictionary:
 	var a_xform := location.global_transform
