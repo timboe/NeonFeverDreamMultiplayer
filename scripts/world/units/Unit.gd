@@ -307,14 +307,20 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 		return
 	quat_from = Quaternion(transform.basis)
 	var cache_rot = transform.basis
+	var target_pos: Vector3 = target.pathing_centre
+	if transform.origin.is_equal_approx(target_pos):
+		rotation.y = 0.0
+		quat_to = Quaternion(transform.basis)
+		transform.basis = cache_rot
+		return
 	if look_at_from_target != null:
 		# If final move, look towards where the job is
 		var cache_origin = transform.origin
-		transform.origin = target.pathing_centre
+		transform.origin = target_pos
 		look_at(look_at_from_target.pathing_centre, Vector3.UP)
 		transform.origin = cache_origin
 	else:
-		look_at(target.pathing_centre, Vector3.UP)
+		look_at(target_pos, Vector3.UP)
 	rotation.y -= PI / 2.0
 	quat_to = Quaternion(transform.basis)
 	transform.basis = cache_rot
