@@ -1,14 +1,17 @@
 extends MultiMeshInstance3D
 class_name MonorailMultimesh
 
+# --- Constants ---
+
 const HIDE_DEPTH: float = -3.0
 const CONNECT_TIME: float = 0.5
 const DISCONNECT_TIME: float = 0.2
 
+# --- State ---
+
 var edge_dict: Dictionary = {}
 var tile_edges: Dictionary = {}
 var _active_tweens: Dictionary = {}
-var _loading := true
 var _monorail_body: StaticBody3D
 var _shape: ConcavePolygonShape3D
 var _mesh_center: Vector3 = Vector3.ZERO
@@ -17,7 +20,9 @@ var _cap_mm: MultiMeshInstance3D
 var _cap_dict: Dictionary = {}
 var _cap_active_tweens: Dictionary = {}
 
-# --- Public API ---
+var _loading := true
+
+# --- Lifecycle ---
 
 func setup(tile_dictionary: Dictionary) -> void:
 	if multimesh != null:
@@ -77,11 +82,6 @@ func setup(tile_dictionary: Dictionary) -> void:
 
 			mm_id += 1
 
-func finish_setup() -> void:
-	_loading = false
-
-# --- Cap API ---
-
 func cap_setup(tile_dictionary: Dictionary, cap_node: MultiMeshInstance3D) -> void:
 	_cap_mm = cap_node
 	if _cap_mm.multimesh != null:
@@ -109,51 +109,42 @@ func cap_setup(tile_dictionary: Dictionary, cap_node: MultiMeshInstance3D) -> vo
 		_cap_dict[tile_id] = mm_id
 		mm_id += 1
 
-func cap_raise(tile: TileElement) -> void:
-	var tid := tile.get_id()
-	if not _cap_dict.has(tid):
-		return
-	var mm_id: int = _cap_dict[tid]
-	var current_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
-	if current_y >= 0.0:
-		return
-	if _loading:
-		_set_cap_y(mm_id, 0.0)
-	else:
-		_tween_cap(mm_id, 0.0, CONNECT_TIME)
+func finish_setup() -> void:
+	_loading = false
 
-func cap_lower(tile: TileElement) -> void:
-	var tid := tile.get_id()
-	if not _cap_dict.has(tid):
-		return
-	var mm_id: int = _cap_dict[tid]
-	var current_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
-	if current_y <= HIDE_DEPTH:
-		return
-	if _loading:
-		_set_cap_y(mm_id, HIDE_DEPTH)
-	else:
-		_tween_cap(mm_id, HIDE_DEPTH, DISCONNECT_TIME)
+# --- Public: edges ---
 
-func _set_cap_y(mm_id: int, y: float) -> void:
-	var t := _cap_mm.multimesh.get_instance_transform(mm_id)
-	t.origin.y = y
-	_cap_mm.multimesh.set_instance_transform(mm_id, t)
+func connect_edge(from_id: int, to_id: int) -> void:
+	_connect_edge_impl(from_id, to_id)
+	if not _loading and multiplayer.is_server():
+		get_parent().rpc("rpc_monorail_connect_edge", from_id, to_id)
 
-func _tween_cap(mm_id: int, target_y: float, duration: float) -> void:
-	if _cap_active_tweens.has(mm_id):
-		var old: Tween = _cap_active_tweens[mm_id]
-		if old and old.is_valid():
-			old.kill()
-	var start_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
-	var tween := create_tween()
-	_cap_active_tweens[mm_id] = tween
-	tween.tween_method(func(y: float):
-		_set_cap_y(mm_id, y)
-	, start_y, target_y, duration)
+func disconnect_edge(from_id: int, to_id: int) -> void:
+	_disconnect_edge_impl(from_id, to_id)
+	if not _loading and multiplayer.is_server():
+		get_parent().rpc("rpc_monorail_disconnect_edge", from_id, to_id)
 
-func connect_edge(from: TileElement, to: TileElement) -> void:
-	var key := _edge_key(from.get_id(), to.get_id())
+func disconnect_tile_edges(tile_id: int) -> void:
+	_disconnect_tile_edges_impl(tile_id)
+	if not _loading and multiplayer.is_server():
+		get_parent().rpc("rpc_monorail_disconnect_tile_edges", tile_id)
+
+# --- Public: caps ---
+
+func cap_raise(tile_id: int) -> void:
+	_cap_raise_impl(tile_id)
+	if not _loading and multiplayer.is_server():
+		get_parent().rpc("rpc_monorail_cap_raise", tile_id)
+
+func cap_lower(tile_id: int) -> void:
+	_cap_lower_impl(tile_id)
+	if not _loading and multiplayer.is_server():
+		get_parent().rpc("rpc_monorail_cap_lower", tile_id)
+
+# --- Internal: edge impl ---
+
+func _connect_edge_impl(from_id: int, to_id: int) -> void:
+	var key := _edge_key(from_id, to_id)
 	if not edge_dict.has(key):
 		return
 	var data: Dictionary = edge_dict[key]
@@ -166,8 +157,8 @@ func connect_edge(from: TileElement, to: TileElement) -> void:
 	else:
 		_tween_edge(mm_id, data["collision"], 0.0, CONNECT_TIME)
 
-func disconnect_edge(from: TileElement, to: TileElement) -> void:
-	var key := _edge_key(from.get_id(), to.get_id())
+func _disconnect_edge_impl(from_id: int, to_id: int) -> void:
+	var key := _edge_key(from_id, to_id)
 	if not edge_dict.has(key):
 		return
 	var data: Dictionary = edge_dict[key]
@@ -180,11 +171,10 @@ func disconnect_edge(from: TileElement, to: TileElement) -> void:
 	else:
 		_tween_edge(mm_id, data["collision"], HIDE_DEPTH, DISCONNECT_TIME)
 
-func disconnect_tile_edges(tile: TileElement) -> void:
-	var tid := tile.get_id()
-	if not tile_edges.has(tid):
+func _disconnect_tile_edges_impl(tile_id: int) -> void:
+	if not tile_edges.has(tile_id):
 		return
-	for key: Vector2i in tile_edges[tid]:
+	for key: Vector2i in tile_edges[tile_id]:
 		if not edge_dict.has(key):
 			continue
 		var data: Dictionary = edge_dict[key]
@@ -197,7 +187,33 @@ func disconnect_tile_edges(tile: TileElement) -> void:
 		else:
 			_tween_edge(mm_id, data["collision"], HIDE_DEPTH, DISCONNECT_TIME)
 
-# --- Internal ---
+# --- Internal: cap impl ---
+
+func _cap_raise_impl(tile_id: int) -> void:
+	if not _cap_dict.has(tile_id):
+		return
+	var mm_id: int = _cap_dict[tile_id]
+	var current_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
+	if current_y >= 0.0:
+		return
+	if _loading:
+		_set_cap_y(mm_id, 0.0)
+	else:
+		_tween_cap(mm_id, 0.0, CONNECT_TIME)
+
+func _cap_lower_impl(tile_id: int) -> void:
+	if not _cap_dict.has(tile_id):
+		return
+	var mm_id: int = _cap_dict[tile_id]
+	var current_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
+	if current_y <= HIDE_DEPTH:
+		return
+	if _loading:
+		_set_cap_y(mm_id, HIDE_DEPTH)
+	else:
+		_tween_cap(mm_id, HIDE_DEPTH, DISCONNECT_TIME)
+
+# --- Internal: edge visual helpers ---
 
 func _set_instance_y(mm_id: int, collision: CollisionShape3D, y: float) -> void:
 	var t := multimesh.get_instance_transform(mm_id)
@@ -219,14 +235,26 @@ func _tween_edge(mm_id: int, collision: CollisionShape3D, target_y: float, durat
 		_set_instance_y(mm_id, collision, y)
 	, start_y, target_y, duration)
 
-func _compute_edge_transform(from_pos: Vector3, to_pos: Vector3) -> Transform3D:
-	var midpoint := (from_pos + to_pos) * 0.5
-	var direction := to_pos - from_pos
-	direction.y = 0.0
-	var angle := atan2(-direction.z, direction.x)
-	var the_basis := Basis(Vector3.UP, angle)
-	var origin := midpoint - the_basis * _mesh_center
-	return Transform3D(the_basis, origin)
+# --- Internal: cap visual helpers ---
+
+func _set_cap_y(mm_id: int, y: float) -> void:
+	var t := _cap_mm.multimesh.get_instance_transform(mm_id)
+	t.origin.y = y
+	_cap_mm.multimesh.set_instance_transform(mm_id, t)
+
+func _tween_cap(mm_id: int, target_y: float, duration: float) -> void:
+	if _cap_active_tweens.has(mm_id):
+		var old: Tween = _cap_active_tweens[mm_id]
+		if old and old.is_valid():
+			old.kill()
+	var start_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
+	var tween := create_tween()
+	_cap_active_tweens[mm_id] = tween
+	tween.tween_method(func(y: float):
+		_set_cap_y(mm_id, y)
+	, start_y, target_y, duration)
+
+# --- Internal: edge utilities ---
 
 func _edge_key(id_a: int, id_b: int) -> Vector2i:
 	return Vector2i(mini(id_a, id_b), maxi(id_a, id_b))
@@ -236,6 +264,15 @@ func _add_edge_to_tile(tile_id: int, key: Vector2i) -> void:
 		tile_edges[tile_id] = []
 	if key not in tile_edges[tile_id]:
 		tile_edges[tile_id].append(key)
+
+func _compute_edge_transform(from_pos: Vector3, to_pos: Vector3) -> Transform3D:
+	var midpoint := (from_pos + to_pos) * 0.5
+	var direction := to_pos - from_pos
+	direction.y = 0.0
+	var angle := atan2(-direction.z, direction.x)
+	var the_basis := Basis(Vector3.UP, angle)
+	var origin := midpoint - the_basis * _mesh_center
+	return Transform3D(the_basis, origin)
 
 # --- Mesh extraction ---
 
@@ -290,7 +327,9 @@ func _weld_entries(entries: Array[Array]) -> Mesh:
 				var wp := xform * in_verts[i]
 				var wn := (xform.basis * in_norms[i]).normalized() if i < in_norms.size() else Vector3.UP
 				var wuv: Vector2 = in_uvs[i] if in_uvs != null and i < in_uvs.size() else Vector2.ZERO
-				var key := _snap3(wp)
+				var key := "%d_%d_%d_%d_%d_%d" % [
+					roundi(wp.x * _SNAP), roundi(wp.y * _SNAP), roundi(wp.z * _SNAP),
+					roundi(wn.x * _SNAP), roundi(wn.y * _SNAP), roundi(wn.z * _SNAP)]
 				if snap_to_idx.has(key):
 					local_to_global[i] = snap_to_idx[key]
 				else:
@@ -308,27 +347,20 @@ func _weld_entries(entries: Array[Array]) -> Mesh:
 	if vert_count == 0:
 		return null
 
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = out_verts
-	arrays[Mesh.ARRAY_NORMAL] = out_norms
-	arrays[Mesh.ARRAY_TEX_UV] = out_uvs
-	arrays[Mesh.ARRAY_INDEX] = out_indices
-
-	var arr_mesh := ArrayMesh.new()
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return arr_mesh
-
-func _snap3(v: Vector3) -> Vector3i:
-	return Vector3i(
-		roundi(v.x * _SNAP),
-		roundi(v.y * _SNAP),
-		roundi(v.z * _SNAP)
-	)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(vert_count):
+		st.set_normal(out_norms[i])
+		st.set_uv(out_uvs[i])
+		st.add_vertex(out_verts[i])
+	for i in range(0, out_indices.size(), 3):
+		st.add_index(out_indices[i])
+		st.add_index(out_indices[i + 1])
+		st.add_index(out_indices[i + 2])
+	st.generate_tangents()
+	return st.commit()
 
 func _build_collision_shape(mesh: Mesh) -> ConcavePolygonShape3D:
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
 	var verts := PackedVector3Array()
 	var idx_out := PackedInt32Array()
 	for s in range(mesh.get_surface_count()):
@@ -345,6 +377,8 @@ func _build_collision_shape(mesh: Mesh) -> ConcavePolygonShape3D:
 				verts.append(sv[i] - _mesh_center)
 			for i in range(sv.size()):
 				idx_out.append(base + i)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_INDEX] = idx_out
 	var tmp := ArrayMesh.new()

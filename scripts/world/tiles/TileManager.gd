@@ -322,6 +322,28 @@ func rpc_toggle_animation(rpc_tile_id: int, mode: int, thunk_distance: float = 0
 		return
 	tile_dictionary[rpc_tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
 
+# --- Monorail forwarding RPCs ---
+
+@rpc("authority", "call_local")
+func rpc_monorail_connect_edge(from_id: int, to_id: int) -> void:
+	$MonorailMultimesh._connect_edge_impl(from_id, to_id)
+
+@rpc("authority", "call_local")
+func rpc_monorail_disconnect_edge(from_id: int, to_id: int) -> void:
+	$MonorailMultimesh._disconnect_edge_impl(from_id, to_id)
+
+@rpc("authority", "call_local")
+func rpc_monorail_disconnect_tile_edges(tile_id: int) -> void:
+	$MonorailMultimesh._disconnect_tile_edges_impl(tile_id)
+
+@rpc("authority", "call_local")
+func rpc_monorail_cap_raise(tile_id: int) -> void:
+	$MonorailMultimesh._cap_raise_impl(tile_id)
+
+@rpc("authority", "call_local")
+func rpc_monorail_cap_lower(tile_id: int) -> void:
+	$MonorailMultimesh._cap_lower_impl(tile_id)
+
 # --- MultiMesh builders ---
 
 func disabled_tiles_to_multimesh() -> void:

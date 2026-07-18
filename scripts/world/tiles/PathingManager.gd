@@ -59,22 +59,22 @@ func add_tile(tile: TileElement) -> void:
 func connect_tiles(from: TileElement, to: TileElement, bidirectional: bool = true) -> void:
 	astar.connect_points(from.get_id(), to.get_id(), bidirectional)
 	if monorail:
-		monorail.connect_edge(from, to)
-		monorail.cap_raise(from)
-		monorail.cap_raise(to)
+		monorail.connect_edge(from.get_id(), to.get_id())
+		monorail.cap_raise(from.get_id())
+		monorail.cap_raise(to.get_id())
 
 func disconnect_tiles(a: TileElement, b: TileElement, bidirectional: bool = true) -> void:
 	astar.disconnect_points(a.get_id(), b.get_id(), bidirectional)
 	if monorail:
-		monorail.disconnect_edge(a, b)
+		monorail.disconnect_edge(a.get_id(), b.get_id())
 
 func disconnect_tile(tile: TileElement) -> void:
 	var tile_id := tile.get_id()
 	for conn_id in astar.get_point_connections(tile_id):
 		astar.disconnect_points(tile_id, conn_id, true)
 	if monorail:
-		monorail.disconnect_tile_edges(tile)
-		monorail.cap_lower(tile)
+		monorail.disconnect_tile_edges(tile_id)
+		monorail.cap_lower(tile_id)
 
 # --- Queries ---
 
