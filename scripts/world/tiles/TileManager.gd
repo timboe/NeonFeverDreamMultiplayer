@@ -333,16 +333,16 @@ func rpc_monorail_disconnect_edge(from_id: int, to_id: int) -> void:
 	$MonorailMultimesh._disconnect_edge_impl(from_id, to_id)
 
 @rpc("authority", "call_local")
-func rpc_monorail_disconnect_tile_edges(tile_id: int) -> void:
-	$MonorailMultimesh._disconnect_tile_edges_impl(tile_id)
+func rpc_monorail_disconnect_tile_edges(disconnect_tile_id: int) -> void:
+	$MonorailMultimesh._disconnect_tile_edges_impl(disconnect_tile_id)
 
 @rpc("authority", "call_local")
-func rpc_monorail_cap_raise(tile_id: int) -> void:
-	$MonorailMultimesh._cap_raise_impl(tile_id)
+func rpc_monorail_cap_raise(raise_tile_id: int) -> void:
+	$MonorailMultimesh._cap_raise_impl(raise_tile_id)
 
 @rpc("authority", "call_local")
-func rpc_monorail_cap_lower(tile_id: int) -> void:
-	$MonorailMultimesh._cap_lower_impl(tile_id)
+func rpc_monorail_cap_lower(lower_tile_id: int) -> void:
+	$MonorailMultimesh._cap_lower_impl(lower_tile_id)
 
 # --- MultiMesh builders ---
 
