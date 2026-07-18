@@ -37,10 +37,19 @@ func stop() -> void:
 
 func handle_command(pnum: int, command: String, args: Array) -> void:
 	var method_name := "_cmd_" + command
-	if has_method(method_name):
-		callv(method_name, [pnum] + args)
-	else:
+	if not has_method(method_name):
 		push_error("Server: unknown command: ", command)
+		return
+	var method_list = get_method_list()
+	for m in method_list:
+		if m.name == method_name:
+			var expected_args = m.args.size()
+			var provided_args = 1 + args.size()
+			if provided_args != expected_args:
+				push_error("Server: arg count mismatch for ", command, ": got ", provided_args, " expected ", expected_args)
+				return
+			break
+	callv(method_name, [pnum] + args)
 
 # --- Peer management ---
 

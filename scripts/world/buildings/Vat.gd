@@ -56,8 +56,7 @@ func get_capacity() -> float:
 # --- Contents ---
 
 func set_contains(c: float) -> void:
-	_contains_val = c
-	assert(_contains_val <= get_capacity())
+	_contains_val = minf(c, get_capacity())
 
 func add(to_add: float) -> float:
 	if state != State.CONSTRUCTED:

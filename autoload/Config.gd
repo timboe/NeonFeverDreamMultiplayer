@@ -42,6 +42,7 @@ static var UNIT_SPEED: Dictionary = {
 	UnitManager.Type.AERIAL_PATROL: 1.0,
 	UnitManager.Type.AERIAL_SCOUT: 1.0,
 	UnitManager.Type.VIRUS: 1.0,
+	UnitManager.Type.AVATAR: 0.0,
 }
 
 static var UNIT_MAX_HP: Dictionary = {

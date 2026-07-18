@@ -62,9 +62,22 @@ func displace_units_on_tile(tile: TileElement) -> void:
 
 func _displace_unit(unit: Unit, tile: TileElement) -> void:
 	if not unit.job.is_empty():
-		unit.abandon_job()
-	if unit.move_tween and unit.move_tween.is_valid():
-		unit.move_tween.kill()
+		# Clean up job without calling idle_callback (we'll call it once after displacement)
+		if unit.state == Unit.State.WORKING:
+			unit._cleanup_working_state()
+		unit.state = Unit.State.IDLE
+		var j_id = unit.job["id"]
+		unit.job = {}
+		if unit.move_tween and unit.move_tween.is_valid():
+			unit.move_tween.kill()
+		unit.move_tween = null
+		var jm = get_node_or_null("/root/World/JobManager")
+		if jm:
+			jm.abandon_job(j_id)
+	else:
+		if unit.move_tween and unit.move_tween.is_valid():
+			unit.move_tween.kill()
+		unit.move_tween = null
 	# Find first adjacent valid tile
 	var best_tile: TileElement = null
 	for n in tile.get_access_tiles():
@@ -73,8 +86,7 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 	if best_tile:
 		unit.location = best_tile
 		unit.global_position = best_tile.pathing_centre
-		if unit.job.is_empty():
-			unit.idle_callback()
+		unit.idle_callback()
 	else:
 		rpc("rpc_remove_unit", unit.id)
 
@@ -82,5 +94,7 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 func rpc_remove_unit(unit_id: int) -> void:
 	var u = unit_dictionary.get(unit_id)
 	if u:
+		if not u.job.is_empty():
+			u.abandon_job()
 		unit_dictionary.erase(unit_id)
 		u.queue_free()

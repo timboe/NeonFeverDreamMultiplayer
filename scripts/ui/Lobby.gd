@@ -48,9 +48,13 @@ func _setup_host():
 func _setup_client():
 	status_label.text = "Connected. Waiting for host to start the game..."
 	back_button.pressed.connect(_on_back)
+	multiplayer.server_disconnected.connect(_on_server_disconnected)
+
+func _on_server_disconnected():
+	status_label.text = "Disconnected from host."
 
 func _on_peer_connected(_peer_id: int):
-	_update_status()
+	call_deferred("_update_status")
 
 func _on_peer_disconnected(_peer_id: int):
 	_update_status()

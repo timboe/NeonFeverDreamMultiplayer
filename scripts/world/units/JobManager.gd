@@ -27,7 +27,7 @@ func _process(_delta: float) -> void:
 	debug_mesh.clear_surfaces()
 	debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	for job in jobs_dict.values():
-		if not job["assigned"] or not job.has("path_dest"):
+		if job["assigned"] == null or not is_instance_valid(job["assigned"]) or not job.has("path_dest"):
 			continue
 		var a = job["path_dest"].pathing_centre
 		var b = job["assigned"].location.pathing_centre

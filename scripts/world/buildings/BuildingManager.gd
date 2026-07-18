@@ -86,18 +86,23 @@ func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void
 # --- Building instances ---
 
 func new_building_instance(t: Type) -> Node3D:
-	var inst: Node3D
+	var node_name := ""
 	match t:
-		Type.MCP_1: inst = $BuildingFactory/MCP_1.duplicate()
-		Type.MCP_2: inst = $BuildingFactory/MCP_2.duplicate()
-		Type.MCP_3: inst = $BuildingFactory/MCP_3.duplicate()
-		Type.MCP_4: inst = $BuildingFactory/MCP_4.duplicate()
-		Type.GEN: inst = $BuildingFactory/Generator.duplicate()
-		Type.VAT: inst = $BuildingFactory/Vat.duplicate()
-		Type.GARAGE: inst = $BuildingFactory/Garage.duplicate()
-		Type.BEACON: inst = $BuildingFactory/Beacon.duplicate()
-		Type.NEST: inst = $BuildingFactory/Nest.duplicate()
+		Type.MCP_1: node_name = "MCP_1"
+		Type.MCP_2: node_name = "MCP_2"
+		Type.MCP_3: node_name = "MCP_3"
+		Type.MCP_4: node_name = "MCP_4"
+		Type.GEN: node_name = "Generator"
+		Type.VAT: node_name = "Vat"
+		Type.GARAGE: node_name = "Garage"
+		Type.BEACON: node_name = "Beacon"
+		Type.NEST: node_name = "Nest"
 		_: return null
+	var factory_node = $BuildingFactory.get_node_or_null(node_name)
+	if not factory_node:
+		push_error("BuildingManager: factory node not found: ", node_name)
+		return null
+	var inst = factory_node.duplicate()
 	Blueprints.enable_collision_recursive(inst)
 	return inst
 
@@ -153,8 +158,14 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 		hud.build_mode = HUD.Mode.NONE
 	if multiplayer.is_server():
 		%EnergyManager.recalculate_capacity()
+		get_node_or_null("/root/World/TileManager").recompute_aoe()
 		if type in Config.CONSTRUCTION_COST:
 			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
+		# Cancel any pending toggle jobs on this tile
+		for job in %JobManager.jobs_dict.values():
+			if job["type"] == JobManager.Type.TOGGLE_TILE and job["location"] == tile:
+				%JobManager.remove_job(job["id"])
+				break
 
 func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	var b := new_building_instance(type)
@@ -168,6 +179,7 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 		tile.set_lowered()
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
 	%EnergyManager.recalculate_capacity()
+	get_node_or_null("/root/World/TileManager").recompute_aoe()
 
 # --- Removal ---
 
@@ -175,6 +187,11 @@ func remove_building(id: int) -> void:
 	var b = building_dictionary.get(id)
 	if b:
 		building_dictionary.erase(id)
+		if b.location:
+			b.location.building = null
 		b.queue_free()
 		if multiplayer.is_server():
 			%EnergyManager.recalculate_capacity()
+			var tm = get_node_or_null("/root/World/TileManager")
+			if tm:
+				tm.recompute_aoe()

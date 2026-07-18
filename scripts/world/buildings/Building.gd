@@ -43,7 +43,8 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	add_to_group("building_player" + str(pnum))
 	_health_bar = preload("res://scripts/ui/HealthBar3D.gd").new()
 	var container = get_node_or_null("/root/World/BuildingManager/HealthBars")
-	container.add_child(_health_bar)
+	if container:
+		container.add_child(_health_bar)
 	_health_bar.global_position.x = tile.pathing_centre.x
 	_health_bar.global_position.z = tile.pathing_centre.z
 	_health_bar.global_position.y = 3.0
@@ -79,7 +80,7 @@ func find_unit_spawn_location() -> Vector3:
 	for n in location.neighbours:
 		if n.state == TileManager.State.LOWERED:
 			return n.pathing_centre
-	return Vector3.ZERO
+	return location.pathing_centre
 
 func get_aoe_radius() -> float:
 	return Config.BUILDING_AOE[type]

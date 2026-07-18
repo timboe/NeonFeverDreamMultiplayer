@@ -31,6 +31,7 @@ var progress: int
 var location: TileElement
 var previous_location: TileElement
 var move_tween: Tween
+var _rotate_tween: Tween
 
 # --- Rotation ---
 
@@ -58,9 +59,9 @@ func initialise(b: Building) -> void:
 	# This all happens only the server.
 	if not multiplayer.is_server():
 		return
-	var tw = create_tween()
-	tw.tween_property(self, "position:y", 0, SPAWN_TIME)
-	tw.tween_callback(idle_callback)
+	move_tween = create_tween()
+	move_tween.tween_property(self, "position:y", 0, SPAWN_TIME)
+	move_tween.tween_callback(idle_callback)
 
 func _process(_delta: float) -> void:
 	if _health_bar:
@@ -76,6 +77,8 @@ func assign_job(new_job: Dictionary) -> void:
 	assert(new_job["pnum"] == building.player_owner)
 	state = State.PATHING
 	job = new_job
+	path.resize(0)
+	progress = 0
 
 # --- Idle state ---
 
@@ -99,18 +102,19 @@ func idle_callback() -> void:
 	# Special considerations if scrambling, always head towards home
 	if scram_count > 0:
 		scram_count -= 1
-		var lowest_dist := 9999
-		var best_target = null
 		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
-		for d in possible_destinations:
-			var dist = pm.distance(d, mcp.location)
-			if dist < lowest_dist:
-				lowest_dist = dist
-				best_target = d
-		if best_target:
-			possible_destinations.clear()
-			possible_destinations.append(best_target)
+		if mcp and pm:
+			var lowest_dist := 9999
+			var best_target = null
+			for d in possible_destinations:
+				var dist = pm.distance(d, mcp.location)
+				if dist < lowest_dist:
+					lowest_dist = dist
+					best_target = d
+			if best_target:
+				possible_destinations.clear()
+				possible_destinations.append(best_target)
 
 	# Avoid backtracking, if possible
 	var backtrack = possible_destinations.find(previous_location)
@@ -165,16 +169,28 @@ func check_job_still_valid() -> bool:
 		var b = job["location"].building
 		if not b or b.state != Building.State.BLUEPRINT:
 			return false
+	elif job["type"] == JobManager.Type.TOGGLE_TILE:
+		var tile = job["location"] as TileElement
+		if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
+			return false
 	return true
 
 func check_pathing_valid() -> bool:
 	if not multiplayer.is_server():
 		return false
+	# Validate remaining path nodes are still traversable
+	if path.size() > 0:
+		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
+		for i in range(progress, path.size()):
+			var tile = pm.get_tile(path[i])
+			if tile.state != TileManager.State.LOWERED:
+				path.resize(0)
+				break
 	if path.size() == 0:
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for n in job["location"].get_access_tiles():
 			var check_path = pm.pathfind(location, n)
-			if path.size() == 0 or check_path.size() < path.size():
+			if check_path.size() > 0 and (path.size() == 0 or check_path.size() < path.size()):
 				path = check_path
 				job["path_dest"] = n
 		progress = 1 # 0 is our starting location
@@ -239,6 +255,9 @@ func remove_job() -> void:
 func _cleanup_working_state() -> void:
 	if has_node("Zapper"):
 		$Zapper.visible = false
+	if _rotate_tween and _rotate_tween.is_valid():
+		_rotate_tween.kill()
+		_rotate_tween = null
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
 			job["location"].cancel_toggle_countdown(self)
@@ -281,6 +300,8 @@ func move(callback: Callable) -> void:
 		time *= 0.5
 	elif state == State.IDLE:
 		time *= 2.0
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
 	move_tween = create_tween()
 	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
 	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
@@ -294,7 +315,10 @@ func quick_rotate() -> void:
 	if job["location"] == null:
 		return
 	setup_rotation(job["location"], null)
-	create_tween().tween_method(quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
+	if _rotate_tween and _rotate_tween.is_valid():
+		_rotate_tween.kill()
+	_rotate_tween = create_tween()
+	_rotate_tween.tween_method(quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
 
 func quat_transform(amount: float) -> void:
 	if not multiplayer.is_server():

@@ -18,6 +18,8 @@ func _get_server() -> Server:
 	return null
 
 func send_command_me(command: String, args: Array) -> void:
+	if my_player_number < 0:
+		return
 	send_command(my_player_number, command, args)
 
 func send_command(pnum: int, command: String, args: Array) -> void:

@@ -39,7 +39,7 @@ send_command_me / send_command
 - `send_command_me` uses `Global.my_player_number` — safe for host (set by `NetworkManager` at LOCAL-slot creation) and remote (set by `NetworkManager.set_my_player_number` RPC)
 - `send_command(pnum, ...)` is for AI controllers that know their own player number
 - The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`
-- Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`. The `_cmd_` prefix acts as an allowlist — arbitrary method names like `queue_free` won't match.
+- Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`. The `_cmd_` prefix acts as an allowlist — arbitrary method names like `queue_free` won't match. `handle_command` validates argument count against the method signature before calling `callv`.
 - No `human_controllers` group checks, no `rpc_id(1, ...)` scattered in game objects, no `HumanController` bridge methods. HumanController, GameGrid, and GridCell have been removed — replaced entirely by the tile system.
 
 ### Server-only guard pattern
@@ -131,7 +131,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 5. Re-checks `path_dest` (may have changed to current location after re-pathing).
 6. Moves to next node in path via `move(pathing_callback)`.
 
-**`check_pathing_valid()`** — If `path` is empty, re-runs pathfinding from current location to all access tiles of the job target. Sets `path_dest` to the closest access tile. Returns `false` if no reachable path exists (triggers `abandon_job`). Returns `true` if a valid path exists (path was already computed and hasn't been invalidated).
+**`check_pathing_valid()`** — If `path` is empty, re-runs pathfinding from current location to all access tiles of the job target. Sets `path_dest` to the closest access tile. Returns `false` if no reachable path exists (triggers `abandon_job`). Returns `true` if a valid path exists (path was already computed and hasn't been invalidated). Also validates that remaining path nodes are still `LOWERED` — if any node in the path has been raised, the path is invalidated and recomputed.
 
 **`start_work()`** — Transitions PATHING → WORKING.
 - Sets `state = WORKING`, rotates unit toward target, enables zapper visual.
@@ -147,7 +147,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 - Sets `state = IDLE`, hides zapper, kills `move_tween`, clears `job`.
 - Calls `idle_callback()` unconditionally (tween is killed, no stale callback risk).
 
-**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Cancels tile countdown via `cancel_toggle_countdown(self)` or cancels building construction.
+**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Hides zapper, kills `_rotate_tween`, cancels tile countdown via `cancel_toggle_countdown(self)` or cancels building construction.
 
 **`abandon_job()`** — Inlined logic for both pathing and working states:
 - If `state == WORKING`: calls `_cleanup_working_state()` (hides zapper, cancels tile countdown / construction).
@@ -155,7 +155,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 - Calls `JobManager.abandon_job(id)` (job stays in pool, reassignable after timer).
 - Calls `idle_callback()` unconditionally.
 
-**`move(callback)`** — Creates a tween that slerps rotation and moves to `location.pathing_centre`. Calls `callback` when done. IDLE units move at 2x speed.
+**`move(callback)`** — Kills previous `move_tween` if valid, then creates a new tween that slerps rotation and moves to `location.pathing_centre`. Calls `callback` when done. IDLE units move at 2x speed.
 
 ### JobManager.gd
 
@@ -177,15 +177,17 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 **`do_toggle_countdown(z)`** — Server-only. Stores `working_unit = z` and `toggle_zoomba_player`. Starts a 2s countdown tween (`_countdown_tween`) that calls `begin_toggle`. Sends RPC mode 0 (visual countdown to all peers).
 
-**`cancel_toggle_countdown(z)`** — Server-only. Clears `toggle_zoomba_player` and `working_unit`. Kills `_countdown_tween` (prevents `begin_toggle` from firing). Sends RPC mode 1 (kills visual countdown on all peers).
+**`cancel_toggle_countdown(z)`** — Server-only. Clears `toggle_zoomba_player`, `working_unit`, and `_working_job_id`. Kills `_countdown_tween` (prevents `begin_toggle` from firing). Sends RPC mode 1 (kills visual countdown on all peers).
 
 **`begin_toggle()`** — Server-only. Fired by `_countdown_tween` after 2s delay.
+- Clears `_countdown_tween` reference (tween has fired).
 - If tile state is no longer RAISED/LOWERED (state changed during countdown): calls `working_unit.job_finished()` and cleans up. The toggle is aborted.
 - Otherwise: transitions tile state (RAISED → FALLING, or LOWERED → RISING via `set_rising()`), erases player from `selected_by`, sends RPC broadcast. Creates a second tween (`fall_time + thunk_time`) that calls `done_toggle`.
 
 **`done_toggle()`** — Server-only. Fired after the fall/rise animation completes.
-- RAISED→FALLING: calls `set_lowered()`. LOWERED→RISING: sets state = RAISED.
-- Calls `working_unit.job_finished()` if unit is still valid, then clears `working_unit`.
+- RAISED→FALLING: calls `set_lowered()`. LOWERED→RISING: sets state = RAISED, resets tile position to `-Global.TILE_OFFSET`.
+- Calls `JobManager.remove_job(_working_job_id)` only if the job is still assigned to `working_unit` (prevents stealing jobs from newly-assigned units).
+- Clears `working_unit` and `_working_job_id`.
 
 ### Tween separation on TileElement
 
@@ -212,10 +214,11 @@ When a tile leaves the pathing grid (`set_rising` or building placement), `TileM
 
 1. `PathingManager.disconnect_tile(tile)` — removes all AStar edges from this tile
 2. `UnitManager.displace_units_on_tile(tile)` — for each unit on the tile:
-   - If unit has a job → `unit.abandon_job()` (job goes back to pool)
+   - If unit has a job → cleanup without `idle_callback` (sets state to IDLE, clears job, calls `JobManager.abandon_job`)
    - Kill active `move_tween`
    - Find first `LOWERED` neighbour with no building → teleport unit there
-   - If no valid neighbour exists → `rpc("rpc_remove_unit", unit.id)` (destroy)
+   - Call `idle_callback()` once from the new position
+   - If no valid neighbour exists → `rpc("rpc_remove_unit", unit.id)` (destroy, which also cleans up jobs)
 
 ### Path re-routing
 
@@ -254,6 +257,7 @@ All three are independent: `set_tile_mm_color` preserves `a`, `set_tile_mm_emiss
 - `TileElement.aoe` array lists which players have AoE on this tile
 - `TileManager.recompute_aoe()` runs BFS per building from `Config.BUILDING_AOE` radii
 - Called once after `apply_loaded_level()` — deterministic on all peers, no AoE-specific network traffic
+- Also called after building placement (`broadcast_place_blueprint`) and removal (`remove_building`) to keep AoE in sync
 - `Building.get_aoe_radius()` reads from `Config.BUILDING_AOE[type]`
 
 ## Godot 4 conversion patterns
@@ -344,7 +348,7 @@ dr_mesh.surface_end()
 
 ### Unit scripts
 
-- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. `abandon_job()` inlines both pathing and working cleanup, kills `move_tween` to prevent stale callbacks. `_cleanup_working_state()` shared helper for tile countdown / construction cancellation. `remove_job` uses same helper, kills tween unconditionally. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `initialise(b)` — subclasses call `super.initialise(b)` then set `self.type` and add their own groups.
+- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. `abandon_job()` inlines both pathing and working cleanup, kills `move_tween` to prevent stale callbacks. `_cleanup_working_state()` shared helper for tile countdown / construction cancellation, kills `_rotate_tween`. `remove_job` uses same helper, kills tween unconditionally. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `initialise(b)` — subclasses call `super.initialise(b)` then set `self.type` and add their own groups.
 - `Zoomba.gd`: Removed `@onready var tween`, added `pathing_manager`. `PoolIntArray`→`PackedInt64Array`. `interpolate_method`→`create_tween().tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback().set_delay()`. `Quat`→`Quaternion`, `translation`→`position`, `GlobalVars`→`Global`, `push_back`→`append`, `remove`→`remove_at`, `cast_to`→`target_position`. Most pathing/work logic is commented out.
 - `UnitManager.gd`: Added `units()`, `_next_unit_id`, `rpc_remove_unit` (replaces `remove_unit`) with `@rpc("authority", "call_local")`, `displace_units_on_tile` + `_displace_unit` for tile disconnection handling. Server guard on `spawn_unit`.
 - `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer. Flipped assignment to worker-centric: `try_and_assign(job)` → `assign_nearest_job(unit)`. `assign_jobs()` now has two-pass structure (timer decrement then worker iteration).
@@ -393,6 +397,7 @@ Placeholder `.tscn` files created for MCP_3, MCP_4, Garage, Beacon, Nest under `
 - Server-only functions called from `_physics_process` (which runs on all peers) must self-guard with `if not multiplayer.is_server(): return`.
 - `create_tween()` returns a `RefCounted` Tween — store in a local var, use `.kill()` + `.is_valid()` guard, and do not use `@onready`.
 - `ImmediateMesh.clear_surfaces()` replaces `ImmediateGeometry.clear()`.
+- `EnergyManager` dictionaries use 1-based player numbers (1 through `MAX_PLAYERS`). All loops use `range(1, Global.MAX_PLAYERS + 1)`, not `for p in Global.MAX_PLAYERS` (which would iterate 0-3).
 
 ## Lobby flow
 

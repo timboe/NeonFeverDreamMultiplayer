@@ -251,6 +251,7 @@ func cancel_toggle_countdown(z: Unit) -> void:
 	assert(toggle_zoomba_player == z.building.player_owner)
 	toggle_zoomba_player = 0
 	working_unit = null
+	_working_job_id = -1
 	if _countdown_tween and _countdown_tween.is_valid():
 		_countdown_tween.kill()
 		_countdown_tween = null
@@ -260,6 +261,7 @@ func cancel_toggle_countdown(z: Unit) -> void:
 func begin_toggle() -> void:
 	if not multiplayer.is_server():
 		return
+	_countdown_tween = null
 	# If tile state changed during countdown (human click, another unit), abort
 	if state != TileManager.State.RAISED and state != TileManager.State.LOWERED:
 		if is_instance_valid(working_unit):
@@ -280,7 +282,7 @@ func begin_toggle() -> void:
 	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
 	var thunk_time := thunk_distance * 2
 	var fall_time := Global.rand.randf_range(4.5, 5.5)
-	var dest = -HEIGHT if state == TileManager.State.FALLING else HEIGHT
+	var dest = -HEIGHT if state == TileManager.State.FALLING else -Global.TILE_OFFSET
 
 	# Set the animation going everywhere (routed through TileManager for reliable RPC delivery)
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 2, thunk_distance, thunk_time, fall_time, dest)
@@ -298,7 +300,8 @@ func rpc_toggle_animation(mode: int, thunk_distance: float = 0, thunk_time: floa
 		toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, TOGGLE_COUNTDOWN_TIME)\
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	elif mode == 1: # Cancel
-		toggle_tween.kill()
+		if toggle_tween and toggle_tween.is_valid():
+			toggle_tween.kill()
 		toggle_tween = null
 		_apply_emission()
 	elif mode == 2: # Commit
@@ -326,12 +329,18 @@ func done_toggle() -> void:
 		set_lowered()
 	elif state == TileManager.State.RISING:
 		state = TileManager.State.RAISED
+		var t := transform
+		t.origin.y = -Global.TILE_OFFSET
+		transform = t
+		set_tile_mm_height(-Global.TILE_OFFSET)
 		var bm = get_node_or_null("/root/World/BuildingManager") as BuildingManager
 		if bm:
 			bm.position_all_terminals()
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
-	if jm and _working_job_id >= 0:
-		jm.remove_job(_working_job_id)
+	if jm and _working_job_id >= 0 and jm.jobs_dict.has(_working_job_id):
+		var j = jm.jobs_dict[_working_job_id]
+		if j["assigned"] == null or j["assigned"] == working_unit:
+			jm.remove_job(_working_job_id)
 	_working_job_id = -1
 	working_unit = null
 
