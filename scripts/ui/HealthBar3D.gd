@@ -30,7 +30,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	var cam = get_viewport().get_camera_3d()
 	if cam:
-		look_at(cam.global_position, Vector3.UP)
+		var diff: Vector3 = cam.global_position - global_position
+		if absf(diff.x) > 0.001 or absf(diff.z) > 0.001:
+			look_at(cam.global_position, Vector3.UP)
 
 # --- API ---
 

@@ -103,7 +103,7 @@ func set_lowered() -> void:
 	set_tile_mm_height(-HEIGHT)
 	# Connect pathing to any already-lowered neighbours
 	for n in neighbours:
-		if n.state == TileManager.State.LOWERED:
+		if n.state == TileManager.State.LOWERED and n.building == null:
 			pathing_manager.connect_tiles(self, n)
 
 # Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
