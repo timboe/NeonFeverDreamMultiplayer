@@ -29,6 +29,9 @@ static var BUILDING_MAX_HP: Dictionary = {
 static var CONSTRUCTION_COST: Dictionary = {
 	BuildingManager.Type.GEN: 900.0,
 	BuildingManager.Type.VAT: 400.0,
+	BuildingManager.Type.GARAGE: 750.0,
+	BuildingManager.Type.BEACON: 750.0,
+	BuildingManager.Type.NEST: 750.0,
 }
 
 # --- Units ---

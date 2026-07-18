@@ -85,6 +85,8 @@ func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):
 		if jobs_dict[id_to_remove]["assigned"]:
 			jobs_dict[id_to_remove]["assigned"].remove_job()
+		else:
+			unassigned -= 1
 		jobs_dict.erase(id_to_remove)
 
 func abandon_job(id_to_abandon: int) -> void:

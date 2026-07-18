@@ -66,7 +66,7 @@ func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
 			node.set_surface_override_material(i, mat)
 	elif node is CSGCombiner3D:
 		node.material_override = mat
-	elif node is GPUParticles3D or node is Zapper:
+	elif node is GPUParticles3D or node is Zapper or node is CollisionShape3D:
 		node.queue_free()
 
 func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
@@ -86,17 +86,20 @@ func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void
 # --- Building instances ---
 
 func new_building_instance(t: Type) -> Node3D:
+	var inst: Node3D
 	match t:
-		Type.MCP_1: return $BuildingFactory/MCP_1.duplicate()
-		Type.MCP_2: return $BuildingFactory/MCP_2.duplicate()
-		Type.MCP_3: return $BuildingFactory/MCP_3.duplicate()
-		Type.MCP_4: return $BuildingFactory/MCP_4.duplicate()
-		Type.GEN: return $BuildingFactory/Generator.duplicate()
-		Type.VAT: return $BuildingFactory/Vat.duplicate()
-		Type.GARAGE: return $BuildingFactory/Garage.duplicate()
-		Type.BEACON: return $BuildingFactory/Beacon.duplicate()
-		Type.NEST: return $BuildingFactory/Nest.duplicate()
-	return null
+		Type.MCP_1: inst = $BuildingFactory/MCP_1.duplicate()
+		Type.MCP_2: inst = $BuildingFactory/MCP_2.duplicate()
+		Type.MCP_3: inst = $BuildingFactory/MCP_3.duplicate()
+		Type.MCP_4: inst = $BuildingFactory/MCP_4.duplicate()
+		Type.GEN: inst = $BuildingFactory/Generator.duplicate()
+		Type.VAT: inst = $BuildingFactory/Vat.duplicate()
+		Type.GARAGE: inst = $BuildingFactory/Garage.duplicate()
+		Type.BEACON: inst = $BuildingFactory/Beacon.duplicate()
+		Type.NEST: inst = $BuildingFactory/Nest.duplicate()
+		_: return null
+	Blueprints.enable_collision_recursive(inst)
+	return inst
 
 func next_building_id() -> int:
 	var nbid := _next_building_id
