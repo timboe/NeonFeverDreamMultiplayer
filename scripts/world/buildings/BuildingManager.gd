@@ -19,7 +19,6 @@ var _next_building_id: int = 0
 
 var enabled_blueprints: Dictionary = {}
 var disabled_blueprints: Dictionary = {}
-var _blueprint_enabled_mat: ShaderMaterial = preload("res://materials/blueprint_enabled.tres")
 
 # --- Lifecycle ---
 
@@ -56,18 +55,7 @@ func position_all_terminals() -> void:
 	for b in building_dictionary.values():
 		b.position_terminal()
 
-# --- Blueprint material ---
-
-func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
-	for c in node.get_children():
-		apply_blueprint_material(c, mat)
-	if node is MeshInstance3D and node.mesh:
-		for i in range(node.mesh.get_surface_count()):
-			node.set_surface_override_material(i, mat)
-	elif node is CSGCombiner3D:
-		node.material_override = mat
-	elif node is GPUParticles3D or node is Zapper or node is CollisionShape3D:
-		node.queue_free()
+# --- Blueprint ---
 
 func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	if not can_place_here(tile):
@@ -145,10 +133,10 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	new_building.position_terminal()
 	new_building.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
 	new_building.health = new_building.max_health
+	print("blueprint dupe type ",type)
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true
-	apply_blueprint_material(new_blueprint, _blueprint_enabled_mat)
 	add_child(new_blueprint)
 	new_blueprint.global_transform = tile.get_global_transform()
 	new_blueprint.global_position.y = 0
