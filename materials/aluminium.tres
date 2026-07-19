@@ -1,6 +1,5 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://bv3b0og4qknh8"]
 
-[ext_resource type="Texture2D" uid="uid://cuksuwh8kj1xx" path="res://images/aluminium/aluminium_normal.png" id="1"]
 [ext_resource type="Texture2D" uid="uid://5utgopkwhgc3" path="res://images/aluminium/aluminium_flow.png" id="2"]
 [ext_resource type="Texture2D" uid="uid://bk2o8bk8nbqrh" path="res://images/aluminium/aluminium_albedo.png" id="3"]
 
@@ -86,7 +85,6 @@ shader_parameter/specular = 0.5
 shader_parameter/metallic = 0.75
 shader_parameter/roughness = 0.4
 shader_parameter/point_size = 1.0
-shader_parameter/texture_normal = ExtResource("1")
 shader_parameter/normal_scale = 0.4
 shader_parameter/anisotropy_ratio = 0.2
 shader_parameter/texture_flowmap = ExtResource("2")
