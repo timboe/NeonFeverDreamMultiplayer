@@ -42,7 +42,12 @@ func _process(delta: float) -> void:
 
 func _send_snapshot() -> void:
 	var ud: Dictionary = %UnitManager.unit_dictionary
+	var bd: Dictionary = %BuildingManager.building_dictionary
 	var data := PackedFloat64Array()
+	data.append(bd.size())
+	for b in bd.values():
+		data.append(b.id)
+		_pack_building(data, b)
 	data.append(ud.size())
 	for u in ud.values():
 		data.append(u.id)
@@ -86,14 +91,29 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 	for s in slots:
 		data.append(s)
 
+func _pack_building(data: PackedFloat64Array, b: Building) -> void:
+	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	slots[0] = b.state
+	slots[1] = b.health
+	slots[2] = b._construction_energy_spent
+	for s in slots:
+		data.append(s)
+
 # --- Client: receive ---
 
 @rpc("authority", "call_remote", "unreliable")
 func apply_snapshot(data: PackedFloat64Array) -> void:
-	var entry := {"time": Time.get_ticks_usec() / 1e6, "units": {}}
-	var count := int(data[0])
-	var idx := 1
-	for _i in range(count):
+	var entry := {"time": Time.get_ticks_usec() / 1e6, "units": {}, "buildings": {}}
+	var idx := 0
+	var bcount := int(data[idx]); idx += 1
+	for _i in range(bcount):
+		var id_val := int(data[idx]); idx += 1
+		var slots: Array[float] = []
+		for _s in SLOT_COUNT:
+			slots.append(data[idx]); idx += 1
+		entry["buildings"][id_val] = {"slots": slots}
+	var ucount := int(data[idx]); idx += 1
+	for _i in range(ucount):
 		var id_val := int(data[idx]); idx += 1
 		var type_val := int(data[idx]); idx += 1
 		var slots: Array[float] = []
@@ -142,7 +162,7 @@ func _interpolate() -> void:
 			var t := clampf((render_time - s0["time"]) / interval, 0.0, 1.0)
 			_apply_interpolated(s0, s1, t)
 			return
-	_apply_snapshot_units(s0)
+	_apply_snapshot_entities(s0)
 
 func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 	var ud: Dictionary = %UnitManager.unit_dictionary
@@ -158,6 +178,13 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 			_apply_interpolated_unit(u, e0, e1, t, e1["type"])
 		else:
 			_apply_unit(u, e1["type"], e1["slots"])
+	var bd: Dictionary = %BuildingManager.building_dictionary
+	for id_val in s1["buildings"]:
+		var b = bd.get(id_val) as Building
+		if not b:
+			continue
+		var e1 = s1["buildings"][id_val]
+		_apply_building(b, e1["slots"])
 
 func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float, type_val: int) -> void:
 	var slots: Array[float] = []
@@ -179,7 +206,7 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 				slots[4 + i] = e1["slots"][4 + i]
 	_apply_unit(u, type_val, slots)
 
-func _apply_snapshot_units(snapshot: Dictionary) -> void:
+func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 	var ud: Dictionary = %UnitManager.unit_dictionary
 	for id_val in snapshot["units"]:
 		var u = ud.get(id_val) as Unit
@@ -189,6 +216,13 @@ func _apply_snapshot_units(snapshot: Dictionary) -> void:
 			continue
 		var e = snapshot["units"][id_val]
 		_apply_unit(u, e["type"] as UnitManager.Type, e["slots"])
+	var bd: Dictionary = %BuildingManager.building_dictionary
+	for id_val in snapshot["buildings"]:
+		var b = bd.get(id_val) as Building
+		if not b:
+			continue
+		var e = snapshot["buildings"][id_val]
+		_apply_building(b, e["slots"])
 
 func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 	if not u:
@@ -210,6 +244,13 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 				body.global_position = Vector3(slots[0], slots[1], slots[2])
 				body.rotation.y = slots[3]
 			u.health = slots[4]
+
+func _apply_building(b: Building, slots: Array) -> void:
+	if not b:
+		return
+	b.state = slots[0] as int
+	b.health = slots[1]
+	b._construction_energy_spent = slots[2]
 
 # --- Server: avatar interpolation ---
 
