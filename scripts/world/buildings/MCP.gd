@@ -91,6 +91,9 @@ func check_work() -> void:
 
 # --- Energy ---
 
+func update_energy() -> void:
+	pass
+
 func get_energy() -> float:
 	return BASE_GENERATION
 

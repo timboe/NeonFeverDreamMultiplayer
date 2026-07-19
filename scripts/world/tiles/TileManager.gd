@@ -273,6 +273,10 @@ func recompute_aoe() -> void:
 			current_ring = next_ring
 		player_aoe_rings[pnum] = rings
 
+	# Now that gen_count is final, propagate to all generators
+	for g in get_tree().get_nodes_in_group("generator"):
+		g.update_energy()
+
 	for t in touched: # Un-select anything no longer under AoE
 		for s in t.selected_by:
 			if s not in t.aoe:

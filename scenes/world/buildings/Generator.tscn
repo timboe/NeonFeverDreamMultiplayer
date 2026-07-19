@@ -142,7 +142,7 @@ scale_curve = SubResource("20")
 color = Color(0, 1, 1, 1)
 
 [node name="Generator" type="StaticBody3D" unique_id=1961258344]
-input_ray_pickable = false
+input_ray_pickable = true
 script = ExtResource("1_4ab57")
 
 [node name="BuildinConstructedParticles" parent="." unique_id=1157080294 instance=ExtResource("5")]
