@@ -24,8 +24,15 @@ environment = ExtResource("1_gbddb")
 transform = Transform3D(-4.37114e-08, -0.34201998, 0.93969274, 0, 0.9396922, 0.34202015, -1.0000002, 1.4950167e-08, -4.107527e-08, 0, 0, 0)
 light_color = Color(1, 1, 0, 1)
 light_angular_distance = 10.0
-shadow_enabled = true
 sky_mode = 2
+
+[node name="SunScene" type="DirectionalLight3D" parent="." unique_id=448695341]
+transform = Transform3D(-4.37114e-08, -0.34201998, 0.93969274, 0, 0.9396922, 0.34202015, -1.0000002, 1.4950167e-08, -4.107527e-08, 0, 0, 0)
+light_color = Color(1, 0.95, 0.8, 1)
+light_energy = 0.35
+light_angular_distance = 10.0
+shadow_enabled = true
+sky_mode = 1
 
 [node name="Floor" parent="." unique_id=1643165362 instance=ExtResource("2_6eebf")]
 
