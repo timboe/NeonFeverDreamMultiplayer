@@ -26,6 +26,18 @@ static var BUILDING_MAX_HP: Dictionary = {
 	BuildingManager.Type.NEST: 2000.0,
 }
 
+static var BUILDING_ENERGY_CAPACITY: Dictionary = {
+	BuildingManager.Type.MCP_1: 1000.0,
+	BuildingManager.Type.MCP_2: 1000.0,
+	BuildingManager.Type.MCP_3: 1000.0,
+	BuildingManager.Type.MCP_4: 1000.0,
+	BuildingManager.Type.GEN: 0.0,
+	BuildingManager.Type.VAT: 1000.0,
+	BuildingManager.Type.GARAGE: 0.0,
+	BuildingManager.Type.BEACON: 0.0,
+	BuildingManager.Type.NEST: 0.0,
+}
+
 static var CONSTRUCTION_COST: Dictionary = {
 	BuildingManager.Type.GEN: 900.0,
 	BuildingManager.Type.VAT: 400.0,
@@ -60,7 +72,7 @@ static var HOME_TERRITORY_UNITS: Array[int] = [
 
 static var PLAYER_COLORS: Array[Color] = [
 	Color.RED,
-	Color.PURPLE,
-	Color.YELLOW,
 	Color.GREEN,
+	Color.YELLOW,
+	Color.ORANGE_RED,
 ]

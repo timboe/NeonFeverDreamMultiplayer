@@ -7,16 +7,12 @@ class_name Vat
 const FULL_Y: float = 10.5
 const EMPTY_Y: float = -7.5
 const HEIGHT: float = FULL_Y - EMPTY_Y
-const CAPACITY: float = 100.0 * 60.0
+const CAPACITY: float = 1000
 
 # --- State ---
 
-var capacity_mod: float = 0.0
-
-var _contains_val: float
-var contains: float:
-	get: return _contains_val
-	set(value): _contains_val = value
+var capacity_mod_vats: float = 0.0
+var capacity_mult_empower : float = 1.0
 
 # --- Visuals ---
 
@@ -35,8 +31,13 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	max_health = Config.BUILDING_MAX_HP[type]
 	health = max_health
 	add_to_group("vat")
+	if has_node("Liquid"):
+		var mat_path := "res://materials/player/player" + str(pnum) + "_material.tres"
+		$Liquid.set_surface_override_material(0, load(mat_path))
+	add_to_group("vat_player" + str(player_owner))
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	super._process(delta)
 	if liquid == null or state != State.CONSTRUCTED:
 		return
 	var em = get_node_or_null("/root/World/EnergyManager")
@@ -50,32 +51,12 @@ func _process(_delta: float) -> void:
 
 # --- Capacity ---
 
+func update_capacity() -> void:
+	var count := 0
+	for n in location.neighbours:
+		if n.building and n.building is Vat and n.building.player_owner == player_owner:
+			count += 1
+	capacity_mod_vats = count * 0.1 * CAPACITY
+
 func get_capacity() -> float:
-	return CAPACITY + capacity_mod
-
-# --- Contents ---
-
-func set_contains(c: float) -> void:
-	_contains_val = minf(c, get_capacity())
-
-func add(to_add: float) -> float:
-	if state != State.CONSTRUCTED:
-		return to_add
-	var remainder: float = _contains_val + to_add - get_capacity()
-	if remainder > 0:
-		set_contains(get_capacity())
-		return remainder
-	else:
-		set_contains(_contains_val + to_add)
-		return 0.0
-
-func remove(to_remove: float) -> float:
-	if state != State.CONSTRUCTED:
-		return to_remove
-	if to_remove <= _contains_val:
-		set_contains(_contains_val - to_remove)
-		return 0.0
-	else:
-		to_remove -= _contains_val
-		set_contains(0.0)
-		return to_remove
+	return (CAPACITY + capacity_mod_vats) * capacity_mult_empower

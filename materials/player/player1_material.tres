@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://c3qjtjsnq27p1" path="res://images/metal/Metal012_2K_Roughness.jpg" id="5"]
 
 [resource]
-albedo_color = Color(0, 1, 1, 1)
+albedo_color = Color(1, 0, 0, 1)
 metallic_texture = ExtResource("3")
 metallic_texture_channel = 4
 roughness = 0.45

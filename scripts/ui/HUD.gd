@@ -190,9 +190,9 @@ func _style_panel(panel: PanelContainer) -> void:
 
 func _apply_player_color() -> void:
 	var pnum: int = Global.my_player_number
-	if pnum < 0 or pnum >= Config.PLAYER_COLORS.size():
+	if pnum < 1 or pnum > Config.PLAYER_COLORS.size():
 		return
-	var c: Color = Config.PLAYER_COLORS[pnum]
+	var c: Color = Config.PLAYER_COLORS[pnum - 1]
 	for node in _root.get_children():
 		if node is PanelContainer:
 			var sb := node.get_theme_stylebox("panel") as StyleBoxFlat

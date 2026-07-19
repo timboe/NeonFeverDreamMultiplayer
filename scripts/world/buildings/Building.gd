@@ -13,7 +13,7 @@ var player_owner: int
 
 # --- State ---
 
-enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED, UNDER_DESTRUCTION}
+enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED}
 
 var state: State
 var type: BuildingManager.Type
@@ -69,7 +69,7 @@ func _process(delta: float) -> void:
 					_health_bar.set_health(_construction_energy_spent, _construction_cost)
 				else:
 					_health_bar.set_health(1.0, 1.0)
-			State.CONSTRUCTED, State.UNDER_DESTRUCTION:
+			State.CONSTRUCTED:
 				_health_bar.set_health(health, max_health)
 			_:
 				_health_bar.set_health(0.0, 1.0)
@@ -171,9 +171,6 @@ func set_constructed() -> void:
 		_working_unit.job_finished()
 	_working_unit = null
 	rpc("rpc_constructed", id)
-	var em = get_node_or_null("/root/World/EnergyManager")
-	if em:
-		em.recalculate_capacity()
 
 # --- RPC ---
 

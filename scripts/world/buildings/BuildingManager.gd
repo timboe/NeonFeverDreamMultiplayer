@@ -145,7 +145,6 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 		var hud = get_tree().get_first_node_in_group("hud")
 		hud.build_mode = HUD.Mode.NONE
 	if multiplayer.is_server():
-		%EnergyManager.recalculate_capacity()
 		get_node_or_null("/root/World/TileManager").recompute_aoe()
 		if type in Config.CONSTRUCTION_COST:
 			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
@@ -166,7 +165,6 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
-	%EnergyManager.recalculate_capacity()
 	get_node_or_null("/root/World/TileManager").recompute_aoe()
 
 # --- Removal ---
@@ -179,7 +177,6 @@ func remove_building(id: int) -> void:
 			b.location.building = null
 		b.queue_free()
 		if multiplayer.is_server():
-			%EnergyManager.recalculate_capacity()
 			var tm = get_node_or_null("/root/World/TileManager")
 			if tm:
 				tm.recompute_aoe()

@@ -277,6 +277,10 @@ func recompute_aoe() -> void:
 	for g in get_tree().get_nodes_in_group("generator"):
 		g.update_energy()
 
+	for v in get_tree().get_nodes_in_group("vat"):
+		v.update_capacity()
+	%EnergyManager.recalculate_capacity()
+
 	for t in touched: # Un-select anything no longer under AoE
 		for s in t.selected_by:
 			if s not in t.aoe:

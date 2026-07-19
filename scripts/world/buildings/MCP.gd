@@ -13,7 +13,6 @@ const NAME_TO_TYPE: Dictionary = {
 
 const A_VELOCITY: float = 100.0
 const BASE_GENERATION: float = 27.0
-const BASE_CAPACITY: float = 1000.0
 const ZOOMBA_CREATION_COOLDOWN_TICKS: int = 10
 const AVATAR_CREATION_COOLDOWN_TICKS: int = 10
 
@@ -94,8 +93,11 @@ func check_work() -> void:
 func update_energy() -> void:
 	pass
 
+func update_capacity() -> void:
+	pass
+
 func get_energy() -> float:
 	return BASE_GENERATION
 
 func get_capacity() -> float:
-	return BASE_CAPACITY
+	return Config.BUILDING_ENERGY_CAPACITY[ type ]
