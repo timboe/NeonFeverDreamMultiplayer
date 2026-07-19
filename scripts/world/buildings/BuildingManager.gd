@@ -99,9 +99,11 @@ func next_building_id() -> int:
 	_next_building_id += 1
 	return nbid
 
-func add_to_dict_and_scene(bid: int, b: Building) -> void:
+func add_to_dict_and_scene(bid: int, b: Building, type: Type) -> void:
 	b.id = bid
+	b.type = type
 	building_dictionary[b.id] = b
+	b.name = "Building_" + str(bid)
 	add_child(b)
 
 # --- Placement ---
@@ -109,13 +111,13 @@ func add_to_dict_and_scene(bid: int, b: Building) -> void:
 func place_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	if not multiplayer.is_server():
 		return
-	update_blueprint(player_number, tile, type)
 	if not can_place_here(tile):
 		return
 	if not check_under_aoe(player_number, tile):
 		return
 	if check_access(tile).size() == 0:
 		return
+	update_blueprint(player_number, tile, type)
 	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
 	var bid := next_building_id()
 	rpc("broadcast_place_blueprint", bid, player_number, tile.id, type)
@@ -126,7 +128,7 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	var tile = tm.get_tile_by_id(tid)
 	var new_building := new_building_instance(type)
 	new_building.visible = false
-	add_to_dict_and_scene(bid, new_building)
+	add_to_dict_and_scene(bid, new_building, type)
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
@@ -140,12 +142,13 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	add_child(new_blueprint)
 	new_blueprint.global_transform = tile.get_global_transform()
 	new_blueprint.global_position.y = 0
+	enabled_blueprints[type].position.y = HIDE_DEPTH
+	disabled_blueprints[type].position.y = HIDE_DEPTH
 	if player_number == Global.my_player_number:
-		enabled_blueprints[type].position.y = HIDE_DEPTH
 		var hud = get_tree().get_first_node_in_group("hud")
 		hud.build_mode = HUD.Mode.NONE
+	get_node_or_null("/root/World/TileManager").recompute_aoe()
 	if multiplayer.is_server():
-		get_node_or_null("/root/World/TileManager").recompute_aoe()
 		if type in Config.CONSTRUCTION_COST:
 			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
 		# Cancel any pending toggle jobs on this tile
@@ -156,7 +159,7 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 
 func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	var b := new_building_instance(type)
-	add_to_dict_and_scene(next_building_id(), b)
+	add_to_dict_and_scene(next_building_id(), b, type)
 	b.initialise(pnum, tile)
 	b.position_terminal()
 	b.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
@@ -176,7 +179,4 @@ func remove_building(id: int) -> void:
 		if b.location:
 			b.location.building = null
 		b.queue_free()
-		if multiplayer.is_server():
-			var tm = get_node_or_null("/root/World/TileManager")
-			if tm:
-				tm.recompute_aoe()
+		get_node_or_null("/root/World/TileManager").recompute_aoe()

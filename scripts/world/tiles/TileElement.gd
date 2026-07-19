@@ -321,6 +321,7 @@ func rpc_toggle_animation(mode: int, thunk_distance: float = 0, thunk_time: floa
 			.set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.tween_callback(_apply_emission)
+		toggle_tween.tween_callback(_sync_state_after_toggle.bind(dest))
 
 func done_toggle() -> void:
 	if not multiplayer.is_server():
@@ -384,3 +385,6 @@ func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, 
 	if hud.can_toggle_tile(self):
 		hud.begin_drag(self)
 		Global.send_command_me("toggle_tile", [id])
+
+func _sync_state_after_toggle(dest: float) -> void:
+	state = TileManager.State.LOWERED if dest < -Global.FLOOR_HEIGHT else TileManager.State.RAISED

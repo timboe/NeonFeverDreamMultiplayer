@@ -4,13 +4,6 @@ class_name MCP
 
 # --- Constants ---
 
-const NAME_TO_TYPE: Dictionary = {
-	"MCP_1": BuildingManager.Type.MCP_1,
-	"MCP_2": BuildingManager.Type.MCP_2,
-	"MCP_3": BuildingManager.Type.MCP_3,
-	"MCP_4": BuildingManager.Type.MCP_4,
-}
-
 const A_VELOCITY: float = 100.0
 const BASE_GENERATION: float = 27.0
 const ZOOMBA_CREATION_COOLDOWN_TICKS: int = 10
@@ -25,7 +18,7 @@ var _mcp_hud: SubViewport
 # --- Lifecycle ---
 
 func _ready() -> void:
-	if name == "MCP_1":
+	if type == BuildingManager.Type.MCP_1:
 		to_rotate.append($MCPTop)
 		to_rotate.append($MCPFaceTop)
 		to_rotate.append($MCPBottom)
@@ -37,7 +30,6 @@ func _process(delta: float) -> void:
 
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
-	type = NAME_TO_TYPE[name]
 	_health_bar.global_position.y = Building.HEALTH_BAR_HEIGHT
 	max_health = Config.BUILDING_MAX_HP[type]
 	health = max_health

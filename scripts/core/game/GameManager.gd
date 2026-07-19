@@ -248,7 +248,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 func _apply_building(b: Building, slots: Array) -> void:
 	if not b:
 		return
-	b.state = slots[0] as int
+	b.state = slots[0] as Building.State
 	b.health = slots[1]
 	b._construction_energy_spent = slots[2]
 

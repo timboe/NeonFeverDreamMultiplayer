@@ -28,7 +28,6 @@ var _health_bar: HealthBar3D
 
 var _working_unit: Unit = null
 var _construction_energy_spent := 0.0
-var _construction_cost := 0.0
 
 # --- Lifecycle ---
 
@@ -56,17 +55,19 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
-		var energy_per_tick := _construction_cost / CONSTRUCTION_TIME * delta
+		var cost : float = Config.CONSTRUCTION_COST.get(type, 0.0)
+		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
 		var em = get_node_or_null("/root/World/EnergyManager")
 		if em:
 			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
-		if _construction_energy_spent >= _construction_cost:
+		if _construction_energy_spent >= cost:
 			set_constructed()
 	if _health_bar:
 		match state:
 			State.UNDER_CONSTRUCTION:
-				if _construction_cost > 0.0:
-					_health_bar.set_health(_construction_energy_spent, _construction_cost)
+				var cost : float = Config.CONSTRUCTION_COST.get(type, 0.0)
+				if cost > 0.0:
+					_health_bar.set_health(_construction_energy_spent, cost)
 				else:
 					_health_bar.set_health(1.0, 1.0)
 			State.CONSTRUCTED:
@@ -150,8 +151,7 @@ func start_construction(unit: Unit) -> void:
 	state = State.UNDER_CONSTRUCTION
 	_working_unit = unit
 	_construction_energy_spent = 0.0
-	_construction_cost = Config.CONSTRUCTION_COST.get(type, 0.0)
-	if _construction_cost <= 0.0:
+	if Config.CONSTRUCTION_COST.get(type, 0.0) <= 0.0:
 		set_constructed()
 
 func cancel_construction() -> void:
