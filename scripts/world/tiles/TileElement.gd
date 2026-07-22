@@ -321,7 +321,8 @@ func rpc_toggle_animation(mode: int, thunk_distance: float = 0, thunk_time: floa
 			.set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.tween_callback(_apply_emission)
-		toggle_tween.tween_callback(_sync_state_after_toggle.bind(dest))
+		if not multiplayer.is_server():
+			toggle_tween.tween_callback(_sync_state_after_toggle.bind(dest))
 
 func done_toggle() -> void:
 	if not multiplayer.is_server():
