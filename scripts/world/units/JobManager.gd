@@ -2,13 +2,12 @@ extends Node3D
 
 class_name JobManager
 
-enum Type {NONE, CONSTRUCT_BUILDING, TOGGLE_TILE}
+enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE}
 
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0
 
 var jobs_dict: Dictionary # int (id) -> job dict
-var unassigned := 0
 var job_id := -1
 
 var debug_enabled := false
@@ -66,7 +65,6 @@ func add_job(pnum: int, type: Type, location: TileElement) -> void:
 	var job := {"id": job_id, "pnum": pnum, "type": type,
 		"location": location, "assigned": null,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
-	unassigned += 1
 	jobs_dict[job_id] = job
 
 func cancel_job(pnum: int, type: Type, location: TileElement) -> void:
@@ -85,14 +83,11 @@ func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):
 		if jobs_dict[id_to_remove]["assigned"]:
 			jobs_dict[id_to_remove]["assigned"].remove_job()
-		else:
-			unassigned -= 1
 		jobs_dict.erase(id_to_remove)
 
 func abandon_job(id_to_abandon: int) -> void:
 	assert(jobs_dict.has(id_to_abandon))
 	var job = jobs_dict[id_to_abandon]
-	unassigned += 1
 	job["abandoned_by"] = job["assigned"]
 	job["assigned"] = null
 	job["abandoned_n"] += 1
@@ -101,7 +96,7 @@ func abandon_job(id_to_abandon: int) -> void:
 # --- Assignment ---
 
 func assign_jobs() -> void:
-	if not multiplayer.is_server() or unassigned == 0:
+	if not multiplayer.is_server():
 		return
 	# Decrement timers for all unassigned jobs
 	for job in jobs_dict.values():
@@ -116,8 +111,7 @@ func assign_jobs() -> void:
 			continue
 		if unit.scram_count > 0:
 			continue
-		if assign_nearest_job(unit):
-			unassigned -= 1
+		assign_nearest_job(unit)
 
 func assign_nearest_job(unit: Unit) -> bool:
 	var pnum = unit.building.player_owner

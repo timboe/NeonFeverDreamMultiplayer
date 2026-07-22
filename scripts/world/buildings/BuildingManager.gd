@@ -157,6 +157,7 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 				%JobManager.remove_job(job["id"])
 				break
 
+# Skips all construction phases, used during level setup
 func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	var b := new_building_instance(type)
 	add_to_dict_and_scene(next_building_id(), b, type)

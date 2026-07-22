@@ -173,6 +173,12 @@ func check_job_still_valid() -> bool:
 		var tile = job["location"] as TileElement
 		if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
 			return false
+		if tile.selected_by.count( building.player_owner ) == 0:
+			return false
+	elif job["type"] == JobManager.Type.REPAIR_BUILDING:
+		var b = job["location"].building
+		if not b or b.health == b.max_health:
+			return true
 	return true
 
 func check_pathing_valid() -> bool:
@@ -211,17 +217,14 @@ func start_work() -> void:
 	quick_rotate()
 	if has_node("Zapper"):
 		$Zapper.visible = true
+		$Zapper.target_position.y = Cairo.UNIT
 	match job["type"]:
-		JobManager.Type.TOGGLE_TILE:
-			if has_node("Zapper"):
-				$Zapper.target_position.y = Cairo.UNIT
+		JobManager.Type.TOGGLE_TILE:				
 			job["location"].do_toggle_countdown(self)
 		JobManager.Type.CONSTRUCT_BUILDING:
-			if has_node("Zapper"):
-				$Zapper.target_position.y = Cairo.UNIT
-			var b = job["location"].building
-			if b:
-				b.start_construction(self)
+			job["location"].building.start_construction(self)
+		JobManager.Type.REPAIR_BUILDING:
+			job["location"].building.start_repair(self)
 		_:
 			push_error("Unit.start_work: unknown job type ", job["type"])
 			assert(false)

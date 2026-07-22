@@ -24,6 +24,10 @@ var health: float = 0.0
 var max_health: float = 0.0
 var _health_bar: HealthBar3D
 
+const REPAIR_INTERVAL := 0.05
+const REPAIR_AMOUNT := 2.5
+var _repair_timer := 0.0
+
 # --- Construction ---
 
 var _working_unit: Unit = null
@@ -54,6 +58,7 @@ func _exit_tree() -> void:
 		_health_bar.queue_free()
 
 func _process(delta: float) -> void:
+	# Do construction - consumes energy
 	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
 		var cost : float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
@@ -62,6 +67,20 @@ func _process(delta: float) -> void:
 			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
 		if _construction_energy_spent >= cost:
 			set_constructed()
+	
+	# If under repair (on server)
+	if multiplayer.is_server() and state == State.CONSTRUCTED and _working_unit:
+		_repair_timer += delta
+		while _repair_timer >= REPAIR_INTERVAL:
+			_repair_timer -= REPAIR_INTERVAL
+			if not is_instance_valid(_working_unit):
+				finish_repair()
+			health += REPAIR_AMOUNT
+			print("h ",health)
+			if health >= max_health:
+				health = max_health
+				finish_repair()
+				
 	if _health_bar:
 		match state:
 			State.UNDER_CONSTRUCTION:
@@ -87,7 +106,8 @@ func get_aoe_radius() -> float:
 	return Config.BUILDING_AOE[type]
 
 func check_work() -> void:
-	pass
+	if state == State.CONSTRUCTED and health < max_health:
+		get_node_or_null("/root/World/JobManager").add_job(player_owner, JobManager.Type.REPAIR_BUILDING, location)
 
 # --- Terminal positioning ---
 
@@ -171,6 +191,22 @@ func set_constructed() -> void:
 		_working_unit.job_finished()
 	_working_unit = null
 	rpc("rpc_constructed", id)
+	
+# --- Repair ---
+
+func start_repair(unit: Unit) -> void:
+	if not multiplayer.is_server():
+		return
+	assert(state == State.CONSTRUCTED)
+	_working_unit = unit
+	_construction_energy_spent = 0.0
+
+func finish_repair() -> void:
+	if not multiplayer.is_server():
+		return
+	if is_instance_valid(_working_unit):
+		_working_unit.job_finished()
+	_working_unit = null
 
 # --- RPC ---
 
