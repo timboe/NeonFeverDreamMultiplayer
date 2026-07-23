@@ -68,6 +68,11 @@ static var HOME_TERRITORY_UNITS: Array[int] = [
 	UnitManager.Type.AERIAL_PATROL,
 ]
 
+static var SELF_HEALING_UNITS: Array[int] = [
+	UnitManager.Type.ZOOMBA,
+	UnitManager.Type.TANK,
+]
+
 # --- Players ---
 
 static var PLAYER_COLORS: Array[Color] = [

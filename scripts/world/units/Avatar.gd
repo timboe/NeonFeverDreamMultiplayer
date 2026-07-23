@@ -51,6 +51,7 @@ func initialise(b: Building) -> void:
 	_health_bar.set_bar_size(3.0, 0.3)
 	_health_bar.reparent(fps_body)
 	_health_bar.position = Vector3(0, 5.0, 0)
+	health = Config.UNIT_MAX_HP.get(type, 100.0)
 	add_to_group("avatar")
 	add_to_group("avatar_player" + str(player_owner))
 

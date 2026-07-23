@@ -170,7 +170,6 @@ func start_construction(unit: Unit) -> void:
 	assert(state == State.BLUEPRINT)
 	state = State.UNDER_CONSTRUCTION
 	_working_unit = unit
-	_construction_energy_spent = 0.0
 	if Config.CONSTRUCTION_COST.get(type, 0.0) <= 0.0:
 		set_constructed()
 
@@ -180,7 +179,6 @@ func cancel_construction() -> void:
 	assert(state == State.UNDER_CONSTRUCTION)
 	state = State.BLUEPRINT
 	_working_unit = null
-	_construction_energy_spent = 0.0
 
 func set_constructed() -> void:
 	if not multiplayer.is_server():
@@ -197,17 +195,23 @@ func set_constructed() -> void:
 func hit(amount: float) -> void:
 	if not multiplayer.is_server():
 		return
-	health -= amount
-	if health <= 0:
-		health = 0
-		get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
+	if state == State.CONSTRUCTED: # If built, specific health pool. Not energy based
+		health -= amount
+		if health <= 0:
+			health = 0
+			get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
+	else: # If under construction, attacks directly deplete the energy being used to build
+		_construction_energy_spent -= amount
+		if _construction_energy_spent <= 0:
+			_construction_energy_spent = 0
+			rpc("rpc_constructed", id) # Remove blueprint as well
+			get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
 
 func start_repair(unit: Unit) -> void:
 	if not multiplayer.is_server():
 		return
 	assert(state == State.CONSTRUCTED)
 	_working_unit = unit
-	_construction_energy_spent = 0.0
 
 func finish_repair() -> void:
 	if not multiplayer.is_server():

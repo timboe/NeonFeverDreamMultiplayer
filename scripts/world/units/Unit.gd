@@ -21,6 +21,11 @@ var job: Dictionary = {}
 var health: float = 100.0
 var scram_count: int = 0
 
+const REPAIR_INTERVAL := 0.05
+const REPAIR_AMOUNT := 0.25
+const REPAIR_DELAY := 10.0
+var _repair_timer := 0.0
+
 # --- Pathfinding ---
 
 var path: PackedInt64Array = []
@@ -63,9 +68,16 @@ func initialise(b: Building) -> void:
 	move_tween.tween_property(self, "position:y", 0, SPAWN_TIME)
 	move_tween.tween_callback(idle_callback)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _health_bar:
 		_health_bar.set_health(health, Config.UNIT_MAX_HP.get(type, 100.0))
+
+	# If under repair (on server)
+	if multiplayer.is_server() and health < Config.UNIT_MAX_HP.get(type, 100.0) and type in Config.SELF_HEALING_UNITS:
+		_repair_timer += delta
+		while _repair_timer >= REPAIR_INTERVAL:
+			_repair_timer -= REPAIR_INTERVAL
+			health += REPAIR_AMOUNT
 
 # --- Job assignment ---
 
@@ -358,6 +370,7 @@ func hit(amount: float) -> void:
 	if not multiplayer.is_server():
 		return
 	health -= amount
+	_repair_timer = -REPAIR_DELAY
 	if health <= 0:
 		health = 0
-		get_node_or_null("/root/World/UnitManager").remove_unit(id)
+		get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
