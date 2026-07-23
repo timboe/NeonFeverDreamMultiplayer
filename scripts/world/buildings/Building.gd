@@ -192,7 +192,15 @@ func set_constructed() -> void:
 	_working_unit = null
 	rpc("rpc_constructed", id)
 	
-# --- Repair ---
+# --- Damage and Repair ---
+
+func hit(amount: float) -> void:
+	if not multiplayer.is_server():
+		return
+	health -= amount
+	if health <= 0:
+		health = 0
+		get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
 
 func start_repair(unit: Unit) -> void:
 	if not multiplayer.is_server():

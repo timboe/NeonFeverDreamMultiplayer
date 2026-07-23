@@ -113,10 +113,12 @@ func _input(event: InputEvent) -> void:
 			zoomba.scram()
 	if event.is_action_pressed("ui_damage_building"):
 		for b in get_tree().get_nodes_in_group("building"):
-			b.health -= b.max_health * 0.4
+			if b is MCP:
+				continue
+			b.hit(b.max_health * 0.4)
 	if event.is_action_pressed("ui_damage_unit"):
 		for u in get_tree().get_nodes_in_group("unit"):
-			u.health -= u.max_health * 0.4
+			u.hit(u.max_health * 0.4)
 
 # --- Energy ---
 

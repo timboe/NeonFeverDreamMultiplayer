@@ -15,13 +15,13 @@ func units() -> Array:
 func unit_count(pnum: int, type: Type) -> int:
 	var c := 0
 	for u in units():
-		if u.building.player_owner == pnum and u.type == type:
+		if u.player_owner == pnum and u.type == type:
 			c += 1
 	return c
 
 # --- Spawning ---
 
-# Note: Ownership of the unit is known via the building
+# Note: Ownership of the unit is stored as unit.player_owner
 func spawn_unit(uid: int, type: Type, building: Building) -> void:
 	var u = null
 	match type:

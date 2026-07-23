@@ -52,7 +52,7 @@ func initialise(b: Building) -> void:
 	_health_bar.reparent(fps_body)
 	_health_bar.position = Vector3(0, 5.0, 0)
 	add_to_group("avatar")
-	add_to_group("avatar_player" + str(building.player_owner))
+	add_to_group("avatar_player" + str(player_owner))
 
 func idle_callback() -> void:
 	pass # Avatar uses FPS controls, not the idle/pathing system

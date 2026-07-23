@@ -10,7 +10,7 @@ const SCRAM: int = 10
 
 var id: int # My ID within the UnitManager
 var type: UnitManager.Type # My type
-var building: Building # Building which spawned me (designates owner)
+var player_owner: int # Player who owns me (copied from spawning building)
 
 # --- State machine ---
 
@@ -45,9 +45,9 @@ var _health_bar: HealthBar3D
 # --- Lifecycle ---
 
 func initialise(b: Building) -> void:
-	building = b
+	player_owner = b.player_owner
 	location = b.location
-	global_transform.origin = building.find_unit_spawn_location()
+	global_transform.origin = b.find_unit_spawn_location()
 	add_to_group("unit")
 	add_to_group("unit_player" + str(b.player_owner))
 	position.y = -1 # hide
@@ -74,7 +74,7 @@ func assign_job(new_job: Dictionary) -> void:
 		return
 	assert(job.is_empty())
 	assert(state == State.IDLE)
-	assert(new_job["pnum"] == building.player_owner)
+	assert(new_job["pnum"] == player_owner)
 	state = State.PATHING
 	job = new_job
 	path.resize(0)
@@ -93,7 +93,7 @@ func idle_callback() -> void:
 		return
 
 	# Get possible ways out of this tile. Only wander on to AoE tiles
-	var territory_check := building.player_owner if type in Config.HOME_TERRITORY_UNITS else 0
+	var territory_check := player_owner if type in Config.HOME_TERRITORY_UNITS else 0
 	var possible_destinations := location.get_access_tiles(territory_check)
 	# If not possible to stay on owned tiles, then relax this
 	if possible_destinations.size() == 0:
@@ -102,7 +102,7 @@ func idle_callback() -> void:
 	# Special considerations if scrambling, always head towards home
 	if scram_count > 0:
 		scram_count -= 1
-		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
+		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
 		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		if mcp and pm:
 			var lowest_dist := 9999
@@ -173,7 +173,7 @@ func check_job_still_valid() -> bool:
 		var tile = job["location"] as TileElement
 		if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
 			return false
-		if tile.selected_by.count( building.player_owner ) == 0:
+		if tile.selected_by.count( player_owner ) == 0:
 			return false
 	elif job["type"] == JobManager.Type.REPAIR_BUILDING:
 		var b = job["location"].building
@@ -351,3 +351,13 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 	rotation.y -= PI / 2.0
 	quat_to = Quaternion(transform.basis)
 	transform.basis = cache_rot
+
+# --- Damage and Repair ---
+
+func hit(amount: float) -> void:
+	if not multiplayer.is_server():
+		return
+	health -= amount
+	if health <= 0:
+		health = 0
+		get_node_or_null("/root/World/UnitManager").remove_unit(id)

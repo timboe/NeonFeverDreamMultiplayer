@@ -114,7 +114,7 @@ func assign_jobs() -> void:
 		assign_nearest_job(unit)
 
 func assign_nearest_job(unit: Unit) -> bool:
-	var pnum = unit.building.player_owner
+	var pnum = unit.player_owner
 	var best_job = null
 	var best_dist := 9999
 	for job in jobs_dict.values():

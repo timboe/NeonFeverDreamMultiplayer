@@ -235,7 +235,7 @@ func do_toggle_countdown(z: Unit) -> void:
 		return
 	assert(toggle_zoomba_player == 0)
 	assert(working_unit == null)
-	toggle_zoomba_player = z.building.player_owner
+	toggle_zoomba_player = z.player_owner
 	working_unit = z
 	_working_job_id = z.job["id"]
 	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0) # MODE 0
@@ -248,7 +248,7 @@ func cancel_toggle_countdown(z: Unit) -> void:
 	if toggle_zoomba_player == 0:
 		# begin_toggle already ran — nothing to cancel, done_toggle will handle cleanup
 		return
-	assert(toggle_zoomba_player == z.building.player_owner)
+	assert(toggle_zoomba_player == z.player_owner)
 	toggle_zoomba_player = 0
 	working_unit = null
 	_working_job_id = -1

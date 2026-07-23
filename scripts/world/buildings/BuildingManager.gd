@@ -173,11 +173,22 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 
 # --- Removal ---
 
-func remove_building(id: int) -> void:
+@rpc("authority", "call_local")
+func rpc_remove_building(id: int) -> void:
 	var b = building_dictionary.get(id)
 	if b:
+		if multiplayer.is_server() and is_instance_valid(b._working_unit):
+			b._working_unit.job_finished()
 		building_dictionary.erase(id)
-		if b.location:
-			b.location.building = null
+		var tile = b.location
+		if tile:
+			tile.building = null
 		b.queue_free()
 		get_node_or_null("/root/World/TileManager").recompute_aoe()
+		# Reconnect tile to pathing (reverse of remove_tile_from_pathing)
+		if tile and tile.state == TileManager.State.LOWERED:
+			var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
+			if pm:
+				for n in tile.neighbours:
+					if n.state == TileManager.State.LOWERED and n.building == null:
+						pm.connect_tiles(tile, n)

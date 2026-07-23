@@ -10,5 +10,5 @@ func initialise(b: Building) -> void:
 	type = UnitManager.Type.ZOOMBA
 	_health_bar.position.y = 2.5
 	add_to_group("zoomba")
-	var updated_mat = load("res://materials/player/player" + str(building.player_owner) + "_material.tres")
+	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
 	$Body/CSGBody/CSGMesh.material = updated_mat

@@ -170,7 +170,7 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 		var u = ud.get(id_val) as Unit
 		if not u:
 			continue
-		if u.type == UnitManager.Type.AVATAR and u.building and u.building.player_owner == Global.my_player_number:
+		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
 			continue
 		var e1 = s1["units"][id_val]
 		var e0 = s0["units"].get(id_val)
@@ -212,7 +212,7 @@ func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 		var u = ud.get(id_val) as Unit
 		if not u:
 			continue
-		if u.type == UnitManager.Type.AVATAR and u.building and u.building.player_owner == Global.my_player_number:
+		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
 			continue
 		var e = snapshot["units"][id_val]
 		_apply_unit(u, e["type"] as UnitManager.Type, e["slots"])

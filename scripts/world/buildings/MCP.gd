@@ -58,7 +58,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 
 func zoomba_cap() -> int:
 	var tm = get_node_or_null("/root/World/TileManager")
-	return floor(sqrt(tm.player_aoe_totals[player_owner]))
+	return floor(sqrt(tm.player_aoe_totals.get(player_owner, 0)))
 
 # --- Work ---
 
