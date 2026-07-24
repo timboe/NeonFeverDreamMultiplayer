@@ -37,6 +37,7 @@ var location: TileElement
 var previous_location: TileElement
 var move_tween: Tween
 var _rotate_tween: Tween
+var _pathing_manager: PathingManager
 
 # --- Rotation ---
 
@@ -60,6 +61,8 @@ func initialise(b: Building) -> void:
 	_health_bar.position.y = 2.5
 	add_child(_health_bar)
 	_health_bar.set_bar_size(1.6, 0.2)
+	# Cache pathing manager to avoid repeated absolute path lookups
+	_pathing_manager = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 	# Following animates the unit in and starts the callback loop.
 	# This all happens only the server.
 	if not multiplayer.is_server():
@@ -115,12 +118,11 @@ func idle_callback() -> void:
 	if scram_count > 0:
 		scram_count -= 1
 		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
-		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
-		if mcp and pm:
+		if mcp and _pathing_manager:
 			var lowest_dist := 9999
 			var best_target = null
 			for d in possible_destinations:
-				var dist = pm.distance(d, mcp.location)
+				var dist = _pathing_manager.distance(d, mcp.location)
 				if dist < lowest_dist:
 					lowest_dist = dist
 					best_target = d
@@ -150,7 +152,8 @@ func pathing_callback() -> void:
 		return
 	# First - check we didn't scram while moving.
 	if scram_count > 0:
-		assert(state == State.IDLE)
+		state = State.IDLE
+		job = {}
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
@@ -167,8 +170,7 @@ func pathing_callback() -> void:
 		return start_work()
 	# Fifth, move to next location
 	assert(progress < path.size())
-	var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
-	location = pm.get_tile(path[progress])
+	location = _pathing_manager.get_tile(path[progress])
 	progress += 1
 	move(pathing_callback)
 
@@ -189,8 +191,8 @@ func check_job_still_valid() -> bool:
 			return false
 	elif job["type"] == JobManager.Type.REPAIR_BUILDING:
 		var b = job["location"].building
-		if not b or b.health == b.max_health:
-			return true
+		if not b or b.health >= b.max_health:
+			return false
 	return true
 
 func check_pathing_valid() -> bool:
@@ -198,16 +200,14 @@ func check_pathing_valid() -> bool:
 		return false
 	# Validate remaining path nodes are still traversable
 	if path.size() > 0:
-		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for i in range(progress, path.size()):
-			var tile = pm.get_tile(path[i])
+			var tile = _pathing_manager.get_tile(path[i])
 			if tile.state != TileManager.State.LOWERED:
 				path.resize(0)
 				break
 	if path.size() == 0:
-		var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
 		for n in job["location"].get_access_tiles():
-			var check_path = pm.pathfind(location, n)
+			var check_path = _pathing_manager.pathfind(location, n)
 			if check_path.size() > 0 and (path.size() == 0 or check_path.size() < path.size()):
 				path = check_path
 				job["path_dest"] = n
@@ -275,7 +275,7 @@ func _cleanup_working_state() -> void:
 		_rotate_tween = null
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
-			job["location"].cancel_toggle_countdown(self)
+			job["location"].cancel_toggle_countdown(player_owner)
 		JobManager.Type.CONSTRUCT_BUILDING:
 			var b = job["location"].building
 			if b and b.state == Building.State.UNDER_CONSTRUCTION:

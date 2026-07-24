@@ -75,11 +75,12 @@ func _process(delta: float) -> void:
 			_repair_timer -= REPAIR_INTERVAL
 			if not is_instance_valid(_working_unit):
 				finish_repair()
+				return
 			health += REPAIR_AMOUNT
-			print("h ",health)
 			if health >= max_health:
 				health = max_health
 				finish_repair()
+				return
 				
 	if _health_bar:
 		match state:

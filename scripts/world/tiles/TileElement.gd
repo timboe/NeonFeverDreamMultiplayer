@@ -23,11 +23,9 @@ var building: Building = null # What is built here
 
 # --- Toggle / job state ---
 
-var toggle_zoomba_player: int # player who is raising or lowering me
-var working_unit: Unit = null # unit currently toggling this tile
-var _working_job_id: int = -1 # job id stored so done_toggle can clean up orphaned jobs
-var toggle_tween: Tween # Visual countdown animation — synced to clients via rpc_toggle_animation RPC
-var _countdown_tween: Tween # Server-only — fires begin_toggle after TOGGLE_COUNTDOWN_TIME; never synced
+var _working_unit_dict: Dictionary = {} # pnum -> {unit: Unit, job_id: int, countdown_tween: Tween} (server only)
+var toggle_tween: Tween # Visual commit animation — synced to clients via rpc_toggle_animation RPC
+var _countdown_tweens: Dictionary = {} # pnum -> Tween (visual countdown, all peers)
 
 # --- MultiMesh references ---
 
@@ -213,6 +211,9 @@ func release_emission(effect: EmissionEffect) -> void:
 func _apply_emission() -> void:
 	if toggle_tween and toggle_tween.is_valid() and toggle_tween.is_running():
 		return
+	for ct in _countdown_tweens.values():
+		if ct and ct.is_valid() and ct.is_running():
+			return
 	var effect = _get_active_effect()
 	if effect != -1:
 		var req = _emission_requests[effect]
@@ -233,50 +234,74 @@ func _get_active_effect() -> int:
 func do_toggle_countdown(z: Unit) -> void:
 	if not multiplayer.is_server():
 		return
-	assert(toggle_zoomba_player == 0)
-	assert(working_unit == null)
-	toggle_zoomba_player = z.player_owner
-	working_unit = z
-	_working_job_id = z.job["id"]
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0) # MODE 0
-	_countdown_tween = create_tween()
-	_countdown_tween.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	var pnum = z.player_owner
+	assert(pnum not in _working_unit_dict)
+	var t = create_tween()
+	t.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	_working_unit_dict[pnum] = {"unit": z, "job_id": z.job["id"], "countdown_tween": t}
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0, pnum) # MODE 0
 
-func cancel_toggle_countdown(z: Unit) -> void:
+func cancel_toggle_countdown(pnum: int) -> void:
 	if not multiplayer.is_server():
 		return
-	if toggle_zoomba_player == 0:
-		# begin_toggle already ran — nothing to cancel, done_toggle will handle cleanup
+	if pnum not in _working_unit_dict:
 		return
-	assert(toggle_zoomba_player == z.player_owner)
-	toggle_zoomba_player = 0
-	working_unit = null
-	_working_job_id = -1
-	if _countdown_tween and _countdown_tween.is_valid():
-		_countdown_tween.kill()
-		_countdown_tween = null
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1) # MODE 1
+	var entry = _working_unit_dict[pnum]
+	if entry["countdown_tween"] and entry["countdown_tween"].is_valid():
+		entry["countdown_tween"].kill()
+	_working_unit_dict.erase(pnum)
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
+
+func _cancel_other_workers(except_pnum: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var other_pnums: Array[int] = []
+	for pnum in _working_unit_dict:
+		if pnum != except_pnum:
+			other_pnums.append(pnum)
+	for pnum in other_pnums:
+		var entry = _working_unit_dict[pnum]
+		if entry["countdown_tween"] and entry["countdown_tween"].is_valid():
+			entry["countdown_tween"].kill()
+		_working_unit_dict.erase(pnum)
+		var unit = entry["unit"] as Unit
+		if is_instance_valid(unit) and not unit.job.is_empty():
+			unit.job_finished()
+		get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
 
 # Point of no return - raising or lowering if this gets called.
 func begin_toggle() -> void:
 	if not multiplayer.is_server():
 		return
-	_countdown_tween = null
-	# If tile state changed during countdown (human click, another unit), abort
-	if state != TileManager.State.RAISED and state != TileManager.State.LOWERED:
-		if is_instance_valid(working_unit):
-			working_unit.job_finished()
-		working_unit = null
-		toggle_zoomba_player = 0
+	# Find which player's countdown fired
+	var active_pnum := -1
+	for pnum in _working_unit_dict:
+		var entry = _working_unit_dict[pnum]
+		if entry["countdown_tween"] != null:
+			active_pnum = pnum
+			break
+	if active_pnum == -1:
 		return
+	_working_unit_dict[active_pnum]["countdown_tween"] = null
+
+	# If tile state changed during countdown (human click, another unit), abort all
+	if state != TileManager.State.RAISED and state != TileManager.State.LOWERED:
+		var entries = _working_unit_dict.duplicate()
+		_working_unit_dict.clear()
+		for pnum in entries:
+			var entry = entries[pnum]
+			if is_instance_valid(entry["unit"]):
+				entry["unit"].job_finished()
+		return
+
+	_cancel_other_workers(active_pnum)
 
 	if state == TileManager.State.RAISED:
 		state = TileManager.State.FALLING
 	elif state == TileManager.State.LOWERED:
 		set_rising()
 
-	selected_by.erase(toggle_zoomba_player)
-	toggle_zoomba_player = 0
+	selected_by.clear()
 	get_node_or_null("/root/World/TileManager").rpc("broadcast_tile_selection", id, selected_by.duplicate())
 
 	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
@@ -285,26 +310,40 @@ func begin_toggle() -> void:
 	var dest = -HEIGHT if state == TileManager.State.FALLING else -Global.TILE_OFFSET
 
 	# Set the animation going everywhere (routed through TileManager for reliable RPC delivery)
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 2, thunk_distance, thunk_time, fall_time, dest)
+	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 2, 0, thunk_distance, thunk_time, fall_time, dest)
 
 	# Finished animation callback only runs on the server
 	var t = create_tween()
 	t.tween_callback(done_toggle).set_delay(fall_time + thunk_time)
 
 # Called locally by TileManager.rpc_toggle_animation
-func rpc_toggle_animation(mode: int, thunk_distance: float = 0, thunk_time: float = 0, fall_time: float = 0, dest: float = 0) -> void:
+# For modes 0/1: pnum_or_a is the player number
+# For mode 2: pnum_or_a is unused, b=thunk_distance, c=thunk_time, d=fall_time, e=dest
+func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float = 0, d: float = 0, e: float = 0) -> void:
 	if mode == 0: # Countdown
 		set_tile_mm_color(Color.WHITE)
 		set_tile_mm_emission(0.4)
-		toggle_tween = create_tween()
-		toggle_tween.tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, TOGGLE_COUNTDOWN_TIME)\
+		if _countdown_tweens.has(pnum_or_a) and _countdown_tweens[pnum_or_a] and _countdown_tweens[pnum_or_a].is_valid():
+			_countdown_tweens[pnum_or_a].kill()
+		_countdown_tweens[pnum_or_a] = create_tween()
+		_countdown_tweens[pnum_or_a].tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, TOGGLE_COUNTDOWN_TIME)\
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	elif mode == 1: # Cancel
-		if toggle_tween and toggle_tween.is_valid():
-			toggle_tween.kill()
-		toggle_tween = null
+		if _countdown_tweens.has(pnum_or_a):
+			if _countdown_tweens[pnum_or_a] and _countdown_tweens[pnum_or_a].is_valid():
+				_countdown_tweens[pnum_or_a].kill()
+			_countdown_tweens.erase(pnum_or_a)
 		_apply_emission()
 	elif mode == 2: # Commit
+		var thunk_distance = b
+		var thunk_time = c
+		var fall_time = d
+		var dest = e
+		# Kill any remaining countdown tweens
+		for ct in _countdown_tweens.values():
+			if ct and ct.is_valid():
+				ct.kill()
+		_countdown_tweens.clear()
 		$Particles.emitting = true
 		toggle_tween = create_tween()
 		# Need to alter collision box and nav mesh
@@ -339,12 +378,14 @@ func done_toggle() -> void:
 		if bm:
 			bm.position_all_terminals()
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
-	if jm and _working_job_id >= 0 and jm.jobs_dict.has(_working_job_id):
-		var j = jm.jobs_dict[_working_job_id]
-		if j["assigned"] == null or j["assigned"] == working_unit:
-			jm.remove_job(_working_job_id)
-	_working_job_id = -1
-	working_unit = null
+	var entries = _working_unit_dict.duplicate()
+	_working_unit_dict.clear()
+	for pnum in entries:
+		var entry = entries[pnum]
+		if jm and entry["job_id"] >= 0 and jm.jobs_dict.has(entry["job_id"]):
+			var j = jm.jobs_dict[entry["job_id"]]
+			if j["assigned"] == null or j["assigned"] == entry["unit"]:
+				jm.remove_job(entry["job_id"])
 
 # --- Input handlers ---
 

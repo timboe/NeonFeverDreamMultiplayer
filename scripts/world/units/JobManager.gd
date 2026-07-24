@@ -60,6 +60,8 @@ func add_job(pnum: int, type: Type, location: TileElement) -> void:
 			continue
 		if the_job["location"] != location:
 			continue
+		if the_job["pnum"] != pnum:
+			continue
 		return # Already have this job
 	job_id += 1
 	var job := {"id": job_id, "pnum": pnum, "type": type,

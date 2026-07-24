@@ -325,10 +325,10 @@ func broadcast_tile_selection(update_tile_id: int, selected_by: Array) -> void:
 	tile.update_selection_and_aoe_visual()
 
 @rpc("authority", "call_local")
-func rpc_toggle_animation(rpc_tile_id: int, mode: int, thunk_distance: float = 0, thunk_time: float = 0, fall_time: float = 0, dest: float = 0) -> void:
+func rpc_toggle_animation(rpc_tile_id: int, mode: int, pnum_or_a: float = 0, b: float = 0, c: float = 0, d: float = 0, e: float = 0) -> void:
 	if not tile_dictionary.has(rpc_tile_id):
 		return
-	tile_dictionary[rpc_tile_id].rpc_toggle_animation(mode, thunk_distance, thunk_time, fall_time, dest)
+	tile_dictionary[rpc_tile_id].rpc_toggle_animation(mode, int(pnum_or_a), b, c, d, e)
 
 # --- Monorail forwarding RPCs ---
 

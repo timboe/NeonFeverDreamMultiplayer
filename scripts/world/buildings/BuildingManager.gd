@@ -135,7 +135,6 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	new_building.position_terminal()
 	new_building.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
 	new_building.health = new_building.max_health
-	print("blueprint dupe type ",type)
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true

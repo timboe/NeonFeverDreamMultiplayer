@@ -64,7 +64,7 @@ This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to 
 | `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates Server/LocalClients or ENet client |
 | `Server` | `scripts/core/network/Server.gd` | ENet server, peer→player mapping, command dispatch |
 | `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon tile grid generation + multiplayer selection sync, AoE recomputation, `remove_tile_from_pathing` |
-| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual, `aoe` array, `working_unit` for job callback |
+| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual, `aoe` array, `_working_unit_dict` for multi-player job callbacks |
 | `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D pathfinding, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, debug renderer (ImmediateMesh) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven tile toggle |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Slot config: LOCAL, REMOTE, AI, CLOSED |
@@ -147,7 +147,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 - Sets `state = IDLE`, hides zapper, kills `move_tween`, clears `job`.
 - Calls `idle_callback()` unconditionally (tween is killed, no stale callback risk).
 
-**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Hides zapper, kills `_rotate_tween`, cancels tile countdown via `cancel_toggle_countdown(self)` or cancels building construction.
+**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Hides zapper, kills `_rotate_tween`, cancels tile countdown via `cancel_toggle_countdown(player_owner)` or cancels building construction.
 
 **`abandon_job()`** — Inlined logic for both pathing and working states:
 - If `state == WORKING`: calls `_cleanup_working_state()` (hides zapper, cancels tile countdown / construction).
@@ -175,19 +175,21 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 ### TileElement.gd (tile-side job support)
 
-**`do_toggle_countdown(z)`** — Server-only. Stores `working_unit = z` and `toggle_zoomba_player`. Starts a 2s countdown tween (`_countdown_tween`) that calls `begin_toggle`. Sends RPC mode 0 (visual countdown to all peers).
+**`do_toggle_countdown(z)`** — Server-only. Adds entry to `_working_unit_dict[pnum]` with the unit, job_id, and a 2s countdown tween that calls `begin_toggle`. Sends RPC mode 0 with pnum (visual countdown to all peers).
 
-**`cancel_toggle_countdown(z)`** — Server-only. Clears `toggle_zoomba_player`, `working_unit`, and `_working_job_id`. Kills `_countdown_tween` (prevents `begin_toggle` from firing). Sends RPC mode 1 (kills visual countdown on all peers).
+**`cancel_toggle_countdown(pnum)`** — Server-only. Removes entry from `_working_unit_dict`. Kills the countdown tween (prevents `begin_toggle` from firing). Sends RPC mode 1 with pnum (kills visual countdown on all peers).
 
-**`begin_toggle()`** — Server-only. Fired by `_countdown_tween` after 2s delay.
-- Clears `_countdown_tween` reference (tween has fired).
-- If tile state is no longer RAISED/LOWERED (state changed during countdown): calls `working_unit.job_finished()` and cleans up. The toggle is aborted.
-- Otherwise: transitions tile state (RAISED → FALLING, or LOWERED → RISING via `set_rising()`), erases player from `selected_by`, sends RPC broadcast. Creates a second tween (`fall_time + thunk_time`) that calls `done_toggle`.
+**`_cancel_other_workers(except_pnum)`** — Server-only. Called by `begin_toggle` after the first countdown fires. Kills all other workers' countdown tweens, removes their entries from `_working_unit_dict`, calls `job_finished()` on their units, and sends RPC mode 1 for each.
+
+**`begin_toggle()`** — Server-only. Fired by one player's countdown tween after 2s delay.
+- Identifies which player's countdown fired (entry with non-null `countdown_tween`).
+- If tile state is no longer RAISED/LOWERED (state changed during countdown): calls `job_finished()` on ALL workers and clears dict. The toggle is aborted.
+- Otherwise: calls `_cancel_other_workers` to cancel all other workers. Transitions tile state (RAISED → FALLING, or LOWERED → RISING via `set_rising()`), clears all `selected_by`, sends RPC broadcast. Creates a second tween (`fall_time + thunk_time`) that calls `done_toggle`.
 
 **`done_toggle()`** — Server-only. Fired after the fall/rise animation completes.
 - RAISED→FALLING: calls `set_lowered()`. LOWERED→RISING: sets state = RAISED, resets tile position to `-Global.TILE_OFFSET`.
-- Calls `JobManager.remove_job(_working_job_id)` only if the job is still assigned to `working_unit` (prevents stealing jobs from newly-assigned units).
-- Clears `working_unit` and `_working_job_id`.
+- Iterates `_working_unit_dict`: calls `JobManager.remove_job()` for each entry whose job is still assigned to its unit (prevents stealing jobs from newly-assigned units).
+- Clears `_working_unit_dict`.
 
 ### Tween separation on TileElement
 
@@ -195,17 +197,17 @@ Two independent tweens exist on each tile during a toggle:
 
 | Tween | Scope | Purpose |
 |---|---|---|
-| `_countdown_tween` | Server-only | Drives the 2s countdown → `begin_toggle`. Never synced to clients. |
-| `toggle_tween` | All peers (via RPC) | Visual countdown animation (color lerp). Created by `rpc_toggle_animation` mode 0. Read by `update_selection_and_aoe_visual` to avoid overwriting emission during work. |
+| `_countdown_tweens` | Server-only (dict: pnum→Tween) | Drives the 2s countdown → `begin_toggle`. One per player. Never synced to clients. |
+| `toggle_tween` | All peers (via RPC) | Visual countdown animation (color lerp) for per-player countdowns, then commit animation. Created by `rpc_toggle_animation` modes 0/2. Read by `update_selection_and_aoe_visual` to avoid overwriting emission during work. |
 
 ### Job finish vs abandon vs cancel
 
 | Outcome | Who triggers | Job lifecycle | Unit lifecycle | Tile lifecycle |
 |---|---|---|---|---|
-| **Finish** | Tile animation completes → `done_toggle` → `job_finished()` | Removed from pool (`remove_job`) | → IDLE via `remove_job` → `idle_callback` | `done_toggle` completes state change, clears `working_unit` |
+| **Finish** | Tile animation completes → `done_toggle` → `job_finished()` | Removed from pool (`remove_job`) | → IDLE via `remove_job` → `idle_callback` | `done_toggle` completes state change, clears `_working_unit_dict` |
 | **Cancel** | Human deselects tile → `cancel_job` → `remove_job` | Removed from pool | → IDLE via `remove_job` → `idle_callback` | `remove_job` calls `cancel_toggle_countdown` if WORKING |
 | **Abandon (pathing)** | Path invalid → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | N/A (unit never reached tile) |
-| **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, `working_unit` cleared |
+| **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, entry removed from `_working_unit_dict` |
 | **Displacement** | Tile removed from pathing → `_displace_unit` | Stays in pool (`abandon_job`) | Teleported to adjacent tile or destroyed | N/A |
 
 ### Tile disconnection / unit displacement
@@ -326,7 +328,7 @@ dr_mesh.surface_end()
 
 ### Tile scripts
 
-- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `working_unit` for job callback, `done_toggle` calls `working_unit.job_finished()`, `begin_toggle` guards against invalid tile state. Added `rpc_toggle_animation` for network-synced toggle visuals. Added `_countdown_tween` (server-only) to store the countdown tween so it can be killed by `cancel_toggle_countdown`. `toggle_tween` is the visual tween synced to all peers via RPC.
+- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `_working_unit_dict` for multi-player job callbacks, `done_toggle` iterates dict to clean up all workers, `begin_toggle` guards against invalid tile state and cancels other workers via `_cancel_other_workers`. Added `rpc_toggle_animation` for network-synced toggle visuals. Added `_countdown_tweens` dict (per-player) for server-only countdown tweens so each player's can be killed independently. `toggle_tween` is the visual commit tween synced to all peers via RPC.
 - `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. `translate()`→`position` (lines 60, 86, 96-101). Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`. `recompute_aoe()` runs once after `apply_loaded_level()` (not per-tile).
 - `TileManager.tscn`: both `[node name="Tween"]` children removed.
 - `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`. Added `disconnect_tile(tile)` for removing all edges from a tile.

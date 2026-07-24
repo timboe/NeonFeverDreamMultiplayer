@@ -42,15 +42,21 @@ func _process(delta: float) -> void:
 # --- Tick functions ---
 
 func _energy_tick() -> void:
+	var generators := get_tree().get_nodes_in_group("generator")
+	var tick_rates: Dictionary = {}
+	for b in generators:
+		if b.state != Building.State.CONSTRUCTED:
+			continue
+		var gen : float = b.get_energy() * TICK_INTERVAL
+		if gen > 0.0:
+			tick_rates[b.player_owner] = tick_rates.get(b.player_owner, 0.0) + gen
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		if capacity[p] <= 0.0:
 			continue
-		var tick_gen := 0.0
-		for b in get_tree().get_nodes_in_group("generator"):
-			if b.player_owner == p:
-				tick_gen += b.get_energy() * TICK_INTERVAL
-		energy[p] = minf(energy[p] + tick_gen, capacity[p])
-		_generated[p] += tick_gen
+		var tick_gen: float = tick_rates.get(p, 0.0)
+		if tick_gen > 0.0:
+			energy[p] = minf(energy[p] + tick_gen, capacity[p])
+			_generated[p] += tick_gen
 	_broadcast_energy()
 
 func _second_tick() -> void:
@@ -79,7 +85,8 @@ func request_energy(pnum: int, amount: float) -> float:
 func recalculate_capacity() -> void:
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		capacity[p] = 0.0
-	for v in get_tree().get_nodes_in_group("vat"):
+	var vats := get_tree().get_nodes_in_group("vat")
+	for v in vats:
 		if v.state == Building.State.CONSTRUCTED:
 			capacity[v.player_owner] += v.get_capacity()
 	for p in range(1, Global.MAX_PLAYERS + 1):

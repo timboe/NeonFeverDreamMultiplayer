@@ -89,6 +89,8 @@ func update_capacity() -> void:
 	pass
 
 func get_energy() -> float:
+	if state != State.CONSTRUCTED:
+		return 0.0
 	return BASE_GENERATION
 
 func get_capacity() -> float:
