@@ -2,7 +2,7 @@ extends Node3D
 
 class_name UnitManager
 
-enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL_PATROL, AERIAL_SCOUT, VIRUS}
+enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS}
 
 var unit_dictionary: Dictionary # int (id) -> Unit
 var _next_unit_id: int = 0
@@ -27,6 +27,9 @@ func spawn_unit(uid: int, type: Type, building: Building) -> void:
 	match type:
 		Type.ZOOMBA: u = $UnitFactory/Zoomba.duplicate()
 		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
+		Type.TANK: u = $UnitFactory/Tank.duplicate()
+		Type.AERIAL: u = $UnitFactory/Aerial.duplicate()
+		Type.VIRUS: u = $UnitFactory/Virus.duplicate()
 		_: push_error("UnitManager.spawn_unit: unknown type ", type); return
 	add_to_dict_and_scene(uid, u)
 	u.initialise(building)

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b0r0g5565qpvh"]
 
-[ext_resource type="Script" uid="uid://bbbc6djyvt75c" path="res://scripts/world/buildings/Building.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/world/buildings/Beacon.gd" id="1"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="2"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_f5pyy"]

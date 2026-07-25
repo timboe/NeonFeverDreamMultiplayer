@@ -46,32 +46,86 @@ static var CONSTRUCTION_COST: Dictionary = {
 	BuildingManager.Type.NEST: 750.0,
 }
 
+# --- Production ---
+
+static var UNIT_COST: Dictionary = {
+	UnitManager.Type.ZOOMBA: 25.0,
+	UnitManager.Type.TANK: 150.0,
+	UnitManager.Type.AERIAL: 100.0,
+	UnitManager.Type.VIRUS: 100.0,
+	UnitManager.Type.AVATAR: 0.0,
+}
+
+static var PRODUCTION_COOLDOWNS: Dictionary = {
+	BuildingManager.Type.MCP_1: 10.0,
+	BuildingManager.Type.MCP_2: 10.0,
+	BuildingManager.Type.MCP_3: 10.0,
+	BuildingManager.Type.MCP_4: 10.0,
+	BuildingManager.Type.GARAGE: 6.0,
+	BuildingManager.Type.BEACON: 4.0,
+	BuildingManager.Type.NEST: 5.0,
+}
+
+# --- Combat ---
+
+const BASE_DPS: float = 50.0
+
+static var DAMAGE_MULTIPLIERS: Dictionary = {
+	UnitManager.Type.TANK: {
+		UnitManager.Type.AERIAL: 5.0,
+	},
+	UnitManager.Type.AERIAL: {
+		UnitManager.Type.AERIAL: 1.0,
+		UnitManager.Type.VIRUS: 0.0,
+	},
+	UnitManager.Type.VIRUS: {
+		UnitManager.Type.TANK: 1.0,
+	},
+}
+
+const BUILDING_DAMAGE_BONUS: Dictionary = {
+	UnitManager.Type.AERIAL: 2.0,
+}
+
 # --- Units ---
 
 static var UNIT_SPEED: Dictionary = {
 	UnitManager.Type.ZOOMBA: 1.0,
 	UnitManager.Type.TANK: 1.0,
-	UnitManager.Type.AERIAL_PATROL: 1.0,
-	UnitManager.Type.AERIAL_SCOUT: 1.0,
+	UnitManager.Type.AERIAL: 1.0,
 	UnitManager.Type.VIRUS: 1.0,
 	UnitManager.Type.AVATAR: 0.0,
 }
 
 static var UNIT_MAX_HP: Dictionary = {
 	UnitManager.Type.ZOOMBA: 50.0,
+	UnitManager.Type.TANK: 400.0,
+	UnitManager.Type.AERIAL: 400.0,
+	UnitManager.Type.VIRUS: 150.0,
 	UnitManager.Type.AVATAR: 200.0,
 }
 
 static var HOME_TERRITORY_UNITS: Array[int] = [
 	UnitManager.Type.ZOOMBA,
 	UnitManager.Type.TANK,
-	UnitManager.Type.AERIAL_PATROL,
+	UnitManager.Type.AERIAL,
 ]
 
 static var SELF_HEALING_UNITS: Array[int] = [
 	UnitManager.Type.ZOOMBA,
 	UnitManager.Type.TANK,
 ]
+
+static func get_damage(attacker_type: UnitManager.Type, target) -> float:
+	var defender_type: UnitManager.Type = UnitManager.Type.NONE
+	var multiplier := 1.0
+	if target is Unit:
+		defender_type = target.type
+		var row: Dictionary = DAMAGE_MULTIPLIERS.get(attacker_type, {})
+		multiplier = row.get(defender_type, 1.0)
+	elif target is Building:
+		multiplier = BUILDING_DAMAGE_BONUS.get(attacker_type, 1.0)
+	return BASE_DPS * multiplier
 
 # --- Players ---
 

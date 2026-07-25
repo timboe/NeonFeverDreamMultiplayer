@@ -33,6 +33,14 @@ var _repair_timer := 0.0
 var _working_unit: Unit = null
 var _construction_energy_spent := 0.0
 
+# --- Production ---
+
+var _production_type: UnitManager.Type = UnitManager.Type.NONE
+var _production_cost: float = 0.0
+var _production_energy: float = 0.0
+var _production_timer: float = 0.0
+var _production_enabled: bool = true
+
 # --- Lifecycle ---
 
 func initialise(pnum: int, tile: TileElement) -> void:
@@ -68,6 +76,18 @@ func _process(delta: float) -> void:
 		if _construction_energy_spent >= cost:
 			set_constructed()
 	
+	# Do production - accumulate energy over time
+	if multiplayer.is_server() and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
+		if _production_timer > 0.0:
+			_production_timer -= delta
+		elif _production_enabled:
+			var em = get_node_or_null("/root/World/EnergyManager")
+			if em and _production_cost > 0.0:
+				var tick_amount := _production_cost * delta
+				_production_energy += em.request_energy(player_owner, tick_amount)
+			if _production_energy >= _production_cost:
+				_produce_unit()
+	
 	# If under repair (on server)
 	if multiplayer.is_server() and state == State.CONSTRUCTED and _working_unit:
 		_repair_timer += delta
@@ -97,18 +117,42 @@ func _process(delta: float) -> void:
 
 # --- Queries ---
 
-func find_unit_spawn_location() -> Vector3:
+func find_unit_spawn_location() -> TileElement:
 	for n in location.neighbours:
 		if n.state == TileManager.State.LOWERED:
-			return n.pathing_centre
-	return location.pathing_centre
+			return n
+	return location
 
 func get_aoe_radius() -> float:
 	return Config.BUILDING_AOE[type]
 
 func check_work() -> void:
-	if state == State.CONSTRUCTED and health < max_health:
+	if not multiplayer.is_server():
+		return
+	if state != State.CONSTRUCTED:
+		return
+	if not _production_enabled:
+		return
+	if health < max_health:
 		get_node_or_null("/root/World/JobManager").add_job(player_owner, JobManager.Type.REPAIR_BUILDING, location)
+
+func _setup_production(unit_type: UnitManager.Type) -> void:
+	_production_type = unit_type
+	_production_cost = Config.UNIT_COST.get(unit_type, 0.0)
+	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+
+func _produce_unit() -> void:
+	if not multiplayer.is_server():
+		return
+	if _production_type == UnitManager.Type.NONE:
+		return
+	var um = get_node_or_null("/root/World/UnitManager")
+	if not um:
+		return
+	var uid: int = um.next_unit_id()
+	um.rpc("rpc_spawn_unit", uid, _production_type, self.id)
+	_production_energy = 0.0
+	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
 # --- Terminal positioning ---
 
@@ -193,16 +237,29 @@ func set_constructed() -> void:
 	
 # --- Damage and Repair ---
 
-func hit(amount: float) -> void:
+func hit(attacker_type: UnitManager.Type = UnitManager.Type.NONE) -> void:
 	if not multiplayer.is_server():
 		return
-	if state == State.CONSTRUCTED: # If built, specific health pool. Not energy based
-		health -= amount
+	var damage := Config.get_damage(attacker_type, self)
+	if damage <= 0.0:
+		return
+	_apply_damage(damage)
+
+func apply_damage(amount: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_apply_damage(amount)
+
+func _apply_damage(damage: float) -> void:
+	if state == State.CONSTRUCTED:
+		# If built, specific health pool. Not energy based
+		health -= damage
 		if health <= 0:
 			health = 0
 			get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
-	else: # If under construction, attacks directly deplete the energy being used to build
-		_construction_energy_spent -= amount
+	else:
+		# If under construction, attacks directly deplete the energy being used to build
+		_construction_energy_spent -= damage
 		if _construction_energy_spent <= 0:
 			_construction_energy_spent = 0
 			rpc("rpc_constructed", id) # Remove blueprint as well

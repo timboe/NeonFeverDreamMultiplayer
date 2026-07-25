@@ -115,10 +115,10 @@ func _input(event: InputEvent) -> void:
 		for b in get_tree().get_nodes_in_group("building"):
 			if b is MCP:
 				continue
-			b.hit(b.max_health * 0.4)
+			b.apply_damage(b.max_health * 0.4)
 	if event.is_action_pressed("ui_damage_unit"):
 		for u in get_tree().get_nodes_in_group("unit"):
-			u.hit(u.max_health * 0.4)
+			u.apply_damage(u.max_health * 0.4)
 
 # --- Energy ---
 

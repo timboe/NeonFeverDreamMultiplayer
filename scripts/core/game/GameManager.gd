@@ -88,6 +88,29 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 				slots[2] = body.global_position.z
 				slots[3] = body.global_rotation.y
 			slots[4] = u.health
+		UnitManager.Type.TANK:
+			slots[0] = u.global_position.x
+			slots[1] = u.global_position.y
+			slots[2] = u.global_position.z
+			slots[3] = u.global_rotation.y
+			slots[4] = u.state
+			slots[5] = u.health
+		UnitManager.Type.AERIAL:
+			slots[0] = u.global_position.x
+			slots[1] = u.global_position.y
+			slots[2] = u.global_position.z
+			slots[3] = u.global_rotation.y
+			slots[4] = u.state
+			slots[5] = u.health
+			slots[6] = float(u.mode)
+		UnitManager.Type.VIRUS:
+			slots[0] = u.global_position.x
+			slots[1] = u.global_position.y
+			slots[2] = u.global_position.z
+			slots[3] = u.global_rotation.y
+			slots[4] = u.state
+			slots[5] = u.health
+			slots[6] = 1.0 if u.cloaked else 0.0
 	for s in slots:
 		data.append(s)
 
@@ -204,6 +227,27 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
 			for i in 4:
 				slots[4 + i] = e1["slots"][4 + i]
+		UnitManager.Type.TANK:
+			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
+			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
+			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
+			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
+			for i in 4:
+				slots[4 + i] = e1["slots"][4 + i]
+		UnitManager.Type.AERIAL:
+			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
+			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
+			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
+			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
+			for i in 4:
+				slots[4 + i] = e1["slots"][4 + i]
+		UnitManager.Type.VIRUS:
+			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
+			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
+			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
+			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
+			for i in 4:
+				slots[4 + i] = e1["slots"][4 + i]
 	_apply_unit(u, type_val, slots)
 
 func _apply_snapshot_entities(snapshot: Dictionary) -> void:
@@ -244,6 +288,23 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 				body.global_position = Vector3(slots[0], slots[1], slots[2])
 				body.rotation.y = slots[3]
 			u.health = slots[4]
+		UnitManager.Type.TANK:
+			u.global_position = Vector3(slots[0], slots[1], slots[2])
+			u.rotation.y = slots[3]
+			u.state = slots[4]
+			u.health = slots[5]
+		UnitManager.Type.AERIAL:
+			u.global_position = Vector3(slots[0], slots[1], slots[2])
+			u.rotation.y = slots[3]
+			u.state = slots[4]
+			u.health = slots[5]
+			u.mode = int(slots[6])
+		UnitManager.Type.VIRUS:
+			u.global_position = Vector3(slots[0], slots[1], slots[2])
+			u.rotation.y = slots[3]
+			u.state = slots[4]
+			u.health = slots[5]
+			u.cloaked = slots[6] > 0.5
 
 func _apply_building(b: Building, slots: Array) -> void:
 	if not b:

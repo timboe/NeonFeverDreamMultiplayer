@@ -52,8 +52,9 @@ var _health_bar: HealthBar3D
 
 func initialise(b: Building) -> void:
 	player_owner = b.player_owner
-	location = b.location
-	global_transform.origin = b.find_unit_spawn_location()
+	var spawn_tile: TileElement = b.find_unit_spawn_location()
+	location = spawn_tile
+	global_transform.origin = spawn_tile.pathing_centre
 	add_to_group("unit")
 	add_to_group("unit_player" + str(b.player_owner))
 	position.y = -1 # hide
@@ -193,6 +194,10 @@ func check_job_still_valid() -> bool:
 		var b = job["location"].building
 		if not b or b.health >= b.max_health:
 			return false
+	elif job["type"] == JobManager.Type.CONSUME_ZOOMBA:
+		var b = job["location"].building
+		if not b or b.state != Building.State.CONSTRUCTED or b.type != BuildingManager.Type.GARAGE:
+			return false
 	return true
 
 func check_pathing_valid() -> bool:
@@ -237,6 +242,8 @@ func start_work() -> void:
 			job["location"].building.start_construction(self)
 		JobManager.Type.REPAIR_BUILDING:
 			job["location"].building.start_repair(self)
+		JobManager.Type.CONSUME_ZOOMBA:
+			_consume_for_tank()
 		_:
 			push_error("Unit.start_work: unknown job type ", job["type"])
 			assert(false)
@@ -304,6 +311,23 @@ func scram() -> void:
 	if state != State.IDLE:
 		abandon_job()
 
+func _consume_for_tank() -> void:
+	if not multiplayer.is_server():
+		return
+	var garage = job["location"].building
+	if not garage or not is_instance_valid(garage):
+		job_finished()
+		return
+	var um = get_node_or_null("/root/World/UnitManager")
+	if not um:
+		job_finished()
+		return
+	# Spawn TANK at the garage
+	var uid: int = um.next_unit_id()
+	um.rpc("rpc_spawn_unit", uid, UnitManager.Type.TANK, garage.id)
+	# Remove this zoomba
+	um.rpc("rpc_remove_unit", id)
+
 # --- Movement ---
 
 func move(callback: Callable) -> void:
@@ -318,9 +342,17 @@ func move(callback: Callable) -> void:
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = create_tween()
-	move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
-	move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
-	move_tween.parallel().tween_callback(callback).set_delay(time)
+	if state == State.IDLE:
+		# Rotate first, then move — gives a deliberate turn-then-walk feel
+		var rot_time := time / 4.0
+		var move_time := time - rot_time
+		move_tween.tween_method(quat_transform, 0.0, 1.0, rot_time)
+		move_tween.tween_property(self, "position", location.pathing_centre, move_time)
+		move_tween.tween_callback(callback)
+	else:
+		move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
+		move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
+		move_tween.parallel().tween_callback(callback).set_delay(time)
 
 # --- Rotation ---
 
@@ -366,10 +398,18 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 
 # --- Damage and Repair ---
 
-func hit(amount: float) -> void:
+func hit(attacker_type: UnitManager.Type = UnitManager.Type.NONE) -> void:
 	if not multiplayer.is_server():
 		return
-	health -= amount
+	_apply_damage(Config.get_damage(attacker_type, self))
+
+func apply_damage(amount: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_apply_damage(amount)
+
+func _apply_damage(damage: float) -> void:
+	health -= damage
 	_repair_timer = -REPAIR_DELAY
 	if health <= 0:
 		health = 0

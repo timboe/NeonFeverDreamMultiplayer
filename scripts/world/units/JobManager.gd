@@ -2,7 +2,7 @@ extends Node3D
 
 class_name JobManager
 
-enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE}
+enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA}
 
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0
@@ -35,6 +35,8 @@ func _process(_delta: float) -> void:
 				debug_mesh.surface_set_color(Color.GREEN)
 			Type.CONSTRUCT_BUILDING:
 				debug_mesh.surface_set_color(Color.CYAN)
+			Type.CONSUME_ZOOMBA:
+				debug_mesh.surface_set_color(Color.MAGENTA)
 			_:
 				continue
 		debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
@@ -80,6 +82,13 @@ func cancel_job(pnum: int, type: Type, location: TileElement) -> void:
 			continue
 		remove_job(the_job["id"])
 		return
+
+func count_jobs(pnum: int, type: Type) -> int:
+	var c := 0
+	for job in jobs_dict.values():
+		if job["pnum"] == pnum and job["type"] == type:
+			c += 1
+	return c
 
 func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):

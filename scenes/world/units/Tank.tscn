@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world/units/Tank.gd" id="1"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2"]
+
+[sub_resource type="BoxMesh" id="1"]
+size = Vector3(2, 1.5, 3)
+
+[sub_resource type="StandardMaterial3D" id="2"]
+albedo_color = Color(0.3, 0.3, 0.3, 1)
+
+[sub_resource type="BoxMesh" id="3"]
+material = SubResource("2")
+size = Vector3(1.5, 0.8, 2)
+
+[node name="Tank" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Body" type="Node3D" parent="."]
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody"]
+mesh = SubResource("1")
+material = ExtResource("2")
+
+[node name="Turret" type="CSGMesh3D" parent="Body/CSGBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+mesh = SubResource("3")
