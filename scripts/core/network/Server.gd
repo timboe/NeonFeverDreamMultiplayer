@@ -93,3 +93,116 @@ func _cmd_toggle_tile(player_number: int, tile_id: int) -> void:
 		push_warning("Server._cmd_toggle_tile: TileManager not found")
 		return
 	tm.apply_toggle(player_number, tile_id)
+
+# --- Building terminal commands ---
+
+func _can_control_building(player_number: int, b: Building) -> bool:
+	if not b:
+		return false
+	return b.player_owner == player_number
+
+func _cmd_toggle_production(player_number: int, building_id: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b.has_method("toggle_production"):
+		b.toggle_production()
+
+func _cmd_set_garage_ratio(player_number: int, building_id: int, ratio: float) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Garage:
+		b.zoomba_tank_ratio = clampf(ratio, 0.0, 1.0)
+
+func _cmd_set_beacon_ratio(player_number: int, building_id: int, ratio: float) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Beacon:
+		b.patrol_strike_ratio = clampf(ratio, 0.0, 1.0)
+
+func _cmd_set_nest_ratio(player_number: int, building_id: int, ratio: float) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Nest:
+		b.virus_tank_building_ratio = clampf(ratio, 0.0, 1.0)
+
+func _cmd_set_enemy_targets(player_number: int, building_id: int, targets: Array) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if "enemy_targets" in b:
+		b.enemy_targets = targets
+
+func _cmd_set_building_targets(player_number: int, building_id: int, targets: Array) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Beacon:
+		b.strike_target_types = targets
+	elif b is Nest:
+		b.building_targets = targets
+
+func _cmd_set_strike_priority(player_number: int, building_id: int, priority: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Beacon:
+		b.strike_priority = priority
+
+func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Beacon:
+		b.patrol_stance = stance
+
+func _cmd_set_virus_priority(player_number: int, building_id: int, priority: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	if b is Nest:
+		b.virus_priority = priority
+
+func _cmd_empower(player_number: int, building_id: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if not bm:
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		return
+	bm.set_empowered_for_player(player_number, b)
+
+func _cmd_clear_empower(player_number: int) -> void:
+	var bm := get_node_or_null("/root/World/BuildingManager")
+	if bm:
+		bm.clear_empowered_for_player(player_number)

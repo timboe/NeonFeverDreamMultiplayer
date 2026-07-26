@@ -17,6 +17,7 @@ enum State {BLUEPRINT, UNDER_CONSTRUCTION, CONSTRUCTED}
 
 var state: State
 var type: BuildingManager.Type
+var is_empowered: bool = false
 
 # --- Health ---
 
@@ -136,6 +137,21 @@ func check_work() -> void:
 	if health < max_health:
 		get_node_or_null("/root/World/JobManager").add_job(player_owner, JobManager.Type.REPAIR_BUILDING, location)
 
+func toggle_production() -> void:
+	if not multiplayer.is_server():
+		return
+	_production_enabled = not _production_enabled
+
+# --- Empower ---
+
+@rpc("authority", "call_local", "reliable")
+func rpc_set_empowered(val: bool) -> void:
+	is_empowered = val
+	_empower_changed(val)
+
+func _empower_changed(_val: bool) -> void:
+	pass
+
 func _setup_production(unit_type: UnitManager.Type) -> void:
 	_production_type = unit_type
 	_production_cost = Config.UNIT_COST.get(unit_type, 0.0)
@@ -153,6 +169,45 @@ func _produce_unit() -> void:
 	um.rpc("rpc_spawn_unit", uid, _production_type, self.id)
 	_production_energy = 0.0
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+
+# --- HUD ---
+
+var _hud: SubViewport = null
+
+func _get_hud_scene() -> PackedScene:
+	return null
+
+func _setup_hud() -> void:
+	var hud_scene := _get_hud_scene()
+	if not hud_scene:
+		return
+	# Remove the template node from the tree immediately so it stops rendering
+	var template = get_node_or_null("BuildingHUD")
+	if template:
+		remove_child(template)
+		template.queue_free()
+	# Create a fresh SubViewport with its own render target
+	_hud = SubViewport.new()
+	_hud.name = "BuildingHUD"
+	_hud.size = Vector2(480, 480)
+	_hud.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	add_child(_hud)
+	move_child(_hud, 0)
+	# Instantiate the HUD scene fresh — each building gets its own nodes
+	var ctrl = hud_scene.instantiate()
+	_hud.add_child(ctrl)
+	ctrl.building = self
+	var screen = get_node_or_null("Terminal/Screen")
+	if screen:
+		var mat = screen.get_surface_override_material(0)
+		if mat:
+			# Make the screen material unique so each building has its own texture
+			mat = mat.duplicate()
+			screen.set_surface_override_material(0, mat)
+			mat.albedo_texture = _hud.get_texture()
+			mat.albedo_color = Color.WHITE
+		if ctrl.has_method("setup_cursor_3d"):
+			ctrl.setup_cursor_3d(screen)
 
 # --- Terminal positioning ---
 

@@ -13,6 +13,12 @@ static func _disable_collision_recursive(node: Node) -> void:
 			c.disabled = true
 		_disable_collision_recursive(c)
 
+static func _hide_controls(node: Node) -> void:
+	for c in node.get_children():
+		if c is Control:
+			c.visible = false
+		_hide_controls(c)
+
 static func enable_collision_recursive(node: Node) -> void:
 	for c in node.get_children():
 		if c is CollisionShape3D:
@@ -27,6 +33,7 @@ func _ready() -> void:
 	for c in get_children():
 		c.position.y = BuildingManager.HIDE_DEPTH
 		_disable_collision_recursive(c)
+	_hide_controls(self)
 
 func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
 	for c in node.get_children():

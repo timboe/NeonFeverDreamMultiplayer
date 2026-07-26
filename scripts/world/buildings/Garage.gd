@@ -2,13 +2,33 @@ extends Building
 
 class_name Garage
 
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/GarageHUD.tscn")
+
 var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
+var cached_tank_count: int = 0
+
+func _get_hud_scene() -> PackedScene:
+	return HUD_SCENE
 
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
+	type = BuildingManager.Type.GARAGE
+	max_health = Config.BUILDING_MAX_HP[type]
+	health = max_health
 	_setup_production(UnitManager.Type.TANK)
 	add_to_group("garage")
 	add_to_group("garage_player" + str(pnum))
+	_setup_hud()
+
+func _process(delta: float) -> void:
+	super._process(delta)
+	if multiplayer.is_server() and state == State.CONSTRUCTED:
+		_update_tank_count()
+
+func _update_tank_count() -> void:
+	var um = get_node_or_null("/root/World/UnitManager")
+	if um:
+		cached_tank_count = um.unit_count(player_owner, UnitManager.Type.TANK)
 
 func check_work() -> void:
 	super.check_work()
@@ -28,13 +48,12 @@ func check_work() -> void:
 			return
 		var total_zoombas : int = um.unit_count(player_owner, UnitManager.Type.ZOOMBA)
 		var claimed : int = jm.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
-		var current_tanks : int = um.unit_count(player_owner, UnitManager.Type.TANK)
 		# Always keep at least 1 zoomba free
 		if total_zoombas - claimed < 2:
 			return
 		# Tank cap based on ratio, minus already claimed zoombas
 		var target_tanks : int = roundi(total_zoombas * zoomba_tank_ratio)
-		if current_tanks + claimed >= target_tanks:
+		if cached_tank_count + claimed >= target_tanks:
 			return
 		# Create CONSUME_ZOOMBA job
 		jm.add_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)

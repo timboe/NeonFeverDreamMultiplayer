@@ -161,4 +161,4 @@ operation = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, -2, -2)
 operation = 2
 
-[node name="MCPHUD" parent="." instance=ExtResource("8_hud")]
+[node name="BuildingHUD" parent="." instance=ExtResource("8_hud")]

@@ -2,6 +2,8 @@ extends Building
 
 class_name MCP
 
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/MCPHUD.tscn")
+
 # --- Constants ---
 
 const A_VELOCITY: float = 100.0
@@ -10,9 +12,11 @@ const BASE_GENERATION: float = 27.0
 # --- State ---
 
 var to_rotate: Array = []
-var _mcp_hud: SubViewport
 
 # --- Lifecycle ---
+
+func _get_hud_scene() -> PackedScene:
+	return HUD_SCENE
 
 func _ready() -> void:
 	if type == BuildingManager.Type.MCP_1:
@@ -39,20 +43,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	add_to_group("mcp_player" + str(pnum))
 	add_to_group("vat")
 	add_to_group("vat_player" + str(pnum))
-	_mcp_hud = get_node_or_null("MCPHUD")
-	if _mcp_hud:
-		_mcp_hud.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-		var hud_root = _mcp_hud.get_node_or_null("Root")
-		if hud_root:
-			hud_root.mcp = self
-		var screen = get_node_or_null("Terminal/Screen")
-		if screen:
-			var mat = screen.get_surface_override_material(0)
-			if mat:
-				mat.albedo_texture = _mcp_hud.get_texture()
-				mat.albedo_color = Color.WHITE
-			if hud_root:
-				hud_root.setup_cursor_3d(screen)
+	_setup_hud()
 
 # --- Queries ---
 

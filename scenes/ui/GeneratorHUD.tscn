@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/GeneratorHUD.gd" id="1_gen"]
+[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
+
+[node name="Root" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_gen")
+
+[node name="Window" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Window"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Window/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "GENERATOR"
+
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+custom_minimum_size = Vector2(120, 48)
+layout_mode = 2
+size_flags_horizontal = 10
+theme = ExtResource("3_empower")
+text = "⚡"
+
+[node name="Sep" type="HSeparator" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+text = "⚡ EMPOWERED: +1 RADIUS"
+horizontal_alignment = 1
+
+[node name="PowerRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="PowerName" type="Label" parent="Window/VBox/PowerRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Power Output"
+
+[node name="PowerLabel" type="Label" parent="Window/VBox/PowerRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0 e/s"
+horizontal_alignment = 2
+
+[node name="TilesRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="TilesName" type="Label" parent="Window/VBox/TilesRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "AoE Tiles"
+
+[node name="TilesLabel" type="Label" parent="Window/VBox/TilesRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0"
+horizontal_alignment = 2
+
+[node name="PerTileRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="PerTileName" type="Label" parent="Window/VBox/PerTileRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Per Tile"
+
+[node name="PerTileLabel" type="Label" parent="Window/VBox/PerTileRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0"
+horizontal_alignment = 2

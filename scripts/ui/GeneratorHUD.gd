@@ -1,16 +1,14 @@
 extends Control
 
-class_name MCPHUD
+class_name GeneratorHUD
 
-# --- References ---
+var building: Generator
 
-var building: Building
-
-@onready var count_label: Label = $Window/VBox/ZoombaRow/CountLabel
-@onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
-
-# --- Cursor (3D) ---
+@onready var power_label: Label = $Window/VBox/PowerRow/PowerLabel
+@onready var tiles_label: Label = $Window/VBox/TilesRow/TilesLabel
+@onready var per_tile_label: Label = $Window/VBox/PerTileRow/PerTileLabel
+@onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
 var _cursor: Cursor3D
 
@@ -26,30 +24,16 @@ func _on_empower_pressed() -> void:
 func setup_cursor_3d(screen: MeshInstance3D) -> void:
 	_cursor = Cursor3D.new(screen, Config.TERMINAL_SCREEN_SIZE)
 
-# --- Lifecycle ---
-
 func _process(_delta: float) -> void:
-	if not building or not count_label:
+	if not building or not power_label:
 		return
-	var mcp := building as MCP
-	if not mcp:
-		return
-	var um = get_node_or_null("/root/World/UnitManager")
-	if not um:
-		return
-	var current: int = um.unit_count(mcp.player_owner, UnitManager.Type.ZOOMBA)
-	var cap: int = mcp.zoomba_cap()
-	count_label.text = str(current) + " / " + str(cap)
-	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(mcp.type, 10.0)
-	if mcp._production_timer > 0.0:
-		var progress := (cooldown - mcp._production_timer) / cooldown * 100.0
-		spawn_bar.value = progress
-	elif current >= cap:
-		spawn_bar.value = 100.0
-	else:
-		spawn_bar.value = 0.0
-
-# --- Cursor ---
+	power_label.text = str(int(building.generation)) + " e/s"
+	tiles_label.text = str(building._aoe_tiles.size())
+	var avg := 0.0
+	if building._aoe_tiles.size() > 0:
+		avg = building.generation / building._aoe_tiles.size()
+	per_tile_label.text = str(snappedf(avg, 0.1))
+	empower_indicator.visible = building.is_empowered
 
 func show_cursor_at_uv(uv: Vector2) -> void:
 	if _cursor:

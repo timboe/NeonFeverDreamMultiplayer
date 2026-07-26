@@ -1,0 +1,135 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/VatHUD.gd" id="1_vat"]
+[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
+
+[node name="Root" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_vat")
+
+[node name="Window" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Window"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Window/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "VAT"
+
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+custom_minimum_size = Vector2(120, 48)
+layout_mode = 2
+size_flags_horizontal = 10
+theme = ExtResource("3_empower")
+text = "⚡"
+
+[node name="Sep" type="HSeparator" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+text = "⚡ EMPOWERED: +20% CAPACITY"
+horizontal_alignment = 1
+
+[node name="EnergyRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EnergyName" type="Label" parent="Window/VBox/EnergyRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Energy"
+
+[node name="EnergyLabel" type="Label" parent="Window/VBox/EnergyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0 / 0"
+horizontal_alignment = 2
+
+[node name="EnergyBar" type="ProgressBar" parent="Window/VBox"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+show_percentage = false
+
+[node name="CapacityRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="CapacityName" type="Label" parent="Window/VBox/CapacityRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Capacity"
+
+[node name="CapacityLabel" type="Label" parent="Window/VBox/CapacityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "1000e"
+horizontal_alignment = 2
+
+[node name="AdjacentRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="AdjacentName" type="Label" parent="Window/VBox/AdjacentRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Adjacent Vats"
+
+[node name="AdjacentLabel" type="Label" parent="Window/VBox/AdjacentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0 (+0%)"
+horizontal_alignment = 2
+
+[node name="Sep2" type="HSeparator" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="HPRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="HPName" type="Label" parent="Window/VBox/HPRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Shared HP"
+
+[node name="HPLabel" type="Label" parent="Window/VBox/HPRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0 / 0"
+horizontal_alignment = 2
+
+[node name="HPBar" type="ProgressBar" parent="Window/VBox"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+show_percentage = false

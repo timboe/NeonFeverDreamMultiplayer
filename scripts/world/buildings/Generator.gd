@@ -2,12 +2,17 @@ extends Building
 
 class_name Generator
 
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/GeneratorHUD.tscn")
+
 # --- State ---
 
 var generation: float = 0.0
 var _aoe_tiles: Array[TileElement] = []
 
 # --- Lifecycle ---
+
+func _get_hud_scene() -> PackedScene:
+	return HUD_SCENE
 
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
@@ -20,6 +25,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_build_aoe_tiles()
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	_setup_hud()
 
 func _build_aoe_tiles() -> void:
 	var interactive: Array = get_tree().get_nodes_in_group("interactive")

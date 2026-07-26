@@ -1,10 +1,11 @@
 [gd_scene format=3 uid="uid://bh1ee03lqwwjq"]
 
-[ext_resource type="Script" path="res://scripts/world/buildings/Nest.gd" id="1"]
+[ext_resource type="Script" uid="uid://da6met7la3mp2" path="res://scripts/world/buildings/Nest.gd" id="1"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="2"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_7dib3"]
 [ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/NestHUD.tscn" id="5_nest"]
 
 [sub_resource type="BoxShape3D" id="1"]
 size = Vector3(15, 1, 15)
@@ -23,3 +24,5 @@ script = ExtResource("4")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=1637843513]
 shape = SubResource("1")
+
+[node name="BuildingHUD" parent="." instance=ExtResource("5_nest")]

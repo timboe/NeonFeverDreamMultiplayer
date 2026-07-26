@@ -169,4 +169,4 @@ amount = 256
 process_material = SubResource("18")
 draw_pass_1 = SubResource("20")
 
-[node name="MCPHUD" parent="." instance=ExtResource("8_hud")]
+[node name="BuildingHUD" parent="." instance=ExtResource("8_hud")]

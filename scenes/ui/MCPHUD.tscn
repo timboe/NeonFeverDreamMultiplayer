@@ -1,64 +1,10 @@
 [gd_scene format=3 uid="uid://ulvujuxt7pqg"]
 
-[ext_resource type="Script" uid="uid://eafli71gt5r6" path="res://scripts/ui/MCPHUD.gd" id="1_mcp"]
-[ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Script" path="res://scripts/ui/MCPHUD.gd" id="1_mcp"]
+[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
 
-[sub_resource type="StyleBoxFlat" id="empower_normal"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0, 0.3, 0.35, 0.7)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 1, 1, 0.8)
-corner_radius_top_left = 32
-corner_radius_top_right = 32
-corner_radius_bottom_right = 32
-corner_radius_bottom_left = 32
-
-[sub_resource type="StyleBoxFlat" id="empower_pressed"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0, 0.5, 0.55, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 1, 1, 1)
-corner_radius_top_left = 32
-corner_radius_top_right = 32
-corner_radius_bottom_right = 32
-corner_radius_bottom_left = 32
-shadow_color = Color(0, 1, 1, 0.6)
-shadow_size = 12
-
-[sub_resource type="StyleBoxFlat" id="empower_hover"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0, 0.4, 0.45, 0.8)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 1, 1, 1)
-corner_radius_top_left = 32
-corner_radius_top_right = 32
-corner_radius_bottom_right = 32
-corner_radius_bottom_left = 32
-shadow_color = Color(0, 1, 1, 0.4)
-shadow_size = 8
-
-[node name="MCPHUD" type="SubViewport" unique_id=789245299]
-render_target_update_mode = 3
-
-[node name="Root" type="Control" parent="." unique_id=214140722]
+[node name="Root" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -68,7 +14,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_mcp")
 
-[node name="Window" type="PanelContainer" parent="Root" unique_id=1216173983]
+[node name="Window" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -82,55 +28,50 @@ offset_bottom = 240.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Root/Window" unique_id=1152409058]
+[node name="VBox" type="VBoxContainer" parent="Window"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="Root/Window/VBox" unique_id=1526836498]
+[node name="Header" type="HBoxContainer" parent="Window/VBox"]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Root/Window/VBox/Header" unique_id=1165212714]
+[node name="Title" type="Label" parent="Window/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "MCP"
 
-[node name="EmpowerBtn" type="Button" parent="Root/Window/VBox/Header" unique_id=1428468806]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 64)
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
-theme_override_font_sizes/font_size = 24
-theme_override_styles/normal = SubResource("empower_normal")
-theme_override_styles/pressed = SubResource("empower_pressed")
-theme_override_styles/hover = SubResource("empower_hover")
+theme = ExtResource("3_empower")
+text = "⚡"
 
-[node name="Sep" type="HSeparator" parent="Root/Window/VBox" unique_id=1482209805]
+[node name="Sep" type="HSeparator" parent="Window/VBox"]
 layout_mode = 2
 
-[node name="ZoombaRow" type="HBoxContainer" parent="Root/Window/VBox" unique_id=1562295888]
+[node name="ZoombaRow" type="HBoxContainer" parent="Window/VBox"]
 layout_mode = 2
 
-[node name="ZoombaLabel" type="Label" parent="Root/Window/VBox/ZoombaRow" unique_id=1887888323]
+[node name="ZoombaLabel" type="Label" parent="Window/VBox/ZoombaRow"]
 layout_mode = 2
 text = "Zoombas"
 
-[node name="CountLabel" type="Label" parent="Root/Window/VBox/ZoombaRow" unique_id=227160901]
-unique_name_in_owner = true
+[node name="CountLabel" type="Label" parent="Window/VBox/ZoombaRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "0 / 0"
 horizontal_alignment = 2
 
-[node name="SpawnRow" type="VBoxContainer" parent="Root/Window/VBox" unique_id=888666226]
+[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox"]
 layout_mode = 2
 
-[node name="SpawnLabel" type="Label" parent="Root/Window/VBox/SpawnRow" unique_id=822436324]
+[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow"]
 layout_mode = 2
 text = "Next Unit"
 
-[node name="SpawnBar" type="ProgressBar" parent="Root/Window/VBox/SpawnRow" unique_id=125960138]
-unique_name_in_owner = true
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow"]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 show_percentage = false

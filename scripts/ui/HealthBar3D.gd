@@ -46,3 +46,6 @@ func set_health(current: float, maximum: float) -> void:
 	_mesh.visible = true
 	var fraction := clampf(current / maximum, 0.0, 1.0)
 	_material.set_shader_parameter("fraction", fraction)
+
+func set_fill_color(color: Color) -> void:
+	_material.set_shader_parameter("fill_color", color)

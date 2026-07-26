@@ -46,6 +46,8 @@ static var CONSTRUCTION_COST: Dictionary = {
 	BuildingManager.Type.NEST: 750.0,
 }
 
+const TERMINAL_SCREEN_SIZE: float = 3.0
+
 # --- Production ---
 
 static var UNIT_COST: Dictionary = {
@@ -57,7 +59,7 @@ static var UNIT_COST: Dictionary = {
 }
 
 static var PRODUCTION_COOLDOWNS: Dictionary = {
-	BuildingManager.Type.MCP_1: 10.0,
+	BuildingManager.Type.MCP_1: 2.0, # TESTING
 	BuildingManager.Type.MCP_2: 10.0,
 	BuildingManager.Type.MCP_3: 10.0,
 	BuildingManager.Type.MCP_4: 10.0,

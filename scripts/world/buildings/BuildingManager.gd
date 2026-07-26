@@ -15,6 +15,26 @@ const HIDE_DEPTH: float = -50.0
 var building_dictionary: Dictionary = {}
 var _next_building_id: int = 0
 
+# --- Empower tracking ---
+
+var _empowered_by_player: Dictionary = {}  # pnum → Building
+
+func set_empowered_for_player(pnum: int, building: Building) -> void:
+	var prev = _empowered_by_player.get(pnum)
+	if prev and prev != building and is_instance_valid(prev):
+		prev.is_empowered = false
+		prev.rpc("rpc_set_empowered", false)
+	building.is_empowered = true
+	building.rpc("rpc_set_empowered", true)
+	_empowered_by_player[pnum] = building
+
+func clear_empowered_for_player(pnum: int) -> void:
+	var prev = _empowered_by_player.get(pnum)
+	if prev and is_instance_valid(prev):
+		prev.is_empowered = false
+		prev.rpc("rpc_set_empowered", false)
+	_empowered_by_player.erase(pnum)
+
 # --- Blueprints ---
 
 var enabled_blueprints: Dictionary = {}
@@ -133,8 +153,6 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
 	new_building.position_terminal()
-	new_building.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
-	new_building.health = new_building.max_health
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true
@@ -162,8 +180,6 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	add_to_dict_and_scene(next_building_id(), b, type)
 	b.initialise(pnum, tile)
 	b.position_terminal()
-	b.max_health = Config.BUILDING_MAX_HP.get(type, 1.0)
-	b.health = b.max_health
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()

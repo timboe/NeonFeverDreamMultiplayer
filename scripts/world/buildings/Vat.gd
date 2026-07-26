@@ -2,6 +2,8 @@ extends Building
 
 class_name Vat
 
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/VatHUD.tscn")
+
 # --- Constants ---
 
 const FULL_Y: float = 10.5
@@ -20,6 +22,9 @@ var liquid: MeshInstance3D = null
 
 # --- Lifecycle ---
 
+func _get_hud_scene() -> PackedScene:
+	return HUD_SCENE
+
 func _ready() -> void:
 	if has_node("Liquid"):
 		liquid = $Liquid
@@ -35,6 +40,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 		var mat_path := "res://materials/player/player" + str(pnum) + "_material.tres"
 		$Liquid.set_surface_override_material(0, load(mat_path))
 	add_to_group("vat_player" + str(player_owner))
+	_setup_hud()
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -57,6 +63,9 @@ func update_capacity() -> void:
 		if n.building and n.building is Vat and n.building.player_owner == player_owner:
 			count += 1
 	capacity_mod_vats = count * 0.1 * CAPACITY
+
+func _empower_changed(val: bool) -> void:
+	capacity_mult_empower = 1.2 if val else 1.0
 
 func get_capacity() -> float:
 	return (CAPACITY + capacity_mod_vats) * capacity_mult_empower

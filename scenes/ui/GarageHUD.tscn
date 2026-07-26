@@ -1,0 +1,139 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/GarageHUD.gd" id="1_garage"]
+[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
+
+[node name="Root" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_garage")
+
+[node name="Window" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Window"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Window/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "GARAGE"
+
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+custom_minimum_size = Vector2(120, 48)
+layout_mode = 2
+size_flags_horizontal = 10
+theme = ExtResource("3_empower")
+text = "⚡"
+
+[node name="Sep" type="HSeparator" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+text = "⚡ EMPOWERED: +25% AA FIRE RATE"
+horizontal_alignment = 1
+
+[node name="ProdRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Production"
+
+[node name="ProdBtn" type="Button" parent="Window/VBox/ProdRow"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_font_sizes/font_size = 16
+text = "PRODUCING"
+
+[node name="RatioRow" type="VBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="RatioHeader" type="HBoxContainer" parent="Window/VBox/RatioRow"]
+layout_mode = 2
+
+[node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Zoomba / Tank"
+
+[node name="RatioLabel" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "50% / 50%"
+horizontal_alignment = 2
+
+[node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+min_value = 0
+max_value = 100
+step = 5
+value = 50
+
+[node name="RatioTotalLabel" type="Label" parent="Window/VBox/RatioRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Total: 50%"
+horizontal_alignment = 2
+
+[node name="Sep2" type="HSeparator" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="TankRow" type="HBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="TankName" type="Label" parent="Window/VBox/TankRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Tanks"
+
+[node name="TankLabel" type="Label" parent="Window/VBox/TankRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "0"
+horizontal_alignment = 2
+
+[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox"]
+layout_mode = 2
+
+[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow"]
+layout_mode = 2
+text = "Next Tank"
+
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+show_percentage = false

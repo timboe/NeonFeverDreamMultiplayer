@@ -9,17 +9,16 @@ const DECAY_INTERVAL: float = 0.1
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	if not multiplayer.is_server():
-		return
-	if health > 0 and state != State.WORKING:
-		_decay_timer += delta
-		while _decay_timer >= DECAY_INTERVAL:
-			_decay_timer -= DECAY_INTERVAL
-			health -= _health_decay_rate * DECAY_INTERVAL
-			if health <= 0:
-				health = 0
-				get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
-				return
+	if multiplayer.is_server():
+		if health > 0 and state != State.WORKING:
+			_decay_timer += delta
+			while _decay_timer >= DECAY_INTERVAL:
+				_decay_timer -= DECAY_INTERVAL
+				health -= _health_decay_rate * DECAY_INTERVAL
+				if health <= 0:
+					health = 0
+					get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
+					return
 	_update_cloak_visual()
 
 func initialise(b: Building) -> void:
