@@ -1,0 +1,174 @@
+[gd_scene format=3 uid="uid://d3puftj3q3ned"]
+
+[ext_resource type="Script" uid="uid://do5ayabbkcssm" path="res://scripts/world/units/Zoomba.gd" id="1_a8gpu"]
+[ext_resource type="PackedScene" uid="uid://b1d53jlc4oj3s" path="res://scenes/world/buildings/Zapper.tscn" id="2_i26qt"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="3_lt1t4"]
+[ext_resource type="CapsuleMesh" uid="uid://i8kulhkm1fdb" path="res://meshes/eye.tres" id="4_16kcv"]
+[ext_resource type="Material" uid="uid://bgoiv0d233t4m" path="res://materials/chrome.tres" id="5_i26qt"]
+
+[sub_resource type="Animation" id="Animation_a8gpu"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Body:rotation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="1"]
+resource_name = "Rock"
+length = 2.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Body:rotation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.5, 1.0333333, 1.5, 2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.17453292, 0, 0), Vector3(0, 0, 0), Vector3(-0.17453292, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_rrta4"]
+_data = {
+&"RESET": SubResource("Animation_a8gpu"),
+&"Rock": SubResource("1")
+}
+
+[sub_resource type="StandardMaterial3D" id="2"]
+albedo_color = Color(0, 0, 0, 1)
+roughness = 0.0
+
+[sub_resource type="SphereMesh" id="3"]
+material = SubResource("2")
+radius = 0.1
+height = 0.2
+
+[sub_resource type="SphereMesh" id="4"]
+radius = 2.0
+height = 2.0
+
+[node name="Node3D" type="Node3D" unique_id=1488611743]
+
+[node name="Zoomba" type="Node3D" parent="." unique_id=685679189]
+visible = false
+script = ExtResource("1_a8gpu")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Zoomba" unique_id=1630434465]
+callback_mode_process = 0
+libraries/ = SubResource("AnimationLibrary_rrta4")
+autoplay = &"Rock"
+
+[node name="Zapper" parent="Zoomba" unique_id=517194518 instance=ExtResource("2_i26qt")]
+transform = Transform3D(-1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0, 1, -2, 0.75, 0)
+
+[node name="Body" type="Node3D" parent="Zoomba" unique_id=511339381]
+
+[node name="Ball" type="MeshInstance3D" parent="Zoomba/Body" unique_id=571781637]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, 0.5)
+mesh = SubResource("3")
+
+[node name="Ball2" type="MeshInstance3D" parent="Zoomba/Body" unique_id=1254382306]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, -0.5)
+mesh = SubResource("3")
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Zoomba/Body" unique_id=304969192]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CSGMesh" type="CSGMesh3D" parent="Zoomba/Body/CSGBody" unique_id=54414695]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+mesh = SubResource("4")
+material = ExtResource("3_lt1t4")
+
+[node name="CSGBox" type="CSGBox3D" parent="Zoomba/Body/CSGBody" unique_id=1716086790]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+operation = 2
+size = Vector3(4, 1, 4)
+
+[node name="CSGMeshEye" type="CSGMesh3D" parent="Zoomba/Body/CSGBody" unique_id=1721446052]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.6999999, 0, -0.5)
+operation = 2
+mesh = ExtResource("4_16kcv")
+
+[node name="CSGMeshEye2" type="CSGMesh3D" parent="Zoomba/Body/CSGBody" unique_id=1822136606]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.6999999, 0, 0.5)
+operation = 2
+mesh = ExtResource("4_16kcv")
+
+[node name="Tank" type="Node3D" parent="." unique_id=233568554]
+script = ExtResource("1_a8gpu")
+
+[node name="Body" type="Node3D" parent="Tank" unique_id=1378531432]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0)
+
+[node name="Ball" type="MeshInstance3D" parent="Tank/Body" unique_id=889553572]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, 0.5)
+mesh = SubResource("3")
+
+[node name="Ball2" type="MeshInstance3D" parent="Tank/Body" unique_id=701345844]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, -0.5)
+mesh = SubResource("3")
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Tank/Body" unique_id=535631640]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CSGMesh" type="CSGMesh3D" parent="Tank/Body/CSGBody" unique_id=2103766702]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+mesh = SubResource("4")
+material = ExtResource("3_lt1t4")
+
+[node name="CSGBox" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=1158391644]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+operation = 2
+size = Vector3(4, 1, 4)
+
+[node name="CSGMeshEye" type="CSGMesh3D" parent="Tank/Body/CSGBody" unique_id=121157200]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.6999999, 0, -0.5)
+operation = 2
+mesh = ExtResource("4_16kcv")
+
+[node name="CSGMeshEye2" type="CSGMesh3D" parent="Tank/Body/CSGBody" unique_id=990162673]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.6999999, 0, 0.5)
+operation = 2
+mesh = ExtResource("4_16kcv")
+
+[node name="Leg" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=1069775921]
+transform = Transform3D(1, 0, 0, 0, 0.9999829, 0, 0, 0, 0.9999829, -1.4, 0.24999672, 1.3999982)
+size = Vector3(0.2, 1.5, 0.2)
+material = ExtResource("5_i26qt")
+
+[node name="Leg2" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=556136920]
+transform = Transform3D(1, 0, 0, 0, 0.99998283, 0, 0, 0, 0.99998283, 1.4, 0.24999672, 1.3999981)
+size = Vector3(0.2, 1.5, 0.2)
+material = ExtResource("5_i26qt")
+
+[node name="Leg3" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=1746692160]
+transform = Transform3D(1, 0, 0, 0, 0.9999828, 0, 0, 0, 0.9999828, 1.4, 0.24999672, -1.400002)
+size = Vector3(0.2, 1.5, 0.2)
+material = ExtResource("5_i26qt")
+
+[node name="Leg4" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=1257873448]
+transform = Transform3D(1, 0, 0, 0, 0.9999827, 0, 0, 0, 0.9999827, -1.4, 0.24999672, -1.4000019)
+size = Vector3(0.2, 1.5, 0.2)
+material = ExtResource("5_i26qt")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="Tank/Body/CSGBody" unique_id=1732705491]
+transform = Transform3D(1, 0, 0, 0, 0.999975, 0, 0, 0, 0.999975, 0, 0.9, 0)
+size = Vector3(3, 0.2, 3)
+material = ExtResource("5_i26qt")
+
+[node name="CSGCylinder3D" type="CSGCylinder3D" parent="Tank/Body/CSGBody" unique_id=1912826276]
+transform = Transform3D(1, 0, 0, 0, 0.9999891, 0, 0, 0, 0.9999891, 0, 1.0999992, 0)
+radius = 1.3000001
+height = 0.19999999
+sides = 32
+material = ExtResource("5_i26qt")

@@ -1,20 +1,12 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bt5eydki22y6o"]
 
-[ext_resource type="Script" path="res://scripts/world/units/Virus.gd" id="1"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2"]
+[ext_resource type="Script" uid="uid://d1mytawpftocc" path="res://scripts/world/units/Virus.gd" id="1"]
+[ext_resource type="ArrayMesh" uid="uid://y8a6rwt4jyjs" path="res://meshes/virus.tres" id="2_a2nlu"]
 
-[sub_resource type="SphereMesh" id="1"]
-radius = 0.8
-height = 1.6
-
-[node name="Virus" type="Node3D"]
+[node name="Virus" type="Node3D" unique_id=481441309]
 script = ExtResource("1")
 
-[node name="Body" type="Node3D" parent="."]
+[node name="Body" type="Node3D" parent="." unique_id=716006273]
 
-[node name="CSGBody" type="CSGCombiner3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
-
-[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody"]
-mesh = SubResource("1")
-material = ExtResource("2")
+[node name="CSG" type="MeshInstance3D" parent="Body" unique_id=2100807675]
+mesh = ExtResource("2_a2nlu")

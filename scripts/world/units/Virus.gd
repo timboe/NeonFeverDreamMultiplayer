@@ -29,18 +29,18 @@ func initialise(b: Building) -> void:
 	add_to_group("virus")
 	add_to_group("virus_player" + str(player_owner))
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
-	$Body/CSGBody/CSGMesh.material = updated_mat
+	$Body/CSG.set_surface_override_material(0, updated_mat)
 	_update_cloak_visual()
 
 func _update_cloak_visual() -> void:
-	var body = get_node_or_null("Body")
-	if not body:
+	var csg = get_node_or_null("Body/CSG") as MeshInstance3D
+	if not csg:
 		return
-	var mat = body.get_node_or_null("CSGBody/CSGMesh")
-	if mat and mat is MeshInstance3D:
-		var override_mat = mat.get_surface_override_material(0)
-		if override_mat and override_mat is StandardMaterial3D:
-			override_mat.albedo_color.a = 0.2 if cloaked else 1.0
+	var mat = csg.get_surface_override_material(0)
+	if not mat:
+		mat = csg.mesh.surface_get_material(0) if csg.mesh else null
+	if mat and mat is StandardMaterial3D:
+		mat.albedo_color.a = 0.2 if cloaked else 1.0
 
 func uncloak() -> void:
 	cloaked = false

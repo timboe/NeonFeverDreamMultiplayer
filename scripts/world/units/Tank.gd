@@ -10,4 +10,4 @@ func initialise(b: Building) -> void:
 	add_to_group("tank")
 	add_to_group("tank_player" + str(player_owner))
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
-	$Body/CSGBody/CSGMesh.material = updated_mat
+	$Body/CSG.set_surface_override_material(0, updated_mat)

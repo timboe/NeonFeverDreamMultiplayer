@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://c7tox870ll4v2"]
+
+[ext_resource type="Script" uid="uid://dbpmx4vyi52m4" path="res://scripts/world/units/Aerial.gd" id="1_do07i"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2_5uw3p"]
+[ext_resource type="Material" uid="uid://bgoiv0d233t4m" path="res://materials/chrome.tres" id="3_0n34n"]
+[ext_resource type="Material" uid="uid://qipmfoudkyim" path="res://materials/disabled.tres" id="4_goetc"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_5abn2"]
+
+[node name="Aerial" type="Node3D" unique_id=425795599]
+script = ExtResource("1_do07i")
+
+[node name="Body" type="Node3D" parent="." unique_id=493966922]
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Body" unique_id=2021992154]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 0, 0, 0)
+
+[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody" unique_id=479830417]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_5abn2")
+material = ExtResource("2_5uw3p")
+
+[node name="CSGPolygon3D" type="CSGPolygon3D" parent="Body/CSGBody" unique_id=11921368]
+transform = Transform3D(0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 0, 0, 1, 0.30000043, 0.4, 0.5)
+polygon = PackedVector2Array(0.90000004, 1.4, 1.4, 1.8000001, 0.7, 0.90000004, 0.3, -0.3, 0, 0, 0.3, 0.7)
+material = ExtResource("3_0n34n")
+
+[node name="CSGPolygon3D2" type="CSGPolygon3D" parent="Body/CSGBody" unique_id=393435703]
+transform = Transform3D(-0.49999997, -0.86602545, -8.742278e-08, -0.86602545, 0.49999997, 0, 4.3711385e-08, 7.5710346e-08, -1, -0.29999956, 0.4, -0.5)
+polygon = PackedVector2Array(0.90000004, 1.4, 1.4, 1.8000001, 0.7, 0.90000004, 0.3, -0.3, 0, 0, 0.3, 0.7)
+material = ExtResource("3_0n34n")
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="Body/CSGBody" unique_id=2094381391]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.3, 0.8)
+radius = 0.1
+rings = 12
+material = ExtResource("4_goetc")
+
+[node name="CSGSphere3D2" type="CSGSphere3D" parent="Body/CSGBody" unique_id=288039462]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.10000001, 0.3, 0.8)
+radius = 0.1
+rings = 12
+material = ExtResource("4_goetc")

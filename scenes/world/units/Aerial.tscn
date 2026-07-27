@@ -1,27 +1,12 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://gt58t3edkap5"]
 
-[ext_resource type="Script" path="res://scripts/world/units/Aerial.gd" id="1"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2"]
+[ext_resource type="Script" uid="uid://dbpmx4vyi52m4" path="res://scripts/world/units/Aerial.gd" id="1"]
+[ext_resource type="ArrayMesh" uid="uid://byajocyvf0g78" path="res://meshes/aerial.tres" id="2_s4mvi"]
 
-[sub_resource type="SphereMesh" id="1"]
-radius = 1.5
-height = 3.0
-
-[sub_resource type="BoxMesh" id="2"]
-size = Vector3(4, 0.3, 2)
-
-[node name="Aerial" type="Node3D"]
+[node name="Aerial" type="Node3D" unique_id=975268968]
 script = ExtResource("1")
 
-[node name="Body" type="Node3D" parent="."]
+[node name="Body" type="Node3D" parent="." unique_id=54363453]
 
-[node name="CSGBody" type="CSGCombiner3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody"]
-mesh = SubResource("1")
-material = ExtResource("2")
-
-[node name="Wing" type="CSGMesh3D" parent="Body/CSGBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)
-mesh = SubResource("2")
+[node name="CSG" type="MeshInstance3D" parent="Body" unique_id=195073564]
+mesh = ExtResource("2_s4mvi")

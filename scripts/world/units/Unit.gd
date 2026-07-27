@@ -38,6 +38,7 @@ var previous_location: TileElement
 var move_tween: Tween
 var _rotate_tween: Tween
 var _pathing_manager: PathingManager
+var _move_target : Vector3 = Vector3.ZERO
 
 # --- Rotation ---
 
@@ -69,7 +70,7 @@ func initialise(b: Building) -> void:
 	if not multiplayer.is_server():
 		return
 	move_tween = create_tween()
-	move_tween.tween_property(self, "position:y", 0, SPAWN_TIME)
+	move_tween.tween_property(self, "position:y", _move_target.y, SPAWN_TIME)
 	move_tween.tween_callback(idle_callback)
 
 func _process(delta: float) -> void:
@@ -342,16 +343,19 @@ func move(callback: Callable) -> void:
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = create_tween()
+	var current_y := position.y
+	_move_target = location.pathing_centre
+	_move_target.y = current_y
 	if state == State.IDLE:
 		# Rotate first, then move — gives a deliberate turn-then-walk feel
 		var rot_time := time / 4.0
 		var move_time := time - rot_time
 		move_tween.tween_method(quat_transform, 0.0, 1.0, rot_time)
-		move_tween.tween_property(self, "position", location.pathing_centre, move_time)
+		move_tween.tween_property(self, "position", _move_target, move_time)
 		move_tween.tween_callback(callback)
 	else:
 		move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
-		move_tween.parallel().tween_property(self, "position", location.pathing_centre, time)
+		move_tween.parallel().tween_property(self, "position", _move_target, time)
 		move_tween.parallel().tween_callback(callback).set_delay(time)
 
 # --- Rotation ---

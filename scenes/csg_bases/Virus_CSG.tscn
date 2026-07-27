@@ -1,0 +1,70 @@
+[gd_scene format=3 uid="uid://b5duo887yspni"]
+
+[ext_resource type="Script" uid="uid://d1mytawpftocc" path="res://scripts/world/units/Virus.gd" id="1_d825l"]
+[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2_ghb5n"]
+
+[node name="Virus" type="Node3D" unique_id=498782456]
+script = ExtResource("1_d825l")
+
+[node name="Body" type="Node3D" parent="." unique_id=244314671]
+
+[node name="CSGBody" type="CSGCombiner3D" parent="Body" unique_id=1119351125]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
+
+[node name="Skull" type="CSGBox3D" parent="Body/CSGBody" unique_id=2145436769]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+size = Vector3(0.7, 0.75, 0.65)
+material = ExtResource("2_ghb5n")
+
+[node name="EyeL" type="CSGBox3D" parent="Body/CSGBody" unique_id=831329993]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0.82, 0)
+operation = 2
+size = Vector3(0.18, 0.18, 0.7)
+material = ExtResource("2_ghb5n")
+
+[node name="EyeR" type="CSGBox3D" parent="Body/CSGBody" unique_id=1202998766]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0.82, 0)
+operation = 2
+size = Vector3(0.18, 0.18, 0.7)
+material = ExtResource("2_ghb5n")
+
+[node name="Nose" type="CSGBox3D" parent="Body/CSGBody" unique_id=698640417]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+operation = 2
+size = Vector3(0.1, 0.14, 0.7)
+material = ExtResource("2_ghb5n")
+
+[node name="Jaw" type="CSGBox3D" parent="Body/CSGBody" unique_id=287709323]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.24, 0.05)
+size = Vector3(0.5, 0.18, 0.55)
+material = ExtResource("2_ghb5n")
+
+[node name="ToothL" type="CSGBox3D" parent="Body/CSGBody" unique_id=1614475241]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.33, 0.3)
+size = Vector3(0.06, 0.1, 0.06)
+material = ExtResource("2_ghb5n")
+
+[node name="ToothR" type="CSGBox3D" parent="Body/CSGBody" unique_id=542383631]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.33, 0.3)
+size = Vector3(0.06, 0.1, 0.06)
+material = ExtResource("2_ghb5n")
+
+[node name="Antenna" type="CSGBox3D" parent="Body/CSGBody" unique_id=1420481477]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -0.15)
+size = Vector3(0.06, 0.35, 0.06)
+material = ExtResource("2_ghb5n")
+
+[node name="AntTip" type="CSGBox3D" parent="Body/CSGBody" unique_id=486085654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.48, -0.15)
+size = Vector3(0.12, 0.12, 0.12)
+material = ExtResource("2_ghb5n")
+
+[node name="FootL" type="CSGBox3D" parent="Body/CSGBody" unique_id=1528196644]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.04, 0)
+size = Vector3(0.12, 0.08, 0.35)
+material = ExtResource("2_ghb5n")
+
+[node name="FootR" type="CSGBox3D" parent="Body/CSGBody" unique_id=1804833741]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.04, 0)
+size = Vector3(0.12, 0.08, 0.35)
+material = ExtResource("2_ghb5n")

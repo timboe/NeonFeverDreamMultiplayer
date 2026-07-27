@@ -20,6 +20,7 @@ func _process(delta: float) -> void:
 		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
 
 func initialise(b: Building) -> void:
+	var spawn_tile: TileElement = b.find_unit_spawn_location()
 	super.initialise(b)
 	type = UnitManager.Type.AERIAL
 	_health_bar.position.y = 3.0
@@ -34,6 +35,15 @@ func initialise(b: Building) -> void:
 	add_to_group("aerial_player" + str(player_owner))
 	if b is Beacon:
 		mode = Mode.STRIKE if randf() > b.patrol_strike_ratio else Mode.PATROL
-	position.y = 5.0 if mode == Mode.PATROL else 8.0
+	_move_target.y = 10.0 if mode == Mode.PATROL else 16.0
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
-	$Body/CSGBody/CSGMesh.material = updated_mat
+	$Body/CSG.set_surface_override_material(0, updated_mat)
+	# Override the base class spawn tween — fly from building to initial tile at constant height
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
+	var origin := Vector3(b.location.pathing_centre.x, _move_target.y, b.location.pathing_centre.z)
+	position = origin
+	var dest := Vector3(spawn_tile.pathing_centre.x, _move_target.y, spawn_tile.pathing_centre.z)
+	move_tween = create_tween()
+	move_tween.tween_property(self, "position", dest, SPAWN_TIME)
+	move_tween.tween_callback(idle_callback)

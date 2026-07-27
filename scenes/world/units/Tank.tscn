@@ -1,30 +1,31 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://d1fxj2hxdles7"]
 
-[ext_resource type="Script" path="res://scripts/world/units/Tank.gd" id="1"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="2"]
+[ext_resource type="Script" uid="uid://dc5m87ua675iw" path="res://scripts/world/units/Tank.gd" id="1"]
+[ext_resource type="ArrayMesh" uid="uid://bciqke2ctvedm" path="res://meshes/tank.tres" id="2_gwnvo"]
 
-[sub_resource type="BoxMesh" id="1"]
-size = Vector3(2, 1.5, 3)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hd4od"]
+albedo_color = Color(0, 0, 0, 1)
+roughness = 0.0
 
-[sub_resource type="StandardMaterial3D" id="2"]
-albedo_color = Color(0.3, 0.3, 0.3, 1)
+[sub_resource type="SphereMesh" id="SphereMesh_mi5t4"]
+material = SubResource("StandardMaterial3D_hd4od")
+radius = 0.1
+height = 0.2
 
-[sub_resource type="BoxMesh" id="3"]
-material = SubResource("2")
-size = Vector3(1.5, 0.8, 2)
-
-[node name="Tank" type="Node3D"]
+[node name="Tank" type="Node3D" unique_id=654923847]
 script = ExtResource("1")
 
-[node name="Body" type="Node3D" parent="."]
+[node name="Body" type="Node3D" parent="." unique_id=488996380]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0)
 
-[node name="CSGBody" type="CSGCombiner3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+[node name="Ball" type="MeshInstance3D" parent="Body" unique_id=697433639]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, 0.5)
+mesh = SubResource("SphereMesh_mi5t4")
 
-[node name="CSGMesh" type="CSGMesh3D" parent="Body/CSGBody"]
-mesh = SubResource("1")
-material = ExtResource("2")
+[node name="Ball2" type="MeshInstance3D" parent="Body" unique_id=1867456242]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, -1.8, 1, -0.5)
+mesh = SubResource("SphereMesh_mi5t4")
 
-[node name="Turret" type="CSGMesh3D" parent="Body/CSGBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
-mesh = SubResource("3")
+[node name="CSG" type="MeshInstance3D" parent="Body" unique_id=516078185]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.99999994, 0)
+mesh = ExtResource("2_gwnvo")
