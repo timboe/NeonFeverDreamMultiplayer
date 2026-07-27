@@ -3,6 +3,8 @@ extends Node3D
 class_name JobManager
 
 enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA}
+enum Orders {NONE, PATROL}
+enum Patrol {WIDE, LOCAL}
 
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0
@@ -55,7 +57,7 @@ func _setup_debug() -> void:
 
 # --- Job lifecycle ---
 
-func add_job(pnum: int, type: Type, location: TileElement) -> void:
+func add_job(pnum: int, type: Type, location: TileElement, personal : bool = false) -> void:
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
 	for the_job in jobs_dict.values():
 		if the_job["type"] != type:
@@ -67,7 +69,7 @@ func add_job(pnum: int, type: Type, location: TileElement) -> void:
 		return # Already have this job
 	job_id += 1
 	var job := {"id": job_id, "pnum": pnum, "type": type,
-		"location": location, "assigned": null,
+		"location": location, "assigned": null, "personal": personal,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
 	jobs_dict[job_id] = job
 
@@ -103,6 +105,8 @@ func abandon_job(id_to_abandon: int) -> void:
 	job["assigned"] = null
 	job["abandoned_n"] += 1
 	job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
+	if job["personal"]: # Personal jobs cannot be abandoned, they expire if their unit gives up
+		jobs_dict.erase(id_to_abandon)
 
 # --- Assignment ---
 

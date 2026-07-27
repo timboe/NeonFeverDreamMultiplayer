@@ -7,7 +7,6 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/GeneratorHUD.tscn")
 # --- State ---
 
 var generation: float = 0.0
-var _aoe_tiles: Array[TileElement] = []
 
 # --- Lifecycle ---
 
@@ -26,27 +25,6 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	_setup_hud()
-
-func _build_aoe_tiles() -> void:
-	var interactive: Array = get_tree().get_nodes_in_group("interactive")
-	_aoe_tiles.clear()
-	var queue := []
-	var visited := {}
-	visited[location] = true
-	queue.append({tile = location, depth = 0})
-	while queue:
-		var entry = queue.pop_front()
-		var current = entry.tile as TileElement
-		var depth = entry.depth as int
-		_aoe_tiles.append(current)
-		if depth >= get_aoe_radius():
-			continue
-		for n in current.neighbours:
-			if n not in interactive:
-				continue
-			if not visited.has(n):
-				visited[n] = true
-				queue.append({tile = n, depth = depth + 1})
 
 # --- Energy ---
 

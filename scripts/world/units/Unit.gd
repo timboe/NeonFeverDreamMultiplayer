@@ -11,6 +11,7 @@ const SCRAM: int = 10
 var id: int # My ID within the UnitManager
 var type: UnitManager.Type # My type
 var player_owner: int # Player who owns me (copied from spawning building)
+var orders: Dictionary # My orders. Recieved from building on spawn
 
 # --- State machine ---
 
@@ -53,6 +54,7 @@ var _health_bar: HealthBar3D
 
 func initialise(b: Building) -> void:
 	player_owner = b.player_owner
+	orders = b.orders
 	var spawn_tile: TileElement = b.find_unit_spawn_location()
 	location = spawn_tile
 	global_transform.origin = spawn_tile.pathing_centre
@@ -136,6 +138,20 @@ func idle_callback() -> void:
 	var backtrack = possible_destinations.find(previous_location)
 	if possible_destinations.size() > 1 and backtrack != -1:
 		possible_destinations.remove_at(backtrack)
+		
+	# Check if we are a PATROL unit with LOCAL patrol
+	if possible_destinations.size() > 1 \
+		and not orders.is_empty() \
+		and orders["order"] == JobManager.Orders.PATROL \
+		and orders["mode"] == JobManager.Patrol.LOCAL \
+		and is_instance_valid(orders["source"]):
+		# Remove targets which are not under the building's AoE for player
+		var local_options : Array[TileElement] = []
+		for te in orders["source"]._aoe_tiles:
+			if te in possible_destinations:
+				local_options.append(te)
+		if local_options.size() > 0:
+			possible_destinations = local_options
 
 	# Remember current tile, for the next backtrack check
 	previous_location = location

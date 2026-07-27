@@ -6,6 +6,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/GarageHUD.tscn")
 
 var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
 var cached_tank_count: int = 0
+var patrol_mode := JobManager.Patrol.LOCAL
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -18,7 +19,11 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_setup_production(UnitManager.Type.TANK)
 	add_to_group("garage")
 	add_to_group("garage_player" + str(pnum))
+	_build_aoe_tiles()
 	_setup_hud()
+	orders["order"] = JobManager.Orders.PATROL
+	orders["mode"] = patrol_mode
+	orders["source"] = self
 
 func _process(delta: float) -> void:
 	super._process(delta)

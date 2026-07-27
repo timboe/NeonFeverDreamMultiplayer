@@ -10,7 +10,7 @@ static var BUILDING_AOE: Dictionary = {
 	BuildingManager.Type.GEN: 4,
 	BuildingManager.Type.VAT: 2,
 	BuildingManager.Type.GARAGE: 3,
-	BuildingManager.Type.BEACON: 2,
+	BuildingManager.Type.BEACON: 3,
 	BuildingManager.Type.NEST: 2,
 }
 

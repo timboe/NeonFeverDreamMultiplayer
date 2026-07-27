@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c6yjtwhg0gbgc"]
 
-[ext_resource type="Script" path="res://scripts/world/buildings/Garage.gd" id="1"]
+[ext_resource type="Script" uid="uid://crb13pri3tqyq" path="res://scripts/world/buildings/Garage.gd" id="1"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="2"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_q4pry"]
@@ -25,4 +25,4 @@ script = ExtResource("4")
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=1626911917]
 shape = SubResource("1")
 
-[node name="BuildingHUD" parent="." instance=ExtResource("5_garage")]
+[node name="BuildingHUD" parent="." unique_id=547183915 instance=ExtResource("5_garage")]
