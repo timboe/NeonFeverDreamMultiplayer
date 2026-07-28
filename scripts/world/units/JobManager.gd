@@ -72,6 +72,7 @@ func add_job(pnum: int, type: Type, location: TileElement, personal : bool = fal
 		"location": location, "assigned": null, "personal": personal,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
 	jobs_dict[job_id] = job
+	_notify_job_event(job["pnum"], "added", job)
 
 func cancel_job(pnum: int, type: Type, location: TileElement) -> void:
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
@@ -94,9 +95,12 @@ func count_jobs(pnum: int, type: Type) -> int:
 
 func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):
-		if jobs_dict[id_to_remove]["assigned"]:
-			jobs_dict[id_to_remove]["assigned"].remove_job()
+		var job = jobs_dict[id_to_remove]
+		var pnum = job["pnum"]
+		if job["assigned"]:
+			job["assigned"].remove_job()
 		jobs_dict.erase(id_to_remove)
+		_notify_job_event(pnum, "finished", job)
 
 func abandon_job(id_to_abandon: int) -> void:
 	assert(jobs_dict.has(id_to_abandon))
@@ -105,6 +109,7 @@ func abandon_job(id_to_abandon: int) -> void:
 	job["assigned"] = null
 	job["abandoned_n"] += 1
 	job["abandoned_timer"] = min(DELAY_MAX, job["abandoned_n"] * DELAY_PER_ABANDON)
+	_notify_job_event(job["pnum"], "abandoned", job)
 	if job["personal"]: # Personal jobs cannot be abandoned, they expire if their unit gives up
 		jobs_dict.erase(id_to_abandon)
 
@@ -146,6 +151,7 @@ func assign_nearest_job(unit: Unit) -> bool:
 	if best_job != null:
 		best_job["assigned"] = unit
 		unit.assign_job(best_job)
+		_notify_job_event(best_job["pnum"], "assigned", best_job)
 		return true
 	return false
 
@@ -157,3 +163,69 @@ func get_pathlength(from: TileElement, to: TileElement) -> int:
 		if dist.size() != 0 and dist.size() < shortest:
 			shortest = dist.size()
 	return shortest
+
+# --- Job notifications ---
+
+func _notify_job_event(pnum: int, event: String, job: Dictionary) -> void:
+	if not multiplayer.is_server():
+		return
+	var text := _format_job_notification(event, job)
+	var loc := _get_job_location(job)
+	var nm = get_tree().get_first_node_in_group("notification_manager")
+	if nm:
+		nm.rpc("rpc_add_job_notification", pnum, text, loc.x, loc.y, loc.z)
+
+func _format_job_notification(event: String, job: Dictionary) -> String:
+	var type_name := _job_type_name(job["type"])
+	var target := _target_name(job)
+	var who := ""
+	if job.get("assigned") and is_instance_valid(job["assigned"]):
+		who = _unit_name(job["assigned"])
+	if who.is_empty():
+		who = "Unit"
+	match event:
+		"added":
+			if job["type"] == Type.TOGGLE_TILE:
+				return "New %s job on tile %d" % [type_name, job["location"].id]
+			return "New %s job at %s" % [type_name, target]
+		"assigned":
+			if job["type"] == Type.TOGGLE_TILE:
+				return "%s assigned to toggle tile %d" % [who, job["location"].id]
+			return "%s assigned %s at %s" % [who, type_name, target]
+		"abandoned":
+			var suffix := ""
+			if job["abandoned_n"] > 1:
+				suffix = " (x%d)" % job["abandoned_n"]
+			if job["type"] == Type.TOGGLE_TILE:
+				return "%s job on tile %d abandoned%s" % [type_name, job["location"].id, suffix]
+			return "%s job at %s abandoned%s" % [type_name, target, suffix]
+		"finished":
+			if job["type"] == Type.TOGGLE_TILE:
+				return "%s completed on tile %d" % [type_name, job["location"].id]
+			return "%s job at %s completed" % [type_name, target]
+	return "Job event: %s" % event
+
+func _job_type_name(type: Type) -> String:
+	match type:
+		Type.CONSTRUCT_BUILDING: return "Build"
+		Type.REPAIR_BUILDING:    return "Repair"
+		Type.TOGGLE_TILE:        return "Toggle"
+		Type.CONSUME_ZOOMBA:     return "Consume"
+	return "Job"
+
+func _unit_name(unit: Unit) -> String:
+	return UnitManager.Type.keys()[unit.type] + str(unit.id)
+
+func _target_name(job: Dictionary) -> String:
+	var loc = job["location"]
+	if not loc is TileElement:
+		return "Unknown"
+	if loc.building:
+		return "%s" % BuildingManager.Type.keys()[loc.building.type]
+	return "tile %d" % loc.id
+
+func _get_job_location(job: Dictionary) -> Vector3:
+	var loc = job["location"]
+	if loc is TileElement:
+		return loc.pathing_centre
+	return Vector3.ZERO

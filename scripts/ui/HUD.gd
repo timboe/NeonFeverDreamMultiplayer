@@ -14,8 +14,6 @@ enum DragAction {NONE, SELECTING, UNSELECTING}
 
 # --- Constants ---
 
-const MAX_NOTIFICATIONS: int = 5
-
 const MODE_TO_BUILDING_TYPE: Dictionary = {
 	Mode.GEN: BuildingManager.Type.GEN,
 	Mode.VAT: BuildingManager.Type.VAT,
@@ -36,13 +34,10 @@ var _drag_action: DragAction = DragAction.NONE
 @onready var energy_bar: ProgressBar = %EnergyBar
 @onready var energy_label: Label = %EnergyLabel
 @onready var energy_rate_label: Label = %EnergyRateLabel
-@onready var notification_list: VBoxContainer = %List
 @onready var fps_button: Button = %FPSButton
 
 var _tile_buttons: Dictionary = {}
 var _build_buttons: Dictionary = {}
-var _notification_count: int = 0
-
 # --- Queries ---
 
 func building_being_placed() -> int:
@@ -227,24 +222,3 @@ func should_toggle(tile: TileElement) -> bool:
 
 func end_drag() -> void:
 	_drag_action = DragAction.NONE
-
-# --- Notifications ---
-
-func add_notification(text: String, duration: float = 5.0) -> void:
-	_notification_count += 1
-	if _notification_count > MAX_NOTIFICATIONS:
-		var first := notification_list.get_child(1) as Label
-		if first:
-			first.queue_free()
-		_notification_count -= 1
-
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 14)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notification_list.add_child(label)
-
-	var tween := create_tween()
-	tween.tween_interval(duration - 2.0)
-	tween.tween_property(label, "modulate:a", 0.0, 2.0)
-	tween.tween_callback(label.queue_free)

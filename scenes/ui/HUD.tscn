@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b3dbnii03wxt7" path="res://scripts/ui/HUD.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
+[ext_resource type="Script" uid="uid://piyhxwrjywaa" path="res://scripts/ui/NotificationManager.gd" id="3_script"]
 
 [node name="HUD" type="CanvasLayer" unique_id=708157452]
 layer = 10
@@ -62,12 +63,13 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -260.0
+offset_left = -380.0
 offset_top = 15.0
 offset_right = -20.0
 offset_bottom = 200.0
 grow_horizontal = 0
 mouse_filter = 2
+script = ExtResource("3_script")
 
 [node name="List" type="VBoxContainer" parent="HUDRoot/NotificationPanel" unique_id=684570707]
 unique_name_in_owner = true
@@ -85,14 +87,14 @@ autowrap_mode = 2
 [node name="FPSButton" type="Button" parent="HUDRoot" unique_id=1658707665]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -60.0
-offset_top = 15.0
-offset_right = -20.0
-offset_bottom = 45.0
-grow_horizontal = 0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -22.5
+offset_top = 20.0
+offset_right = 22.5
+offset_bottom = 50.0
+grow_horizontal = 2
 theme_override_font_sizes/font_size = 12
 text = "FPS"
 

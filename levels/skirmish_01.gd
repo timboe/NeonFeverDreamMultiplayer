@@ -8,11 +8,14 @@ const TRIPLETS: int = 5
 const BORDER_TRIPLETS: int = 2
 const MOUNTAINS: int = 5
 
-const MCP_ARRAY: Array[int] = [173, 892]
+# 185 temporary / debug
+const MCP_ARRAY: Array[int] = [173, 185, 892]
 
 const LOWERED: Array[int] = [
 	109, 108, 174, 893, 953, 954,
 	641, 709, 714, 644, 712, 777, 782, 715, 716, 781, 786, 719, 645, 713, 718, 648,
+	# temporary / debug
+	120, 186, 187, 121, 190, 191, 188,
 ]
 
 const IMMUTABLE: Array[int] = [
