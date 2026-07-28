@@ -342,6 +342,9 @@ func _consume_for_tank() -> void:
 	# Spawn TANK at the garage
 	var uid: int = um.next_unit_id()
 	um.rpc("rpc_spawn_unit", uid, UnitManager.Type.TANK, garage.id)
+	# Mark the consume job as completed before the zoomba is removed,
+	# otherwise rpc_remove_unit will see the active job and abandon it.
+	job_finished()
 	# Remove this zoomba
 	um.rpc("rpc_remove_unit", id)
 

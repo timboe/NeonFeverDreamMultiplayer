@@ -62,6 +62,10 @@ func check_work() -> void:
 			return
 		# Create CONSUME_ZOOMBA job
 		jm.add_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)
+		# Consume the production budget/cooldown for this conversion so the
+		# building issues a fresh job on its next production cycle.
+		_production_energy = 0.0
+		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
 func _produce_unit() -> void:
 	# Override to do nothing — Garage uses CONSUME_ZOOMBA job instead
