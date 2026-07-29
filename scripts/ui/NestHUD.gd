@@ -38,8 +38,8 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
-	virus_nearest_btn.pressed.connect(_on_virus_priority.bind(Nest.VirusPriority.NEAREST))
-	virus_lowest_btn.pressed.connect(_on_virus_priority.bind(Nest.VirusPriority.LOWEST_HP))
+	virus_nearest_btn.pressed.connect(_on_virus_priority.bind(JobManager.Priority.NEAREST))
+	virus_lowest_btn.pressed.connect(_on_virus_priority.bind(JobManager.Priority.LOWEST_HP))
 	_build_enemy_buttons()
 	_build_building_buttons()
 
@@ -83,7 +83,7 @@ func _on_prod_pressed() -> void:
 func _on_enemy_toggle(pnum: int) -> void:
 	if not building:
 		return
-	var targets := building.enemy_targets.duplicate()
+	var targets := building._enemy_targets.duplicate()
 	if pnum in targets:
 		targets.erase(pnum)
 	else:
@@ -93,14 +93,14 @@ func _on_enemy_toggle(pnum: int) -> void:
 func _on_building_toggle(t: BuildingManager.Type) -> void:
 	if not building:
 		return
-	var targets := building.building_targets.duplicate()
+	var targets := building._building_targets.duplicate()
 	if t in targets:
 		targets.erase(t)
 	else:
 		targets.append(t)
 	Global.send_command_me("set_building_targets", [building.id, targets])
 
-func _on_virus_priority(priority: Nest.VirusPriority) -> void:
+func _on_virus_priority(priority: JobManager.Priority) -> void:
 	if building:
 		Global.send_command_me("set_virus_priority", [building.id, priority])
 
@@ -114,12 +114,12 @@ func _process(_delta: float) -> void:
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 	for pnum in _enemy_buttons:
 		var btn: Button = _enemy_buttons[pnum]
-		btn.set_pressed_no_signal(pnum in building.enemy_targets)
+		btn.set_pressed_no_signal(pnum in building._enemy_targets)
 	for t in _building_buttons:
 		var btn: Button = _building_buttons[t]
-		btn.set_pressed_no_signal(t in building.building_targets)
-	virus_nearest_btn.set_pressed_no_signal(building.virus_priority == Nest.VirusPriority.NEAREST)
-	virus_lowest_btn.set_pressed_no_signal(building.virus_priority == Nest.VirusPriority.LOWEST_HP)
+		btn.set_pressed_no_signal(t in building._building_targets)
+	virus_nearest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.NEAREST)
+	virus_lowest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.LOWEST_HP)
 	# Show/hide building targeting section based on ratio
 	building_target_section.visible = building.virus_tank_building_ratio < 1.0
 	var um = get_node_or_null("/root/World/UnitManager")

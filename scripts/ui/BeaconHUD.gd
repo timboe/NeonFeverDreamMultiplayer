@@ -39,10 +39,10 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
-	strike_nearest_btn.pressed.connect(_on_strike_priority.bind(Beacon.StrikePriority.NEAREST))
-	strike_lowest_btn.pressed.connect(_on_strike_priority.bind(Beacon.StrikePriority.LOWEST_HP))
-	patrol_hold_btn.pressed.connect(_on_patrol_stance.bind(Beacon.PatrolStance.HOLD))
-	patrol_wide_btn.pressed.connect(_on_patrol_stance.bind(Beacon.PatrolStance.WIDE))
+	strike_nearest_btn.pressed.connect(_on_strike_priority.bind(JobManager.Priority.NEAREST))
+	strike_lowest_btn.pressed.connect(_on_strike_priority.bind(JobManager.Priority.LOWEST_HP))
+	patrol_hold_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.HOLD))
+	patrol_wide_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.WIDE))
 	_build_enemy_buttons()
 	_build_strike_buttons()
 
@@ -86,7 +86,7 @@ func _on_prod_pressed() -> void:
 func _on_enemy_toggle(pnum: int) -> void:
 	if not building:
 		return
-	var targets := building.enemy_targets.duplicate()
+	var targets := building._enemy_targets.duplicate()
 	if pnum in targets:
 		targets.erase(pnum)
 	else:
@@ -96,18 +96,18 @@ func _on_enemy_toggle(pnum: int) -> void:
 func _on_strike_toggle(t: BuildingManager.Type) -> void:
 	if not building:
 		return
-	var targets := building.strike_target_types.duplicate()
+	var targets := building._building_targets.duplicate()
 	if t in targets:
 		targets.erase(t)
 	else:
 		targets.append(t)
 	Global.send_command_me("set_building_targets", [building.id, targets])
 
-func _on_strike_priority(priority: Beacon.StrikePriority) -> void:
+func _on_strike_priority(priority: JobManager.Priority) -> void:
 	if building:
 		Global.send_command_me("set_strike_priority", [building.id, priority])
 
-func _on_patrol_stance(stance: Beacon.PatrolStance) -> void:
+func _on_patrol_stance(stance: JobManager.Stance) -> void:
 	if building:
 		Global.send_command_me("set_patrol_stance", [building.id, stance])
 
@@ -120,14 +120,14 @@ func _process(_delta: float) -> void:
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 	for pnum in _enemy_buttons:
 		var btn: Button = _enemy_buttons[pnum]
-		btn.set_pressed_no_signal(pnum in building.enemy_targets)
+		btn.set_pressed_no_signal(pnum in building._enemy_targets)
 	for t in _strike_buttons:
 		var btn: Button = _strike_buttons[t]
-		btn.set_pressed_no_signal(t in building.strike_target_types)
-	strike_nearest_btn.set_pressed_no_signal(building.strike_priority == Beacon.StrikePriority.NEAREST)
-	strike_lowest_btn.set_pressed_no_signal(building.strike_priority == Beacon.StrikePriority.LOWEST_HP)
-	patrol_hold_btn.set_pressed_no_signal(building.patrol_stance == Beacon.PatrolStance.HOLD)
-	patrol_wide_btn.set_pressed_no_signal(building.patrol_stance == Beacon.PatrolStance.WIDE)
+		btn.set_pressed_no_signal(t in building._building_targets)
+	strike_nearest_btn.set_pressed_no_signal(building._strike_priority == JobManager.Priority.NEAREST)
+	strike_lowest_btn.set_pressed_no_signal(building._strike_priority == JobManager.Priority.LOWEST_HP)
+	patrol_hold_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.HOLD)
+	patrol_wide_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.WIDE)
 	var um = get_node_or_null("/root/World/UnitManager")
 	if um:
 		aerial_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.AERIAL))

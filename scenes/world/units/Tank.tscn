@@ -12,6 +12,11 @@ material = SubResource("StandardMaterial3D_hd4od")
 radius = 0.1
 height = 0.2
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_5abn2"]
+top_radius = 0.2
+bottom_radius = 0.2
+height = 1.0
+
 [node name="Tank" type="Node3D" unique_id=654923847]
 script = ExtResource("1")
 
@@ -29,3 +34,10 @@ mesh = SubResource("SphereMesh_mi5t4")
 [node name="CSG" type="MeshInstance3D" parent="Body" unique_id=516078185]
 transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.99999994, 0)
 mesh = ExtResource("2_gwnvo")
+
+[node name="Laser" type="Node3D" parent="Body" unique_id=1595513334]
+transform = Transform3D(1, 0, 0, 0, 0.99999976, 0, 0, 0, 0.99999976, 0, 2.1999996, 0)
+
+[node name="Barrel" type="MeshInstance3D" parent="Body/Laser" unique_id=973991762]
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 0.50000024, 0)
+mesh = SubResource("CylinderMesh_5abn2")

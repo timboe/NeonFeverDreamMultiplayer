@@ -143,7 +143,7 @@ func idle_callback() -> void:
 	if possible_destinations.size() > 1 \
 		and not orders.is_empty() \
 		and orders["order"] == JobManager.Orders.PATROL \
-		and orders["mode"] == JobManager.Patrol.LOCAL \
+		and orders["stance"] == JobManager.Stance.HOLD \
 		and is_instance_valid(orders["source"]):
 		# Remove targets which are not under the building's AoE for player
 		var local_options : Array[TileElement] = []

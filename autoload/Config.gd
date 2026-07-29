@@ -77,11 +77,12 @@ static var DAMAGE_MULTIPLIERS: Dictionary = {
 		UnitManager.Type.AERIAL: 5.0,
 	},
 	UnitManager.Type.AERIAL: {
+		UnitManager.Type.ZOOMBA: 0.9,
 		UnitManager.Type.AERIAL: 1.0,
-		UnitManager.Type.VIRUS: 0.0,
+		UnitManager.Type.VIRUS: 2.0,
 	},
 	UnitManager.Type.VIRUS: {
-		UnitManager.Type.TANK: 1.0,
+		UnitManager.Type.TANK: 2.0,
 	},
 }
 

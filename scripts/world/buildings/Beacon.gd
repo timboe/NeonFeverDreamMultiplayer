@@ -4,14 +4,11 @@ class_name Beacon
 
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/BeaconHUD.tscn")
 
-enum StrikePriority {NEAREST, LOWEST_HP}
-enum PatrolStance {HOLD, WIDE}
-
 var patrol_strike_ratio: float = 0.5
-var strike_priority: StrikePriority = StrikePriority.NEAREST
-var patrol_stance: PatrolStance = PatrolStance.HOLD
-var enemy_targets: Array[int] = []
-var strike_target_types: Array[BuildingManager.Type] = []
+var _strike_priority:= JobManager.Priority.NEAREST
+var _patrol_stance:= JobManager.Stance.HOLD
+var _enemy_targets: Array[int] = []
+var _building_targets: Array[BuildingManager.Type] = []
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -25,7 +22,14 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	add_to_group("beacon")
 	add_to_group("beacon_player" + str(pnum))
 	_setup_hud()
-
+	orders["patrol"] = {}
+	orders["strike"] = {}
+	orders["patrol"]["order"] = JobManager.Orders.PATROL
+	orders["patrol"]["source"] = self
+	orders["strike"]["order"] = JobManager.Orders.ATTACK
+	orders["strike"]["source"] = self
+	_update_orders()
+	
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
@@ -36,3 +40,26 @@ func _produce_unit() -> void:
 	um.rpc("rpc_spawn_unit", uid, UnitManager.Type.AERIAL, self.id)
 	_production_energy = 0.0
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 4.0)
+
+func _update_orders() -> void:
+	orders["patrol"]["stance"] = _patrol_stance
+	#
+	orders["strike"]["enemy"] = _enemy_targets
+	orders["strike"]["target"] = _building_targets
+	orders["strike"]["priority"] = _strike_priority
+
+func set_strike_priority(sp : JobManager.Priority) -> void:
+	_strike_priority = sp
+	_update_orders()
+	
+func set_enemy_targets(et : Array[int]) -> void:
+	_enemy_targets = et
+	_update_orders()
+
+func set_patrol_stance(ps : JobManager.Stance) -> void:
+	_patrol_stance = ps
+	_update_orders()
+	
+func set_building_targets(bt : Array[BuildingManager.Type]) -> void:
+	_building_targets = bt
+	_update_orders()
