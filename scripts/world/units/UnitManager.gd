@@ -5,7 +5,7 @@ class_name UnitManager
 enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS}
 
 var unit_dictionary: Dictionary # int (id) -> Unit
-var _next_unit_id: int = 0
+var _next_unit_id: int = 1
 
 # --- Accessors ---
 

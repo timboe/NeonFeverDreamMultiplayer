@@ -41,3 +41,6 @@ transform = Transform3D(1, 0, 0, 0, 0.99999976, 0, 0, 0, 0.99999976, 0, 2.199999
 [node name="Barrel" type="MeshInstance3D" parent="Body/Laser" unique_id=973991762]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 0.50000024, 0)
 mesh = SubResource("CylinderMesh_5abn2")
+
+[node name="Muzzle" type="Marker3D" parent="Body/Laser" unique_id=11111111]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

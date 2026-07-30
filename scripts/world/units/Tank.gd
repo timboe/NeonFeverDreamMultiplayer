@@ -11,3 +11,79 @@ func initialise(b: Building) -> void:
 	add_to_group("tank_player" + str(player_owner))
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
+	weapon_node = $Body/Laser
+	muzzle_node = $Body/Laser/Muzzle
+	weapon_forward_local = Vector3.UP
+	_beam_node = MeshInstance3D.new()
+	_beam_node.mesh = _make_beam_mesh()
+	var mat := StandardMaterial3D.new()
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.2, 0.05)
+	mat.emission_energy_multiplier = 5.0
+	mat.albedo_color = Color(1.0, 0.15, 0.05, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_beam_node.material_override = mat
+	_beam_node.visible = false
+	var world = get_node_or_null("/root/World")
+	if world:
+		world.add_child(_beam_node)
+	else:
+		add_child(_beam_node)
+	tree_exiting.connect(_beam_node.queue_free)
+
+func _make_beam_mesh() -> ArrayMesh:
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 1.0
+	cyl.bottom_radius = 1.0
+	cyl.height = 1.0
+	cyl.radial_segments = 12
+	cyl.rings = 1
+	var surf := cyl.get_mesh_arrays()
+	var verts: PackedVector3Array = surf[Mesh.ARRAY_VERTEX]
+	for i in range(verts.size()):
+		verts[i] += Vector3(0, 0.5, 0)
+	surf[Mesh.ARRAY_VERTEX] = verts
+	var arr_mesh := ArrayMesh.new()
+	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surf)
+	return arr_mesh
+
+func _on_fire_event() -> void:
+	if _beam_node == null:
+		return
+	_laser_timer = Config.WEAPON_BURST_DURATION
+	_show_beam()
+
+func _show_beam() -> void:
+	if _beam_node == null or not muzzle_node or not combat_target or not is_instance_valid(combat_target):
+		return
+	_beam_node.visible = true
+
+func _hide_beam() -> void:
+	if _beam_node:
+		_beam_node.visible = false
+
+func _update_combat_visuals(delta: float) -> void:
+	super._update_combat_visuals(delta)
+	if _beam_node == null:
+		return
+	if _beam_node.visible and combat_target and is_instance_valid(combat_target):
+		var from = _get_muzzle_global()
+		var to = _combat_target_position()
+		var dir = to - from
+		var dist = dir.length()
+		if dist < 0.1:
+			_hide_beam()
+			return
+		var y = dir / dist
+		var x = Vector3.UP.cross(y)
+		if x.length_squared() < 0.0001:
+			x = Vector3.RIGHT
+		x = x.normalized()
+		var z = x.cross(y).normalized()
+		var basis = Basis(x, y, z)
+		basis.x *= 0.35
+		basis.y *= dist
+		basis.z *= 0.35
+		_beam_node.global_transform = Transform3D(basis, from)
+	elif _beam_node:
+		_beam_node.visible = false

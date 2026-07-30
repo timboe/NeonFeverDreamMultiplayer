@@ -245,7 +245,7 @@ Avatars similarly are excluded as they do not actively participate in combat, th
 | STRIKE | PATROL | **STRIKE** | x2 | 100 | 4.0s | STRIKE loses ~200 HP (50%). Height advantage. |
 | STRIKE | TANK | **TANK** | x1 | 50 | 1.6s | STRIKE dies in 1.6s (TANK AA 250 DPS). TANK loses ~80 HP (20%). Ineffective trade. |
 | STRIKE | Building | **STRIKE** | x2 | 100 | 15-20s | Primary role. TTK per building type. |
-| STRIKE | VIRUS | **—** (intel) | — | — | — | Detects at 1 tile, queues PATROL kill-job. |
+| STRIKE | VIRUS | **STRIKE** (weak) | x1 | 50 | 8.0s | Detects at 1 tile, queues PATROL kill-job. Shooting Virus uncloaks it but with weaker effect than Patrol. |
 | STRIKE | STRIKE | **Draw** | x1 | 50 | 8.0s | Both die simultaneously. Balanced. |
 | PATROL | VIRUS | **PATROL** | x5 | 250 | 0.6s | Primary role. Kills nearly on detection. |
 | PATROL | STRIKE | **STRIKE** | x0.5 | 25 | 16.0s | Weak vs height disadvantage. Avoids engagement. |
@@ -262,7 +262,7 @@ Base damage rate: **50 DPS**. All combat values derive from this.
 | Attacker | vs STRIKE | vs PATROL | vs TANK | vs VIRUS | vs Building | vs Zoomba | vs Avatar |
 |----------|-----------|-----------|---------|----------|-------------|-----------|-----------|
 | **TANK** | x5 (250) | x6 (300) | 0 | 0 | 0 | 0 | 0 |
-| **STRIKE** | x1 (50) | x2 (100) | x1 (50) | x1 (50) | x2 (100) | x1 (50) | x1 (50) |
+| **STRIKE** | x1 (50) | x2 (100) | x1 (50) | x1 (50) (detects, small uncloak range) | x2 (100) | x1 (50) | x1 (50) |
 | **PATROL** | x0.5 (25) | x1 (50) | x1 (50) | x5 (250) | x1 (50) | x1 (50) | x1 (50) |
 | **VIRUS** | 0 | 0 | ~40 | 0 | ~40 | 0 | 0 |
 | **AVATAR** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |

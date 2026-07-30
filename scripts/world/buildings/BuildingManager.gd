@@ -13,7 +13,7 @@ const HIDE_DEPTH: float = -50.0
 # --- State ---
 
 var building_dictionary: Dictionary = {}
-var _next_building_id: int = 0
+var _next_building_id: int = 1
 
 # --- Empower tracking ---
 

@@ -6,7 +6,7 @@ const SNAPSHOT_INTERVAL := 0.05
 const JOB_TICK_INTERVAL := 1.0
 const INTERPOLATION_DELAY := 0.075
 const AVATAR_SEND_INTERVAL := 0.05
-const SLOT_COUNT := 8
+const SLOT_COUNT := 10
 const MAX_SNAPSHOT_BUFFER := 4
 
 var _snapshot_timer := 0.0
@@ -67,7 +67,7 @@ func _send_avatar_snapshot() -> void:
 	rpc_id(1, "receive_avatar_snapshot", data)
 
 func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
-	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 	match u.type:
 		UnitManager.Type.ZOOMBA:
 			slots[0] = u.global_position.x
@@ -111,11 +111,22 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 			slots[4] = u.state
 			slots[5] = u.health
 			slots[6] = 1.0 if u.cloaked else 0.0
+	slots[8] = _encode_target(u.combat_target)
+	slots[9] = float(u.combat_fire_event)
 	for s in slots:
 		data.append(s)
 
+static func _encode_target(target) -> float:
+	if target and is_instance_valid(target):
+		if target is Unit:
+			return float(target.id)
+		elif target is Building:
+			return -float(target.id)
+	return 0.0
+
 func _pack_building(data: PackedFloat64Array, b: Building) -> void:
-	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	var slots: Array[float] = []
+	slots.resize(SLOT_COUNT)
 	slots[0] = b.state
 	slots[1] = b.health
 	slots[2] = b._construction_energy_spent
@@ -218,35 +229,35 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
 			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
-			for i in 4:
+			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
 		UnitManager.Type.AVATAR:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
 			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
-			for i in 4:
+			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
 		UnitManager.Type.TANK:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
 			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
-			for i in 4:
+			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
 		UnitManager.Type.AERIAL:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
 			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
-			for i in 4:
+			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
 		UnitManager.Type.VIRUS:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
 			slots[2] = lerpf(e0["slots"][2], e1["slots"][2], t)
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
-			for i in 4:
+			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
 	_apply_unit(u, type_val, slots)
 
@@ -305,6 +316,14 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.state = slots[4]
 			u.health = slots[5]
 			u.cloaked = slots[6] > 0.5
+	var tid = roundi(slots[8])
+	if tid > 0:
+		u.combat_target = %UnitManager.unit_dictionary.get(tid)
+	elif tid < 0:
+		u.combat_target = %BuildingManager.building_dictionary.get(-tid)
+	else:
+		u.combat_target = null
+	u.combat_fire_event = roundi(slots[9])
 
 func _apply_building(b: Building, slots: Array) -> void:
 	if not b:

@@ -9,6 +9,9 @@ var lifetime: float = 120.0
 var _lifetime_timer: float = 0.0
 var _lifetime_bar: HealthBar3D
 
+func get_mode() -> int:
+	return mode
+
 func _process(delta: float) -> void:
 	super._process(delta)
 	if multiplayer.is_server():
@@ -50,3 +53,40 @@ func initialise(b: Building) -> void:
 	move_tween = create_tween()
 	move_tween.tween_property(self, "position", dest, SPAWN_TIME)
 	move_tween.tween_callback(idle_callback)
+	# Weapon setup
+	weapon_node = $Body/Gun
+	muzzle_node = $Body/Gun/Muzzle
+	weapon_forward_local = Vector3.FORWARD
+
+func _on_fire_event() -> void:
+	_spawn_projectile()
+
+func _spawn_projectile() -> void:
+	if not combat_target or not is_instance_valid(combat_target):
+		return
+	var projectile = MeshInstance3D.new()
+	projectile.mesh = SphereMesh.new()
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = Color(0.3, 0.6, 1.0)
+	mat.emission_energy_multiplier = 10.0
+	projectile.material_override = mat
+	projectile.scale = Vector3(0.2, 0.2, 0.2)
+	var from = _get_muzzle_global()
+	var to = _combat_target_position()
+	projectile.global_position = from
+	var world = get_node_or_null("/root/World")
+	if world:
+		world.add_child(projectile)
+	else:
+		get_parent().add_child(projectile)
+	var dist = from.distance_to(to)
+	var flight_time = (dist / Config.COMBAT_RANGE) * Config.PROJECTILE_MAX_FLIGHT_TIME
+	flight_time = clampf(flight_time, 0.016, Config.PROJECTILE_MAX_FLIGHT_TIME)
+	var tween = projectile.create_tween()
+	tween.tween_property(projectile, "global_position", to, flight_time)
+	tween.tween_callback(projectile.queue_free)
+	# Safety — free projectile if the tween gets killed early
+	var timer = get_tree().create_timer(Config.PROJECTILE_MAX_FLIGHT_TIME * 2.0)
+	timer.timeout.connect(func(): if is_instance_valid(projectile): projectile.queue_free(), CONNECT_ONE_SHOT)

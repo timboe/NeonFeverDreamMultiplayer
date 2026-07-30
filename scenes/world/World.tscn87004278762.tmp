@@ -60,7 +60,7 @@ script = ExtResource("7_l5ull")
 unique_name_in_owner = true
 script = ExtResource("8_16fjv")
 
-[node name="CombatManager" type="Node3D" parent="." unique_id=187346705]
+[node name="CombatManager" type="Node3D" parent="." unique_id=1009994899]
 unique_name_in_owner = true
 script = ExtResource("9_combat")
 

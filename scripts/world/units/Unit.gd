@@ -13,6 +13,9 @@ var type: UnitManager.Type # My type
 var player_owner: int # Player who owns me (copied from spawning building)
 var orders: Dictionary # My orders. Recieved from building on spawn
 
+func get_mode() -> int:
+	return -1
+
 # --- State machine ---
 
 enum State {IDLE, PATHING, WORKING}
@@ -41,6 +44,79 @@ var _rotate_tween: Tween
 var _pathing_manager: PathingManager
 var _move_target : Vector3 = Vector3.ZERO
 
+# --- Combat aiming ---
+
+func update_weapon_aim(delta: float) -> bool:
+	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
+		return false
+	var target_pos = _combat_target_position()
+	var dir = target_pos - weapon_node.global_position
+	if dir.length_squared() < 0.0001:
+		return false
+	dir = dir.normalized()
+	var parent = weapon_node.get_parent_node_3d()
+	if not parent:
+		return false
+	var parent_basis = parent.global_transform.basis
+	var look_basis = Basis.looking_at(dir, Vector3.UP)
+	var local_align = Basis.looking_at(weapon_forward_local, Vector3.RIGHT)
+	var desired_global = look_basis * local_align.transposed()
+	var desired_local_basis = parent_basis.inverse() * desired_global
+	var desired_quat = Quaternion(desired_local_basis.orthonormalized())
+	var current_quat = weapon_node.quaternion
+	var dot = current_quat.dot(desired_quat)
+	if dot < 0.0:
+		desired_quat = -desired_quat
+	var angle = acos(clampf(abs(dot), -1.0, 1.0))
+	var max_angle = Config.WEAPON_TURN_SPEED * delta
+	var t = 1.0 if angle <= 0.0001 else min(1.0, max_angle / angle)
+	weapon_node.quaternion = current_quat.slerp(desired_quat, t)
+	var forward_now = (weapon_node.global_transform.basis * weapon_forward_local).normalized()
+	return forward_now.angle_to(dir) <= Config.WEAPON_ALIGN_THRESHOLD
+
+func is_weapon_aligned() -> bool:
+	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
+		return false
+	var target_pos = _combat_target_position()
+	var dir = target_pos - weapon_node.global_position
+	if dir.length_squared() < 0.0001:
+		return false
+	dir = dir.normalized()
+	var forward = (weapon_node.global_transform.basis * weapon_forward_local).normalized()
+	return forward.angle_to(dir) <= Config.WEAPON_ALIGN_THRESHOLD
+
+func _get_muzzle_global() -> Vector3:
+	force_update_transform()
+	if muzzle_node:
+		muzzle_node.force_update_transform()
+		return muzzle_node.global_position
+	if weapon_node:
+		weapon_node.force_update_transform()
+		return weapon_node.global_position
+	return global_position
+
+func _combat_target_position() -> Vector3:
+	if not combat_target or not is_instance_valid(combat_target):
+		return Vector3.ZERO
+	return combat_target.global_position
+
+# --- Combat visuals ---
+
+func _update_combat_visuals(delta: float) -> void:
+	while combat_fire_event > _last_fire_event:
+		_last_fire_event += 1
+		_on_fire_event()
+	if _laser_timer > 0.0:
+		_laser_timer -= delta
+		if _laser_timer <= 0.0:
+			_hide_beam()
+
+func _on_fire_event() -> void:
+	pass
+
+func _hide_beam() -> void:
+	pass
+
 # --- Rotation ---
 
 var quat_from: Quaternion
@@ -49,6 +125,21 @@ var quat_to: Quaternion
 # --- UI ---
 
 var _health_bar: HealthBar3D
+
+# --- Combat ---
+
+var combat_target: Variant = null
+var combat_fire_event: int = 0
+var combat_fire_timer: float = 0.0
+var combat_burst_timer: float = 0.0
+var combat_damage_tick_timer: float = 0.0
+var weapon_node: Node3D
+var muzzle_node: Node3D
+var weapon_forward_local: Vector3 = Vector3.FORWARD
+
+var _last_fire_event: int = 0
+var _laser_timer: float = 0.0
+var _beam_node: MeshInstance3D
 
 # --- Lifecycle ---
 
@@ -78,6 +169,9 @@ func initialise(b: Building) -> void:
 func _process(delta: float) -> void:
 	if _health_bar:
 		_health_bar.set_health(health, Config.UNIT_MAX_HP.get(type, 100.0))
+
+	update_weapon_aim(delta)
+	_update_combat_visuals(delta)
 
 	# If under repair (on server)
 	if multiplayer.is_server() and health < Config.UNIT_MAX_HP.get(type, 100.0) and type in Config.SELF_HEALING_UNITS:
@@ -419,12 +513,7 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 	quat_to = Quaternion(transform.basis)
 	transform.basis = cache_rot
 
-# --- Damage and Repair ---
-
-func hit(attacker_type: UnitManager.Type = UnitManager.Type.NONE) -> void:
-	if not multiplayer.is_server():
-		return
-	_apply_damage(Config.get_damage(attacker_type, self))
+# --- Damage ---
 
 func apply_damage(amount: float) -> void:
 	if not multiplayer.is_server():

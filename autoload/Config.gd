@@ -70,25 +70,71 @@ static var PRODUCTION_COOLDOWNS: Dictionary = {
 
 # --- Combat ---
 
-const BASE_DPS: float = 50.0
+const BASE_DPS: float = 5.0
 
-static var DAMAGE_MULTIPLIERS: Dictionary = {
-	UnitManager.Type.TANK: {
-		UnitManager.Type.AERIAL: 5.0,
+const AERIAL_MODE_PATROL := 0
+const AERIAL_MODE_STRIKE := 1
+
+const COMBAT_SCAN_INTERVAL: float = 0.5
+const COMBAT_FIRE_INTERVAL: float = 0.8
+const COMBAT_RANGE: float = 40.0
+const WEAPON_TURN_SPEED: float = PI
+const WEAPON_ALIGN_THRESHOLD: float = 0.05
+const PROJECTILE_MAX_FLIGHT_TIME: float = 0.4
+const WEAPON_BURST_DURATION: float = 0.4
+const DAMAGE_TICK_DURATION: float = 0.1
+const COMBAT_LOS_MASK: int = 1
+
+static var TANK_AERIAL_MODE_MULTIPLIERS: Dictionary = {
+	AERIAL_MODE_PATROL: 6.0,
+	AERIAL_MODE_STRIKE: 5.0,
+}
+
+static var AERIAL_DAMAGE_MULTIPLIERS: Dictionary = {
+	AERIAL_MODE_PATROL: {
+		UnitManager.Type.ZOOMBA: 1.0,
+		UnitManager.Type.TANK: 1.0,
+		UnitManager.Type.VIRUS: 5.0,
+		UnitManager.Type.AVATAR: 1.0,
+		"BUILDING": 1.0,
 	},
-	UnitManager.Type.AERIAL: {
-		UnitManager.Type.ZOOMBA: 0.9,
-		UnitManager.Type.AERIAL: 1.0,
-		UnitManager.Type.VIRUS: 2.0,
-	},
-	UnitManager.Type.VIRUS: {
-		UnitManager.Type.TANK: 2.0,
+	AERIAL_MODE_STRIKE: {
+		UnitManager.Type.ZOOMBA: 1.0,
+		UnitManager.Type.TANK: 1.0,
+		UnitManager.Type.VIRUS: 1.0,
+		UnitManager.Type.AVATAR: 1.0,
+		"BUILDING": 2.0,
 	},
 }
 
-const BUILDING_DAMAGE_BONUS: Dictionary = {
-	UnitManager.Type.AERIAL: 2.0,
+static var AERIAL_AERIAL_MODE_MULTIPLIERS: Dictionary = {
+	AERIAL_MODE_PATROL: {
+		AERIAL_MODE_PATROL: 1.0,
+		AERIAL_MODE_STRIKE: 0.5,
+	},
+	AERIAL_MODE_STRIKE: {
+		AERIAL_MODE_PATROL: 2.0,
+		AERIAL_MODE_STRIKE: 1.0,
+	},
 }
+
+static func get_damage(attacker_type: UnitManager.Type, target, attacker_mode: int = AERIAL_MODE_PATROL) -> float:
+	if attacker_type == UnitManager.Type.TANK:
+		if target is Unit and target.type == UnitManager.Type.AERIAL:
+			var mode = target.mode if target.has_method(&"get_mode") else AERIAL_MODE_PATROL
+			return BASE_DPS * TANK_AERIAL_MODE_MULTIPLIERS.get(mode, 5.0)
+		return 0.0
+	elif attacker_type == UnitManager.Type.AERIAL:
+		if target is Unit:
+			if target.type == UnitManager.Type.AERIAL:
+				var tmode = target.mode if target.has_method(&"get_mode") else AERIAL_MODE_PATROL
+				return BASE_DPS * AERIAL_AERIAL_MODE_MULTIPLIERS.get(attacker_mode, {}).get(tmode, 1.0)
+			var row = AERIAL_DAMAGE_MULTIPLIERS.get(attacker_mode, {})
+			return BASE_DPS * row.get(target.type, 0.0)
+		elif target is Building:
+			var row = AERIAL_DAMAGE_MULTIPLIERS.get(attacker_mode, {})
+			return BASE_DPS * row.get("BUILDING", 0.0)
+	return 0.0
 
 # --- Units ---
 
@@ -118,17 +164,6 @@ static var SELF_HEALING_UNITS: Array[int] = [
 	UnitManager.Type.ZOOMBA,
 	UnitManager.Type.TANK,
 ]
-
-static func get_damage(attacker_type: UnitManager.Type, target) -> float:
-	var defender_type: UnitManager.Type = UnitManager.Type.NONE
-	var multiplier := 1.0
-	if target is Unit:
-		defender_type = target.type
-		var row: Dictionary = DAMAGE_MULTIPLIERS.get(attacker_type, {})
-		multiplier = row.get(defender_type, 1.0)
-	elif target is Building:
-		multiplier = BUILDING_DAMAGE_BONUS.get(attacker_type, 1.0)
-	return BASE_DPS * multiplier
 
 # --- Players ---
 

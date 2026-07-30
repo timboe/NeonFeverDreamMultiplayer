@@ -17,8 +17,11 @@ script = ExtResource("1")
 mesh = ExtResource("2_s4mvi")
 
 [node name="Gun" type="Node3D" parent="Body" unique_id=235132299]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, -0.3, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)
 
 [node name="Barrel" type="MeshInstance3D" parent="Body/Gun" unique_id=235139989]
-transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 1, 0)
+transform = Transform3D(1, 0, 0, 0, 2.9802322e-08, 1, 0, -1, 2.9802322e-08, 0, 0, 0.5)
 mesh = SubResource("CylinderMesh_s4mvi")
+
+[node name="Muzzle" type="Marker3D" parent="Body/Gun" unique_id=22222222]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.0)

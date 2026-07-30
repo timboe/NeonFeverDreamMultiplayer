@@ -2,6 +2,8 @@ extends Control
 
 class_name GarageHUD
 
+const PLAYER_NAMES: Array[String] = ["", "Red", "Blue", "Green", "Yellow"]
+
 var building: Garage
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
@@ -12,7 +14,9 @@ var building: Garage
 @onready var tank_label: Label = $Window/VBox/TankRow/TankLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
+@onready var enemy_grid: GridContainer = $Window/VBox/EnemyGrid
 
+var _enemy_buttons: Dictionary = {}
 var _cursor: Cursor3D
 
 func _ready() -> void:
@@ -22,6 +26,28 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
+	_build_enemy_buttons()
+
+func _build_enemy_buttons() -> void:
+	for i in range(1, 5):
+		var btn := Button.new()
+		btn.text = PLAYER_NAMES[i]
+		btn.toggle_mode = true
+		btn.custom_minimum_size = Vector2(60, 32)
+		btn.add_theme_font_size_override("font_size", 14)
+		btn.pressed.connect(_on_enemy_toggle.bind(i))
+		enemy_grid.add_child(btn)
+		_enemy_buttons[i] = btn
+
+func _on_enemy_toggle(pnum: int) -> void:
+	if not building:
+		return
+	var targets := building._enemy_targets.duplicate()
+	if pnum in targets:
+		targets.erase(pnum)
+	else:
+		targets.append(pnum)
+	Global.send_command_me("set_enemy_targets", [building.id, targets])
 
 func setup_cursor_3d(screen: MeshInstance3D) -> void:
 	_cursor = Cursor3D.new(screen, Config.TERMINAL_SCREEN_SIZE)
@@ -66,6 +92,9 @@ func _process(_delta: float) -> void:
 	else:
 		spawn_bar.value = 0.0
 	empower_indicator.visible = building.is_empowered
+	for pnum in _enemy_buttons:
+		var btn: Button = _enemy_buttons[pnum]
+		btn.set_pressed_no_signal(pnum in building._enemy_targets)
 
 func show_cursor_at_uv(uv: Vector2) -> void:
 	if _cursor:

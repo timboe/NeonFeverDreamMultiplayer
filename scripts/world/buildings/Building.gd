@@ -315,14 +315,6 @@ func set_constructed() -> void:
 	
 # --- Damage and Repair ---
 
-func hit(attacker_type: UnitManager.Type = UnitManager.Type.NONE) -> void:
-	if not multiplayer.is_server():
-		return
-	var damage := Config.get_damage(attacker_type, self)
-	if damage <= 0.0:
-		return
-	_apply_damage(damage)
-
 func apply_damage(amount: float) -> void:
 	if not multiplayer.is_server():
 		return
