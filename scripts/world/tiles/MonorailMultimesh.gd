@@ -52,6 +52,8 @@ func setup(tile_dictionary: Dictionary) -> void:
 
 	_monorail_body = StaticBody3D.new()
 	_monorail_body.name = "MonorailBody"
+	# Keep the rail body off collision layer 1 so it never blocks combat LOS rays.
+	_monorail_body.collision_layer = 2
 	add_child(_monorail_body)
 	_shape = _build_collision_shape(rail_mesh)
 

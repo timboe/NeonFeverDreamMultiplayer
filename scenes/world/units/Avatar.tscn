@@ -15,6 +15,7 @@ height = 4.8
 script = ExtResource("1")
 
 [node name="FPSBody" type="CharacterBody3D" parent="." unique_id=2039129963]
+collision_mask = 3
 
 [node name="Body" type="MeshInstance3D" parent="FPSBody" unique_id=504433039]
 transform = Transform3D(1, 0, 0, 0, 1, -1.192096e-07, 0, 1.192096e-07, 1, 0, 2.2, 0)

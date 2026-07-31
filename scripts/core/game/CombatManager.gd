@@ -25,6 +25,10 @@ func combat_target_position(combat_target : Variant) -> Vector3:
 		return Vector3.ZERO
 	if combat_target is Building:
 		return combat_target.location.pathing_centre + Vector3(0, Cairo.HEIGHT / 2.0, 0)
+	# Avatars live in their FPSBody child — the Unit root stays at spawn, so aim at the body.
+	var body := combat_target.get_node_or_null("FPSBody") as Node3D
+	if body:
+		return body.global_position
 	return combat_target.global_position
 
 func _enemy_list_for(unit: Unit) -> Array[int]:
@@ -44,35 +48,41 @@ func _attacker_mode(unit: Unit) -> int:
 func _in_range(from: Vector3, to: Vector3) -> bool:
 	return from.distance_squared_to(to) < Config.COMBAT_RANGE * Config.COMBAT_RANGE
 
-func _has_los(from: Vector3, to: Vector3, exclude: Node = null) -> bool:
-	return true
-	#
-	# TODO DEBUG
-	#
+func _has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
 	var space = get_world_3d().direct_space_state if get_world_3d() else null
 	if not space:
 		return true
 	var query = PhysicsRayQueryParameters3D.create(from, to, Config.COMBAT_LOS_MASK, [])
-	if exclude:
-		query.exclude = [exclude]
+	var rids: Array[RID] = []
+	for n in excludes:
+		rids.append_array(_collect_collision_rids(n))
+	query.exclude = rids
 	var result = space.intersect_ray(query)
 	if result.is_empty():
 		return true
 	var collider = result.collider
-	if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING, TileManager.State.DISABLED]:
+	if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING]:
 		return true
-	var dist_to_target = from.distance_squared_to(to)
-	var hit_dist = from.distance_squared_to(result.position)
-	if hit_dist >= dist_to_target - 0.5:
+	var total_dist := from.distance_to(to)
+	var hit_dist := from.distance_to(result.position)
+	if hit_dist >= total_dist - 0.5:
 		return true
 	return false
 
+func _collect_collision_rids(node: Node) -> Array[RID]:
+	var rids: Array[RID] = []
+	if node is CollisionObject3D:
+		rids.append(node.get_rid())
+	for child in node.get_children():
+		rids.append_array(_collect_collision_rids(child))
+	return rids
+
 func _can_see(attacker: Unit, target) -> bool:
 	var from = attacker._get_muzzle_global()
-	var to = target.global_position
+	var to = combat_target_position(target)
 	if not _in_range(from, to):
 		return false
-	return _has_los(from, to, attacker)
+	return _has_los(from, to, [attacker, target])
 
 func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health
