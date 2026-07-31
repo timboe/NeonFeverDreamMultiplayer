@@ -4,16 +4,38 @@
 
 - **Godot 4.7**, Jolt Physics, D3D12 renderer, Forward Plus
 - Entrypoint: `scenes/menu/MainMenu.tscn`
-- Single autoload: `autoload/Global.gd` (holds `network_manager`, `game_config`)
-- Additional autoload: `autoload/Config.gd` (static dicts for `BUILDING_AOE`, `UNIT_SPEED`, `HOME_TERRITORY_UNITS`)
-- No tests, no lint, no typecheck config
+- Autoloads (only two, see `project.godot`): `autoload/Global.gd` (holds `network_manager`, `game_config`, `my_player_number`, `level` preload) and `autoload/Config.gd` (all balance dicts + `get_damage()`).
+- `Global.level` is a preload of `levels/skirmish_01.gd` — tile IDs, MCP positions, LOWERED/IMMUTABLE/INVISIBLE sets, seed. This is the only level.
+- No tests, no lint, no typecheck config.
+
+## World scene layout
+
+`scenes/world/World.tscn` — managers are all siblings under the root, most marked `unique_name_in_owner`:
+
+```
+World
+├── GameManager %       snapshot/interp + job tick (every 1s → assign_jobs + check_work)
+├── BuildingManager %   blueprints, building dict, placement, empower, remove
+├── EnergyManager %     energy sim (server only)
+├── TileManager %       tile grid gen, selection sync, AoE recompute
+│   └── PathingManager  AStar3D
+├── UnitManager %       unit dict, spawn/remove, displacement
+├── JobManager %        job pool + assignment
+├── CombatManager %     target scanning + firing (server only)
+├── CameraManager %     RTS↔FPS camera transitions, shake
+│   ├── CameraRTS %
+│   └── OmniLight3D_RTS %
+├── ProjectilesHolder
+└── HUD                 CanvasLayer, group "hud"
+```
+
+`%ManagerName` works in scene-owned scripts (unique_name_in_owner is set). Dynamically created nodes (TileElements) miss the owner lookup — gameplay code generally uses absolute `/root/World/...` paths or a stored ref instead.
 
 ## Multiplayer architecture
 
 - ENet server-authoritative. `Server` node lives only on host (`scripts/core/network/Server.gd`).
 - `NetworkManager` is **not** in any scene — instantiated at runtime by `MainMenu` and added to root.
-- Host path: `Global.network_manager.server` (NOT a node path lookup — `get_node` fails due to dynamic parent).
-- Remote path: `Global.network_manager` exists but `.server` is null.
+- Host path: `Global.network_manager.server` (NOT a node path lookup — `get_node` fails due to dynamic parent). Remote path: `Global.network_manager` exists but `.server` is null.
 
 ### Unified command relay: `Global.send_command_me()` / `send_command()`
 
@@ -31,56 +53,103 @@ send_command_me / send_command
   ├─ Server exists? → Server.handle_command(pnum, command, args)
   │                     └─ reflection → _cmd_toggle_cell / _cmd_toggle_tile / ...
   └─ No server (remote client)? → rpc_id(1, "_on_remote_command", ...)
-								   └─ Server._on_remote_command()
-									  └─ peer_to_player[caller] → handle_command(pnum, ...)
+                                   └─ Server._on_remote_command()
+                                      └─ peer_to_player[caller] → handle_command(pnum, ...)
 ```
 
 **Key points**:
-- `send_command_me` uses `Global.my_player_number` — safe for host (set by `NetworkManager` at LOCAL-slot creation) and remote (set by `NetworkManager.set_my_player_number` RPC)
-- `send_command(pnum, ...)` is for AI controllers that know their own player number
-- The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`
-- Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`. The `_cmd_` prefix acts as an allowlist — arbitrary method names like `queue_free` won't match. `handle_command` validates argument count against the method signature before calling `callv`.
-- No `human_controllers` group checks, no `rpc_id(1, ...)` scattered in game objects, no `HumanController` bridge methods. HumanController, GameGrid, and GridCell have been removed — replaced entirely by the tile system.
+- `send_command_me` uses `Global.my_player_number` and **no-ops when it's -1** (spectator / host with no LOCAL slot). Safe for host (set by `NetworkManager.start_server()` at LOCAL-slot creation) and remote (set by `NetworkManager.set_my_player_number` RPC).
+- `send_command(pnum, ...)` is for AI controllers that know their own player number (`AIController` uses it for `toggle_tile`).
+- The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`.
+- Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`; `handle_command` validates arg count against the method signature. The `_cmd_` prefix is the allowlist. Adding a command = add `_cmd_<name>(player_number, ...)` to `Server.gd`, call it via `Global.send_command_me("<name>", [...])`.
+- Full command surface (see `Server.gd`): `toggle_tile`, `place_blueprint`, `toggle_production`, `set_garage_ratio`, `set_beacon_ratio`, `set_nest_ratio`, `set_enemy_targets`, `set_building_targets`, `set_strike_priority`, `set_patrol_stance`, `set_virus_priority`, `empower`, `clear_empower`. Callers: `TileElement` mouse handlers, the building HUDs, `AIController`.
 
 ### Server-only guard pattern
 
-Functions that must only run on the server use an early return guard at the top:
+All server-side simulation (`_process`/`_physics_process` in `EnergyManager`, `CombatManager`, `Building`, `Unit`, `GameManager`) guards the top:
 
 ```gdscript
-func new_unit_callback(new_unit):
+func _process(delta):
 	if not multiplayer.is_server():
 		return
 	...
 ```
 
-This is used in `UnitManager.spawn_unit` and `UnitManager.new_unit_callback` to prevent duplicate unit creation on clients. The `_physics_process` in `TileManager` runs on all peers — any server-only logic called from there must be self-guarded.
+Spawn/remove never run directly on clients — they're `@rpc("authority", "call_local")` (e.g. `UnitManager.rpc_spawn_unit`, `rpc_remove_unit`, `BuildingManager.broadcast_place_blueprint`, `rpc_remove_building`, `Building.rpc_constructed`), called via `rpc(...)` so the server executes locally and mirrors to peers. `TileManager._physics_process` runs on all peers — anything server-only called from it must self-guard.
+
+### Snapshot / interpolation (`GameManager`)
+
+- Server packs all units+buildings into one `PackedFloat64Array` every 0.05s (`SNAPSHOT_INTERVAL`), `rpc("apply_snapshot")` unreliable. Each entity = `SLOT_COUNT`(10) floats.
+- Unit slots: pos x/y/z, rot.y, state, health, type-specific extras (ZOOMBA: zapper visible + target y; AERIAL: mode; VIRUS: cloaked), `combat_target` (0=none, +unit id, -building id), `combat_fire_event` (visual trigger). AVATAR packs its `FPSBody` transform, not the root.
+- Clients buffer up to `MAX_SNAPSHOT_BUFFER`(4) and interpolate with `INTERPOLATION_DELAY`(0.075) render time.
+- Avatars: each client sends `receive_avatar_snapshot` at 20Hz **only while `CameraManager.camera_status == FPS`**; the server interpolates per-pnum avatar snapshots for the other peers. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_entities` to avoid control cycles.
+- `_apply_unit` asserts type match and is client-only — the server never mutates client state.
 
 ## Key classes
 
 | Class | File | Role |
 |---|---|---|
-| `Global` | `autoload/Global.gd` | Singleton, holds `network_manager` ref, `send_command_me/send_command` relay |
-| `Config` | `autoload/Config.gd` | Singleton, static dicts: `BUILDING_AOE` (radius per building type), `UNIT_SPEED`, `HOME_TERRITORY_UNITS` |
-| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates Server/LocalClients or ENet client |
-| `Server` | `scripts/core/network/Server.gd` | ENet server, peer→player mapping, command dispatch |
-| `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon tile grid generation + multiplayer selection sync, AoE recomputation, `remove_tile_from_pathing` |
-| `TileElement` | `scripts/world/tiles/TileElement.gd` | Single tile (StaticBody3D + MultiMesh instance) with hover/selection visual, `aoe` array, `_working_unit_dict` for multi-player job callbacks |
-| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D pathfinding, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, debug renderer (ImmediateMesh) |
-| `AIController` | `scripts/core/ai/AIController.gd` | Random timer-driven tile toggle |
-| `GameConfig` | `scripts/core/game/GameConfig.gd` | Slot config: LOCAL, REMOTE, AI, CLOSED |
-| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshot/interpolation manager: server→client unit sync + client→server avatar relay, per-player avatar interpolation |
-| `CameraController` | `scripts/world/camera/CameraRTS.gd` | Middle-click drag, scroll zoom, WASD pan, pitch/yaw limits |
-| `CameraManager` | `scripts/world/camera/CameraManager.gd` | Stub (~99% commented dead code, not converted) |
-| `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | Building type enum, placement validation, blueprint visibility, dictionary of all buildings, `new_building_instance()` returns correct scene per type |
-| `Building` | `scripts/world/buildings/Building.gd` | Base building: states (BLUEPRINT→CONSTRUCTED→UNDER_DESTRUCTION), `player_owner`, `get_aoe_radius()`, `check_work()` stub, tween-driven construction |
-| `MCP` | `scripts/world/buildings/MCP.gd` | Main Control Point: rotating top animation, energy generation |
-| `Vat` | `scripts/world/buildings/Vat.gd` | Energy storage: liquid-level tween, capacity calculation, `contains` set/get with underscore-backed var |
-| `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam effect (ImmediateMesh + RayCast3D), jaggies animation |
-| `Blueprints` | `scripts/world/buildings/Blueprints.gd` | Ghost building preview, duplicate material assignment |
-| `UnitManager` | `scripts/world/units/UnitManager.gd` | Unit type enum, `spawn_unit`/`rpc_spawn_unit`, `rpc_remove_unit`, `displace_units_on_tile`, server guard on spawn |
-| `Unit` | `scripts/world/units/Unit.gd` | Base unit: states (IDLE/PATHING/WORKING), pathing, rotation (Quaternion slerp), `abandon_job`, `job_finished`, `move_tween` |
-| `Zoomba` | `scripts/world/units/Zoomba.gd` | Bot unit: `initialise`, player-colour material, most logic commented out (scram, pathing jobs) |
-| `JobManager` | `scripts/world/units/JobManager.gd` | Job queue per player, worker-centric assignment (`assign_nearest_job`), abandoned-job delay, debug renderer |
+| `Global` | `autoload/Global.gd` | Singleton: `network_manager`, `my_player_number`, `level` preload, command relay, `MAX_PLAYERS=4` |
+| `Config` | `autoload/Config.gd` | Static balance dicts (`BUILDING_AOE`, `BUILDING_MAX_HP`, `CONSTRUCTION_COST`, `UNIT_COST`, `PRODUCTION_COOLDOWNS`, `UNIT_SPEED`, `UNIT_MAX_HP`, `HOME_TERRITORY_UNITS`, `SELF_HEALING_UNITS`, `PLAYER_COLORS`, combat consts) + `get_damage()` |
+| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates `Server` + local AI controllers, or ENet client; assigns LOCAL/AI player numbers; `set_my_player_number` RPC |
+| `Server` | `scripts/core/network/Server.gd` | ENet server, `peer_to_player`/`player_to_peer`, `_cmd_*` dispatch |
+| `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon grid gen, `State` enum, `apply_toggle`, `recompute_aoe` (+`player_aoe_totals`/`player_aoe_rings`/`gen_count`), `remove_tile_from_pathing`, tile selection broadcast |
+| `TileElement` | `scripts/world/tiles/TileElement.gd` | One tile: state transitions, neighbours, `aoe`/`selected_by`, MultiMesh visuals, emission priority system, `_working_unit_dict` countdown chain, mouse input → `send_command_me` |
+| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, `pathfind`, debug renderer |
+| `MonorailMultimesh` | `scripts/world/tiles/MonorailMultimesh.gd` | Active: monorail rail meshes + caps between tiles, tweened connect/disconnect |
+| `GameConfig` | `scripts/core/game/GameConfig.gd` | Resource: `player_count`, `port`, `server_ip`, `slots` array (LOCAL/REMOTE/AI/CLOSED) |
+| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshots/interpolation, 1s job tick (`%JobManager.assign_jobs()` + each building `check_work()`), avatar relay |
+| `EnergyManager` | `scripts/core/game/EnergyManager.gd` | Server-only energy sim (see Economy) |
+| `CombatManager` | `scripts/core/game/CombatManager.gd` | Server-only target scan + firing (see Combat) |
+| `AIController` | `scripts/core/ai/AIController.gd` | Random `toggle_tile` on a timer via `send_command(player_number, ...)` |
+| `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | `Type` enum (MCP_1..4, GEN, VAT, GARAGE, BEACON, NEST), blueprints, building dict, `place_blueprint`/`place_building`/`rpc_remove_building`, empower tracking, `recompute_aoe` hookups |
+| `Building` | `scripts/world/buildings/Building.gd` | Base: states BLUEPRINT→UNDER_CONSTRUCTION→CONSTRUCTED, `player_owner`, `get_aoe_radius()`, `check_work()` (adds REPAIR_BUILDING jobs), construction/production via energy, `apply_damage`, repair, terminal positioning, per-building HUD SubViewport |
+| `MCP` | `scripts/world/buildings/MCP.gd` | Main Control Point: produces AVATAR first then ZOOMBA up to `zoomba_cap`; counts as generator+vat |
+| `Generator` | `scripts/world/buildings/Generator.gd` | Energy output = sum of `gen_count` over its AoE tiles; hover shows catchment |
+| `Vat` | `scripts/world/buildings/Vat.gd` | Capacity = 1000 + 100/adjacent same-owner Vat, ×1.2 if empowered; liquid-level visual |
+| `Garage` | `scripts/world/buildings/Garage.gd` | Creates CONSUME_ZOOMBA jobs (zoomba → TANK conversion), `zoomba_tank_ratio`, patrol orders |
+| `Beacon` | `scripts/world/buildings/Beacon.gd` | Produces AERIAL, patrol/strike orders, `patrol_strike_ratio`, strike priority/stance |
+| `Nest` | `scripts/world/buildings/Nest.gd` | Produces VIRUS, attack orders, `_virus_tank_building_ratio`, priority |
+| `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam visual (ImmediateMesh + RayCast3D) |
+| `Blueprints` | `scripts/world/buildings/Blueprints.gd` | Ghost preview, material assignment, collision enable |
+| `UnitManager` | `scripts/world/units/UnitManager.gd` | `Type` enum (NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS), `spawn_unit` (via `rpc_spawn_unit`), `rpc_remove_unit`, `displace_units_on_tile`, `unit_count` |
+| `Unit` | `scripts/world/units/Unit.gd` | Base unit: IDLE/PATHING/WORKING, job lifecycle, health, self-heal, scram, combat aim/fire-event visuals, `apply_damage` |
+| `Zoomba` | `scripts/world/units/Zoomba.gd` | Basic unit, player-colour material |
+| `Tank` | `scripts/world/units/Tank.gd` | Anti-air unit (only damages AERIAL) |
+| `Aerial` | `scripts/world/units/Aerial.gd` | Flying, patrol/strike modes, projectile delay |
+| `Virus` | `scripts/world/units/Virus.gd` | Cloaked attack unit |
+| `Avatar` | `scripts/world/units/Avatar.gd` | FPS character: `FPSBody` (CharacterBody3D + FPSCamera), ignores job system, screen-cursor terminal clicks |
+| `JobManager` | `scripts/world/units/JobManager.gd` | Job pool + worker-centric assignment, abandon timers, `personal` jobs, job-event notifications |
+| `CameraManager` | `scripts/world/camera/CameraManager.gd` | CameraStatus (OVERHEAD/TO_FPS/FPS/TO_OVERHEAD), 2s transition tween, mouse capture, trauma shake. **Converted — no dead Godot 3 code.** |
+| `CameraRTS` | `scripts/world/camera/CameraRTS.gd` | Overhead camera controls |
+| `HUD` | `scripts/ui/HUD.gd` | Tile/build mode buttons, drag select, energy bar, FPS toggle, debug keys |
+| `NotificationManager` | `scripts/ui/NotificationManager.gd` | Job-event on-screen notifications (`rpc_add_job_notification`) |
+| `HealthBar3D` | `scripts/ui/HealthBar3D.gd` | Billboard health bars for units + buildings |
+
+## Level system
+
+- `Global.level` = `levels/skirmish_01.gd`. It defines `SEED`, `TRIPLETS`/`BORDER_TRIPLETS` (arena size), `MCP_ARRAY` (tile ids; index+1 = player number), `LOWERED`, `IMMUTABLE`, `INVISIBLE`.
+- `TileManager.populate()` marks tiles IMMUTABLE/INVISIBLE as DISABLED (`disabled`/`invisible` groups) vs `interactive`. `apply_loaded_level()` places each MCP via `BuildingManager.place_building(...)` and lowers the LOWERED tiles, then `recompute_aoe()`.
+- Tile IDs are the deterministic generation order — editing the level means editing these ID arrays.
+
+## Tile system
+
+- `TileManager.State` = RAISED, FALLING, LOWERED, RISING, DISABLED. Tiles are `StaticBody3D` + one MultiMesh instance (`enabled_tiles_to_multimesh`), 5 pentagon neighbours, `pathing_centre` for pathfinding, `location` for units/buildings.
+- `apply_toggle(pnum, tile_id)` (server only, **never called directly** — go through `send_command`) toggles a player's `selected_by` claim. RAISED/LOWERED only; LOWERED+has building is rejected; returns false on deselect → `JobManager.cancel_job`. Selection broadcast via `broadcast_tile_selection`.
+- Access tiles: `get_access_tiles(require_aoe=0)` — LOWERED neighbours with no building, optionally filtered to own AoE. Used everywhere (wandering, pathing targets, terminal placement, displacement).
+- AoE: `recompute_aoe()` BFS from each building's `get_aoe_radius()`, deterministic on all peers. Fills `tile.aoe`, `tile.gen_count` (for GEN), `player_aoe_totals` (split shares), `player_aoe_rings`, then pokes generators/vats + `EnergyManager.recalculate_capacity()` and un-selects tiles no longer under AoE. Re-run after building place/remove.
+
+### Per-instance visual data (MultiMesh)
+
+Three independent channels on each tile instance:
+
+| Channel | Written by | Read by | Purpose |
+|---|---|---|---|
+| `INSTANCE_CUSTOM.rgba` | `set_tile_mm_selecting_mask` | `aluminium.tres` vertex→`selecting_mask` | Band stripes — player AoE claims (r=g=p1 etc.) |
+| `COLOR.rgb` | `set_tile_mm_color` | `grid_edges.tres` fragment → `ALBEDO` | Edge color — hover indicator |
+| `COLOR.a` | `set_tile_mm_emission` | `aluminium.tres` fragment → `EMISSION`+`EMISSION_ENERGY` | White glow intensity |
+
+`set_tile_mm_color` preserves `a`, `set_tile_mm_emission` preserves `rgb`. On top sits an **emission priority system**: `TileElement.EmissionEffect` (GENERATOR_CATCHMENT > TILE_SELECTED > TILE_HOVER > PULSE_ANIMATION) with `request_emission`/`release_emission` writing the active effect into COLOR.a; `_apply_emission` skips while the toggle tween/countdown tweens run.
 
 ## Job system
 
@@ -90,338 +159,162 @@ Every unit has exactly one of three states. State transitions are the core of th
 
 | State | Meaning |
 |---|---|
-| `IDLE` | No job. Unit wanders randomly between accessible tiles. |
+| `IDLE` | No job. Unit wanders randomly between accessible tiles (own-AoE preferred for `HOME_TERRITORY_UNITS`). |
 | `PATHING` | Has a job. Unit is pathfinding toward the target tile. |
-| `WORKING` | At target tile. Unit is performing the job action (e.g. toggle countdown). |
+| `WORKING` | At target tile. Unit is performing the job action. |
 
 ### State transitions
 
 ```
-					┌──────────────────────────────────────────────────┐
-					│                                                  │
+                    ┌──────────────────────────────────────────────────┐
+                    │                                                  │
   ┌─────────┐   assign_job()   ┌─────────┐   start_work()   ┌─────────┐
   │  IDLE   │ ───────────────→ │ PATHING │ ───────────────→ │ WORKING │
   └─────────┘                  └─────────┘                  └─────────┘
-	   ↑                            │    │                        │  │
-	   │                            │    │                        │  │
-	   │  remove_job()              │    │  remove_job()          │  │  remove_job()
-	   │  abandon_job()             │    │  abandon_job()         │  │  abandon_job()
-	   │  job_finished()            │    │  job_finished()        │  │  job_finished()
-	   │                            │    │                        │  │
-	   └────────────────────────────┘    └────────────────────────┘  │
-																	 │
-	   ┌─────────────────────────────────────────────────────────────┘
-	   │
-	   └──→ IDLE (unit resumes wandering)
+       ↑                            │    │                        │  │
+       │                            │    │                        │  │
+       │  remove_job()              │    │  remove_job()          │  │  remove_job()
+       │  abandon_job()             │    │  abandon_job()         │  │  abandon_job()
+       │  job_finished()            │    │  job_finished()        │  │  job_finished()
+       │                            │    │                        │  │
+       └────────────────────────────┘    └────────────────────────┘  │
+                                                                     │
+       ┌─────────────────────────────────────────────────────────────┘
+       │
+       └──→ IDLE (unit resumes wandering)
 ```
 
 All transitions are server-only (`if not multiplayer.is_server(): return` guard at top of every function).
 
+### Job types
+
+`JobManager.Type` = CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA. `start_work()` routes:
+- `TOGGLE_TILE` → `tile.do_toggle_countdown(self)` (tile owns the callback chain)
+- `CONSTRUCT_BUILDING` → `building.start_construction(self)`
+- `REPAIR_BUILDING` → `building.start_repair(self)`
+- `CONSUME_ZOOMBA` → `_consume_for_tank()` (spawns a TANK at the garage, then removes this zoomba)
+
 ### Unit.gd functions
 
-**`idle_callback()`** — The idle loop entry point. Called after spawn, after `remove_job()`, and after each wander move.
-- If `job` is non-empty (unit was assigned while idle): asserts `PATHING`, clears path, calls `pathing_callback()`.
-- If `job` is empty (true idle): picks a random accessible tile (preferring AoE tiles for HOME_TERRITORY_UNITS), avoids backtracking, calls `move(idle_callback)`.
+**`idle_callback()`** — Idle loop entry. If `job` non-empty: asserts PATHING, clears path, calls `pathing_callback()`. If empty: picks a random accessible tile (own-AoE preferred for HOME_TERRITORY_UNITS; PATROL+HOLD units restricted to their building's `_aoe_tiles`), avoids backtracking, calls `move(idle_callback)`. Scrammed units (`scram_count > 0`) head toward their MCP instead.
 
-**`pathing_callback()`** — Runs each step of pathfinding toward the job target.
-1. Asserts `PATHING` state.
-2. `check_job_still_valid()` — if job was removed externally, calls `job_finished()` (early-out).
-3. Checks if unit reached `path_dest` — if so, calls `start_work()`.
-4. `check_pathing_valid()` — if no path exists or it's empty, calls `abandon_job()`.
-5. Re-checks `path_dest` (may have changed to current location after re-pathing).
-6. Moves to next node in path via `move(pathing_callback)`.
+**`pathing_callback()`** — Each pathfinding step: checks scram first (→ IDLE + `idle_callback`), `JobManager.check_job_still_valid` (→ `job_finished()`), reached `path_dest` (→ `start_work()`), `check_pathing_valid()` (→ `abandon_job()`), then moves to next node.
 
-**`check_pathing_valid()`** — If `path` is empty, re-runs pathfinding from current location to all access tiles of the job target. Sets `path_dest` to the closest access tile. Returns `false` if no reachable path exists (triggers `abandon_job`). Returns `true` if a valid path exists (path was already computed and hasn't been invalidated). Also validates that remaining path nodes are still `LOWERED` — if any node in the path has been raised, the path is invalidated and recomputed.
+**`check_pathing_valid()`** — Validates remaining path nodes are still LOWERED (else invalidates). If path empty, re-paths from current location to all access tiles of the target, picking the shortest; sets `job["path_dest"]`. Returns false (→ abandon) if unreachable. Handles tiles lowered/raised mid-path, displaced edges, and access tiles changing.
 
-**`start_work()`** — Transitions PATHING → WORKING.
-- Sets `state = WORKING`, rotates unit toward target, enables zapper visual.
-- For `TOGGLE_TILE`: calls `job["location"].do_toggle_countdown(self)` — the tile now owns the callback chain.
+**`start_work()`** — PATHING → WORKING, quick-rotate, zapper on, dispatch by job type (above).
 
-**`job_finished()`** — Called when work completes or the job is no longer valid.
-- Early-out if `job` is empty (idempotent).
-- Sets `state = IDLE`.
-- Calls `JobManager.remove_job(job["id"])` which calls `Unit.remove_job()` → handles tile cleanup and idle resumption.
+**`job_finished()`** — Job completed/removed: hides zapper, state=IDLE, `JobManager.remove_job(job["id"])` (which calls our `remove_job()`).
 
-**`remove_job()`** — Called by `JobManager.remove_job()` when a job is deleted from the pool.
-- If `state == WORKING`: calls `_cleanup_working_state()` (cancels tile countdown / construction).
-- Sets `state = IDLE`, hides zapper, kills `move_tween`, clears `job`.
-- Calls `idle_callback()` unconditionally (tween is killed, no stale callback risk).
+**`remove_job()`** — Called by `JobManager.remove_job()`. If WORKING → `_cleanup_working_state()`. Sets IDLE, kills `move_tween` (prevents stale callbacks), clears `job`, calls `idle_callback()` unconditionally.
 
-**`_cleanup_working_state()`** — Shared helper used by both `remove_job` and `abandon_job` when `state == WORKING`. Hides zapper, kills `_rotate_tween`, cancels tile countdown via `cancel_toggle_countdown(player_owner)` or cancels building construction.
+**`_cleanup_working_state()`** — Shared by `remove_job`/`abandon_job` when WORKING: hides zapper, kills `_rotate_tween`, cancels tile countdown (`cancel_toggle_countdown`) or building construction.
 
-**`abandon_job()`** — Inlined logic for both pathing and working states:
-- If `state == WORKING`: calls `_cleanup_working_state()` (hides zapper, cancels tile countdown / construction).
-- Sets `state = IDLE`, clears `job`, kills `move_tween` (prevents stale `pathing_callback` from firing after state change).
-- Calls `JobManager.abandon_job(id)` (job stays in pool, reassignable after timer).
-- Calls `idle_callback()` unconditionally.
+**`abandon_job()`** — Cleans working state if WORKING, sets IDLE, kills tween, `JobManager.abandon_job(id)` (job stays in pool), `idle_callback()`.
 
-**`move(callback)`** — Kills previous `move_tween` if valid, then creates a new tween that slerps rotation and moves to `location.pathing_centre`. Calls `callback` when done. IDLE units move at 2x speed.
+**`move(callback)`** — Kills previous tween, slerps rotation + moves to `location.pathing_centre`, calls callback. IDLE moves at 2x speed; scram at 0.5x. `move_tween` is a plain var (Tween is RefCounted).
+
+**`scram()`** — `ui_scram` key (C): `scram_count = SCRAM`; if busy, `abandon_job()`. Scrambled units aren't assigned jobs and aren't eligible during `assign_jobs`.
 
 ### JobManager.gd
 
-**`add_job(pnum, type, location)`** — Deduplicates: if a job with the same `type` and `location` already exists, no-op. Otherwise creates a job dict and adds to `jobs_dict`.
-
-**`cancel_job(pnum, type, location)`** — Finds the matching job by pnum/type/location and calls `remove_job(id)`. Used when a human deselects a tile (`TileManager.apply_toggle` → `toggle_selected_by` returns false → `cancel_job`).
-
-**`remove_job(id)`** — If the job has an `assigned` unit, calls `unit.remove_job()` (which handles tile cleanup and idle resumption). Then erases the job from `jobs_dict`. The job is permanently deleted — it cannot be reassigned.
-
-**`abandon_job(id)`** — Job stays in the pool. Clears `assigned`, increments `abandoned_n`, sets `abandoned_timer = min(60, abandoned_n × 11)`. The job becomes eligible for reassignment after the timer expires.
-
-**`assign_jobs()`** — Called every 1s by `GameManager._process`. Two passes:
-1. Decrements `abandoned_timer` by 1.0 for all unassigned jobs.
-2. Iterates all units in the `"unit"` group. For each unit with empty `job`, calls `assign_nearest_job(unit)`.
-
-**`assign_nearest_job(unit)`** — For each unassigned job matching the unit's player, with expired abandon timer, computes path length. Picks the shortest. Sets `job["assigned"] = unit` and calls `unit.assign_job(job)`.
+- **`add_job(pnum, type, location, personal=false)`** — dedupes identical pnum/type/location jobs. `personal` jobs can't be reassigned — they're erased on abandon.
+- **`cancel_job`** — deselect → `remove_job`. **`remove_job(id)`** — permanent deletion; if assigned, calls `unit.remove_job()`. **`abandon_job(id)`** — stays in pool, `abandoned_n`++, timer `min(60, abandoned_n × 11)`, clears `assigned`; personal jobs are erased instead.
+- **`assign_jobs()`** (every 1s from GameManager) — two passes: decrement abandon timers, then for each idle unit (skipping AVATAR and `scram_count > 0`) → `assign_nearest_job(unit)` (shortest path length among eligible unassigned jobs for that player).
+- **`check_job_still_valid(job)`** — per-type: CONSTRUCT_BUILDING (blueprint present), TOGGLE_TILE (state RAISED/LOWERED + still `selected_by`), REPAIR_BUILDING (damaged), CONSUME_ZOOMBA (constructed GARAGE). New job types extend this `match`.
+- **`_notify_job_event`** — server-side job add/assign/abandon/finish → `NotificationManager.rpc_add_job_notification`.
 
 ### TileElement.gd (tile-side job support)
 
-**`do_toggle_countdown(z)`** — Server-only. Adds entry to `_working_unit_dict[pnum]` with the unit, job_id, and a 2s countdown tween that calls `begin_toggle`. Sends RPC mode 0 with pnum (visual countdown to all peers).
+- **`do_toggle_countdown(z)`** — server-only. Adds entry to `_working_unit_dict[pnum]` with unit/job and a 2s countdown tween → `begin_toggle`. RPC mode 0 = visual countdown.
+- **`cancel_toggle_countdown(pnum)`** — server-only. Removes entry, kills its tween, RPC mode 1.
+- **`_cancel_other_workers(except_pnum)`** — `begin_toggle` kills all other workers' countdowns, calls `job_finished()` on their units, RPC mode 1 each.
+- **`begin_toggle()`** — server-only. First countdown fires: if tile state changed during countdown → `job_finished()` all workers (abort). Else cancel others, transition RAISED→FALLING / LOWERED→RISING, clear `selected_by`, broadcast, second tween (`fall_time + thunk_time`) → `done_toggle`.
+- **`done_toggle()`** — server-only. Completes state change (set_lowered / RAISED + position reset). For each worker whose job is still assigned to its unit → `JobManager.remove_job`. Clears `_working_unit_dict`.
 
-**`cancel_toggle_countdown(pnum)`** — Server-only. Removes entry from `_working_unit_dict`. Kills the countdown tween (prevents `begin_toggle` from firing). Sends RPC mode 1 with pnum (kills visual countdown on all peers).
-
-**`_cancel_other_workers(except_pnum)`** — Server-only. Called by `begin_toggle` after the first countdown fires. Kills all other workers' countdown tweens, removes their entries from `_working_unit_dict`, calls `job_finished()` on their units, and sends RPC mode 1 for each.
-
-**`begin_toggle()`** — Server-only. Fired by one player's countdown tween after 2s delay.
-- Identifies which player's countdown fired (entry with non-null `countdown_tween`).
-- If tile state is no longer RAISED/LOWERED (state changed during countdown): calls `job_finished()` on ALL workers and clears dict. The toggle is aborted.
-- Otherwise: calls `_cancel_other_workers` to cancel all other workers. Transitions tile state (RAISED → FALLING, or LOWERED → RISING via `set_rising()`), clears all `selected_by`, sends RPC broadcast. Creates a second tween (`fall_time + thunk_time`) that calls `done_toggle`.
-
-**`done_toggle()`** — Server-only. Fired after the fall/rise animation completes.
-- RAISED→FALLING: calls `set_lowered()`. LOWERED→RISING: sets state = RAISED, resets tile position to `-Global.TILE_OFFSET`.
-- Iterates `_working_unit_dict`: calls `JobManager.remove_job()` for each entry whose job is still assigned to its unit (prevents stealing jobs from newly-assigned units).
-- Clears `_working_unit_dict`.
-
-### Tween separation on TileElement
-
-Two independent tweens exist on each tile during a toggle:
-
-| Tween | Scope | Purpose |
-|---|---|---|
-| `_countdown_tweens` | Server-only (dict: pnum→Tween) | Drives the 2s countdown → `begin_toggle`. One per player. Never synced to clients. |
-| `toggle_tween` | All peers (via RPC) | Visual countdown animation (color lerp) for per-player countdowns, then commit animation. Created by `rpc_toggle_animation` modes 0/2. Read by `update_selection_and_aoe_visual` to avoid overwriting emission during work. |
+Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → begin_toggle) and `toggle_tween` (synced visual, created by `rpc_toggle_animation` modes 0/2; `_apply_emission` skips while it runs).
 
 ### Job finish vs abandon vs cancel
 
 | Outcome | Who triggers | Job lifecycle | Unit lifecycle | Tile lifecycle |
 |---|---|---|---|---|
-| **Finish** | Tile animation completes → `done_toggle` → `job_finished()` | Removed from pool (`remove_job`) | → IDLE via `remove_job` → `idle_callback` | `done_toggle` completes state change, clears `_working_unit_dict` |
-| **Cancel** | Human deselects tile → `cancel_job` → `remove_job` | Removed from pool | → IDLE via `remove_job` → `idle_callback` | `remove_job` calls `cancel_toggle_countdown` if WORKING |
-| **Abandon (pathing)** | Path invalid → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | N/A (unit never reached tile) |
-| **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool (`JobManager.abandon_job`), reassignable after timer | → IDLE → `idle_callback` | Countdown cancelled, entry removed from `_working_unit_dict` |
-| **Displacement** | Tile removed from pathing → `_displace_unit` | Stays in pool (`abandon_job`) | Teleported to adjacent tile or destroyed | N/A |
+| **Finish** | Tile animation → `done_toggle` → `job_finished()` | Removed (`remove_job`) | → IDLE → `idle_callback` | State change completed, dict cleared |
+| **Cancel** | Human deselects → `cancel_job` → `remove_job` | Removed | → IDLE → `idle_callback` | `remove_job` cancels countdown if WORKING |
+| **Abandon (pathing)** | Path invalid → `abandon_job()` | Stays in pool, reassignable after timer | → IDLE → `idle_callback` | N/A |
+| **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool | → IDLE → `idle_callback` | Countdown cancelled, dict entry removed |
+| **Displacement** | Tile leaves pathing → `_displace_unit` | Stays in pool (`abandon_job`) | Teleported to adjacent tile or destroyed | N/A |
 
-### Tile disconnection / unit displacement
+### Tile disconnection / displacement
 
-When a tile leaves the pathing grid (`set_rising` or building placement), `TileManager.remove_tile_from_pathing(tile)` is called:
-
-1. `PathingManager.disconnect_tile(tile)` — removes all AStar edges from this tile
-2. `UnitManager.displace_units_on_tile(tile)` — for each unit on the tile:
-   - If unit has a job → cleanup without `idle_callback` (sets state to IDLE, clears job, calls `JobManager.abandon_job`)
-   - Kill active `move_tween`
-   - Find first `LOWERED` neighbour with no building → teleport unit there
-   - Call `idle_callback()` once from the new position
-   - If no valid neighbour exists → `rpc("rpc_remove_unit", unit.id)` (destroy, which also cleans up jobs)
-
-### Path re-routing
-
-`check_pathing_valid()` re-computes the path whenever the unit reaches a node and the current path is empty (or was invalidated). It tries all access tiles of the job target and picks the shortest path. This handles:
-- Other tiles being lowered/raised mid-path
-- Pathing edges being disconnected by tile displacement
-- The access tile changing if a building was placed/removed next to the target
+`TileManager.remove_tile_from_pathing(tile)` (from `set_rising` or building placement):
+1. `PathingManager.disconnect_tile(tile)` — drops AStar edges.
+2. `UnitManager.displace_units_on_tile(tile)` — per unit on the tile: cleanup job without `idle_callback` (IDLE, `JobManager.abandon_job`), kill `move_tween`, teleport to first LOWERED neighbour with no building, then one `idle_callback()`; if no valid neighbour → `rpc_remove_unit`.
 
 ### Job dict fields
 
-| Field | Type | Meaning |
-|---|---|---|
-| `id` | int | Unique job ID (monotonically increasing) |
-| `pnum` | int | Player who owns this job |
-| `type` | JobManager.Type | `TOGGLE_TILE`, `CONSTRUCT_BUILDING`, etc. |
-| `location` | TileElement | The tile this job targets |
-| `assigned` | Unit or null | Unit currently working on this job (null if unassigned) |
-| `abandoned_by` | Unit or null | Last unit that abandoned this job |
-| `abandoned_n` | int | How many times this job has been abandoned |
-| `abandoned_timer` | float | Seconds until eligible for reassignment (0 = eligible) |
+`id`, `pnum`, `type`, `location` (TileElement), `assigned` (Unit/null), `personal` (bool), `abandoned_by`, `abandoned_n`, `abandoned_timer`. Plus transient `path_dest` set during pathing.
 
-## Per-instance visual data (MultiMesh)
+## Economy & production
 
-Each tile instance packs three independent visuals into `set_instance_color` and `set_instance_custom_data`:
+- **EnergyManager** (server-only): 0.05s tick sums `get_energy()` over CONSTRUCTED `generator`-group buildings (MCP=27 fixed, Generator=sum of `gen_count` on its AoE tiles), fills `energy[p]` up to `capacity[p]`; 1s tick computes `rate_of_change` and shortfall ratio. `request_energy(pnum, amount)` deducts (returns allocated). `recalculate_capacity()` sums CONSTRUCTED `vat`-group `get_capacity()`. Broadcasts `apply_energy` (unreliable) per player. **Dicts are 1-based** — iterate `range(1, Global.MAX_PLAYERS + 1)`, never `for p in Global.MAX_PLAYERS`.
+- **Construction**: BLUEPRINT building's `_process` consumes energy at `CONSTRUCTION_COST / CONSTRUCTION_TIME`; at full → `set_constructed()` (`rpc_constructed` removes the blueprint and reveals the building).
+- **Production**: CONSTRUCTED building accumulates `_production_energy` via `request_energy`; at `UNIT_COST` → spawn via `um.rpc("rpc_spawn_unit", uid, type, building_id)`; cooldown from `Config.PRODUCTION_COOLDOWNS`. MCP overrides: AVATAR first, then ZOOMBA up to `zoomba_cap = floor(sqrt(player_aoe_totals[pnum]))`. Garage overrides: issues CONSUME_ZOOMBA jobs instead of spawning directly. Beacon → AERIAL, Nest → VIRUS.
+- **Empower**: `BuildingManager.set_empowered_for_player` (one building per player, swap clears the previous), `rpc_set_empowered`, subclasses react in `_empower_changed` (Vat ×1.2 capacity).
+- Building HUDs: each building gets its own `SubViewport` + HUD scene (`_setup_hud`), rendered into the `Terminal/Screen` material; terminal positioned at the access tile nearest the MCP (`position_terminal`).
 
-| Channel | Written by | Read by | Purpose |
-|---|---|---|---|
-| `INSTANCE_CUSTOM.rgba` | `set_tile_mm_selecting_mask` | `aluminium.tres` vertex→`selecting_mask` | Band stripes — which players claim this tile and which have AoE |
-| `COLOR.rgb` | `set_tile_mm_color` | `grid_edges.tres` fragment → `ALBEDO` | Edge color — local hover indicator |
-| `COLOR.a` | `set_tile_mm_emission` | `aluminium.tres` fragment → `EMISSION` + `EMISSION_ENERGY` | White glow — local-selection highlight (RGB=color, A=intensity) |
+## Combat
 
-All three are independent: `set_tile_mm_color` preserves `a`, `set_tile_mm_emission` preserves `rgb`, and `set_tile_mm_selecting_mask` writes custom data.
+- **CombatManager** (server-only): every 0.5s re-scan TANK/AERIAL units; score = `dmg × 10 - health`, must pass range (40) and line-of-sight (raycast that ignores LOWERED/FALLING tiles and self/target). Units without `orders["enemy"]` target any other player.
+- Firing: when weapon aligned (`Unit.is_weapon_aligned()`, slerped in `update_weapon_aim`), bursts of `WEAPON_BURST_DURATION`(0.4) with damage ticks every 0.1s. TANK fires an instant burst; AERIAL applies a projectile delay (`update_projectile_delay`). `combat_fire_event` is bumped server-side and drives client visuals (`_update_combat_visuals`).
+- **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK) heal server-side.
+- Health bars: `HealthBar3D` for units and buildings. Debug keys in HUD: `ui_damage_building` (P), `ui_damage_unit` (L) deal 40% max health.
 
-### AoE (Area of Effect)
+## Avatar / FPS camera
 
-- `TileElement.aoe` array lists which players have AoE on this tile
-- `TileManager.recompute_aoe()` runs BFS per building from `Config.BUILDING_AOE` radii
-- Called once after `apply_loaded_level()` — deterministic on all peers, no AoE-specific network traffic
-- Also called after building placement (`broadcast_place_blueprint`) and removal (`remove_building`) to keep AoE in sync
-- `Building.get_aoe_radius()` reads from `Config.BUILDING_AOE[type]`
+- `CameraManager.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
+- `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for clicking the MCP terminal HUD (`ScreenBody` collision → `Cursor3D`-style cursor + click).
+- Avatars skip the job system entirely (`idle_callback` no-op; `assign_jobs` skips AVATAR; not in `HOME_TERRITORY_UNITS`). Avatar snapshots are relayed separately (see Snapshot section).
 
 ## Godot 4 conversion patterns
 
-### Tween (RefCounted, not Node)
-
-- Use `create_tween()` instead of `$Tween`/`get_node("Tween")`
-- Chaining API: `tween_property()`, `tween_method()`, `tween_callback().set_delay(n)`
-- Auto-starts — no `.start()` needed
-- Kill with `tween.kill()` + guard with `tween and tween.is_valid()`
-- Store in a local var, not `@onready` (tweens are RefCounted, not Nodes)
-- For tween-created-as-child pattern (e.g. TileElement): `active_tween.kill(); active_tween = create_tween()`
-
-### `setget` → `set`/`get` blocks
-
-```gdscript
-# Godot 3
-var value: int = 0 setget set_value, get_value
-# Godot 4
-var value: int = 0:
-	set(v):
-		value = v
-	get:
-		return value
-```
-
-Use underscore-backed var to avoid recursion: `var _contains_val` backed by `contains` set/get.
-
-### `var` keyword on function parameters
-
-Removed in Godot 4. `func foo(var x: int)` → `func foo(x: int)`.
-
-### `@rpc` annotations
-
-```gdscript
-@rpc("authority", "call_local")  # server calls → runs on all peers
-@rpc("any_peer", "call_remote")  # any peer calls → runs on server only
-```
-
-### `call_deferred` for next-frame execution
-
-```gdscript
-call_deferred("my_function")
-my_function.call_deferred(arg1, arg2)
-```
-
-### `ImmediateGeometry` → `ImmediateMesh` + `MeshInstance3D`
-
-```gdscript
-# Godot 3: ImmediateGeometry (node)
-dr.clear()
-dr.begin(Mesh.PRIMITIVE_LINES)
-dr.set_color(Color.red)
-dr.add_vertex(...)
-dr.end()
-
-# Godot 4: ImmediateMesh (resource) on MeshInstance3D
-dr_mesh.clear_surfaces()
-dr_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-dr_mesh.surface_set_color(Color.RED)
-dr_mesh.surface_add_vertex(...)
-dr_mesh.surface_end()
-```
-
-## Converted scripts
-
-### Tile scripts
-
-- `TileElement.gd`: `tween.remove`→`active_tween.kill`, `interpolate_method`→`tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback`, signals use `.connect()`, `BUTTON_LEFT`→`MOUSE_BUTTON_LEFT`, `GlobalVars`→`Global`. `transform.origin.y = val`→copy-modify-set pattern. Added `aoe` array, `add_to_aoe(player_n)`, `pathing_manager` stored reference. Added `_working_unit_dict` for multi-player job callbacks, `done_toggle` iterates dict to clean up all workers, `begin_toggle` guards against invalid tile state and cancels other workers via `_cancel_other_workers`. Added `rpc_toggle_animation` for network-synced toggle visuals. Added `_countdown_tweens` dict (per-player) for server-only countdown tweens so each player's can be killed independently. `toggle_tween` is the visual commit tween synced to all peers via RPC.
-- `TileManager.gd`: `BaseMaterial3D`→`StandardMaterial3D`, `set_surface_material`→`set_surface_override_material`, `set_multimesh()`→`.multimesh =`, `translation`→`position`, `use_in_baked_light` removed. `translate()`→`position` (lines 60, 86, 96-101). Added `tiles()`, `recompute_aoe()`, `set_neighbours` assigns `pathing_manager` ref. Added `remove_tile_from_pathing(tile)`. `recompute_aoe()` runs once after `apply_loaded_level()` (not per-tile).
-- `TileManager.tscn`: both `[node name="Tween"]` children removed.
-- `PathingManager.gd`: `PackedInt32Array`→`PackedInt64Array`, added debug ImmediateMesh renderer with `toggle_debug()`. Added `disconnect_tile(tile)` for removing all edges from a tile.
-- `Cairo.gd`: `GENERATE = false` with "do not regenerate" note.
-- `MonorailMultimesh.gd`: not yet reviewed (entire body commented out).
-
-### Building scripts
-
-- `Building.gd`: `player_owner`, `get_aoe_radius()`, `check_work()` stub. Removed `@onready var tween` — uses `create_tween()` + `_build_tween` var with `.kill()`/`.is_valid()`. `setget`→`set`/`get` blocks for `spawn_start_loc` and `my_blueprint`. `initialise(pnum, tile)` — subclasses call `super.initialise(pnum, tile)` then set `self.type` and add their own groups. Fixed `UNDER_DESTRUCTIOfN` typo.
-- `Vat.gd`: `contains`→`_contains_val` set/get. `tween.remove(liquid)`→`_liquid_tween.kill()` + `create_tween().tween_property(...)`. `location.player`→`self.player_owner`.
-- `BuildingManager.gd`: `StaticBody`→`StaticBody3D`, `DESTROYED`→`LOWERED`, `tile.set_destroyed()`→`tile.set_lowered()`, added `buildings()` returning `building_dictionary.values()`. `initalise`→`initialise`. `tile.under_aoe`→`Global.my_player_number in tile.aoe`. `new_building_instance()` returns correct scene per type (MCP_3/4 use MCP.gd, GARAGE/BEACON/NEST use Building.gd).
-- `Zapper.gd`: `ImmediateGeometry`→`MeshInstance3D` + `ImmediateMesh`, `cast_to`→`target_position`, removed `tween.remove`/`tween.start`. Removed duplicate `Vector3.ZERO` first vertex.
-- `Zapper.tscn`: `type="ImmediateGeometry"`→`type="MeshInstance3D"`.
-- `Blueprints.gd`: `get_name()`→`name`, `set_surface_material`→`set_surface_override_material`, `get_surface_material_count()`→`node.mesh.get_surface_count()` with null guard.
-- `Blueprints.tscn`: removed orphan Tween node.
-- `MCP.gd`: `push_back`→`append` (4 calls in `_ready`).
-- `BuildingConstructedParticles.tscn`: full `format=2`→Godot 4 rewrite.
-- Materials (`blueprint_enabled.tres`, `blueprint_disabled.tres`): removed `diffuse_burley,specular_schlick_ggx` from `render_mode`; `hint_color`→`source_color`; removed `SPECULAR = specular;`; added `SCREEN_TEXTURE : hint_screen_texture`.
-
-### Unit scripts
-
-- `Unit.gd`: `@rpc("authority", "call_local")` on `assign_job`, `idle_callback`, `move`, `quat_transform`, `setup_rotation`. `PackedInt32Array`→`PackedInt64Array`, `Quat`→`Quaternion`, `transform.origin` used correctly, `create_tween()` for movement/rotation. `abandon_job()` inlines both pathing and working cleanup, kills `move_tween` to prevent stale callbacks. `_cleanup_working_state()` shared helper for tile countdown / construction cancellation, kills `_rotate_tween`. `remove_job` uses same helper, kills tween unconditionally. `pathing_callback` returns `abandon_job()` on invalid path, `job_finished()` on invalid job. `initialise(b)` — subclasses call `super.initialise(b)` then set `self.type` and add their own groups.
-- `Zoomba.gd`: Removed `@onready var tween`, added `pathing_manager`. `PoolIntArray`→`PackedInt64Array`. `interpolate_method`→`create_tween().tween_method`, `interpolate_property`→`tween_property`, `interpolate_callback`→`tween_callback().set_delay()`. `Quat`→`Quaternion`, `translation`→`position`, `GlobalVars`→`Global`, `push_back`→`append`, `remove`→`remove_at`, `cast_to`→`target_position`. Most pathing/work logic is commented out.
-- `UnitManager.gd`: Added `units()`, `_next_unit_id`, `rpc_remove_unit` (replaces `remove_unit`) with `@rpc("authority", "call_local")`, `displace_units_on_tile` + `_displace_unit` for tile disconnection handling. Server guard on `spawn_unit`.
-- `JobManager.gd`: `GlobalVars`→`Global`, `push_back`→`append`, removed `var` on parameters, ImmediateGeometry→ImmediateMesh for debug renderer. Flipped assignment to worker-centric: `try_and_assign(job)` → `assign_nearest_job(unit)`. `assign_jobs()` now has two-pass structure (timer decrement then worker iteration).
-
-### Camera / Floor scripts
-
-- `OmniLight.gd`: `translation`→`position`, `GlobalVars`→`Global`, `get_world()`→`get_world_3d()`, `intersect_ray(old_args)`→`PhysicsRayQueryParameters3D.create()`, `result.empty()`→`result.is_empty()`.
-- `CameraRTS.gd`: already Godot 4.
-- `GridMultiMesh.gd`: `push_back`→`append` (lines 56, 57, 96).
-- `Monument.gd` + `MonumentHelper.gd`: converted. `translate()`→`position` (lines 76, 79).
-
-### Core / Network scripts
-
-- `GameManager.gd`: `_apply_unit()` — client only; server never reaches it (early return in `_process` + `apply_snapshot` is `call_remote`). Client no longer mutates `server_state` or `health` — those fields only written by server. Client→avatar relay: clients send `receive_avatar_snapshot` (20 Hz, `camera_status == FPS` only) via `rpc_id(1, ...)`. Server stores per-pnum snapshots and interpolates with `_interpolate_avatars()`. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_units` to avoid control cycles.
-- `AIController.gd`: Filters to `interactive` group tiles instead of random from all tiles.
-- `Lobby.gd`: Guards `disconnect()` calls with `is_connected()` checks.
-- `Global.gd`: Fixed comment typo "of time" → "of tile".
-
-### Placeholder buildings
-
-Placeholder `.tscn` files created for MCP_3, MCP_4, Garage, Beacon, Nest under `scenes/world/buildings/`. MCP_3/4 use `MCP.gd`; Garage/Beacon/Nest use `Building.gd`. All have `StaticBody3D` root, `BuildingConstructedParticles`, `Plinth` with `Plinth.gd`, `CollisionShape3D`. Added to `Blueprints.tscn` so `new_building_instance()` can reference them as `$BuildingFactory/<Name>.duplicate()`.
-
-### Floor materials
-
-- Floor materials: `grid_faces.tres` and `grid_edges.tres` — `albedo` texture with `source_color`, `grid_edges.tres` has `use_instance_color` uniform for per-instance edge colour.
-
-### Remaining Godot 3 patterns (active bugs)
-
-| Pattern | File | Line(s) | Fix |
-|---|---|---|---|
-| Massive commented Godot 3 code | `CameraManager.gd` | most of file | Dead code, not converted |
-
-## Running
-
-- Pass `--client` as CLI arg to launch second instance on the Connect tab (skips Host tab).
-- Default config for instances: `"Run Instances"` in Godot editor with `--client` on the second.
+- **Tween** is RefCounted, not a Node: `create_tween()`, chained `tween_property/tween_method/tween_callback`, auto-starts. Store in a local/plain var, kill with `tween.kill()` + guard `tween and tween.is_valid()`, never `@onready`.
+- **`setget` → set/get blocks** with underscore-backed var (`var _contains_val` backed by `contains`).
+- **`@rpc` annotations**: `@rpc("authority", "call_local")` (server call runs everywhere), `@rpc("any_peer", "call_remote")` (client→server, derive caller via `get_remote_sender_id()`), plus `"reliable"`/`"unreliable"`.
+- **ImmediateMesh**: `clear_surfaces()` / `surface_begin()` / `surface_add_vertex()` instead of ImmediateGeometry.
+- **Materials**: player colour at `res://materials/player/player<N>_material.tres` (1..4, matches `PLAYER_COLORS`). Floor: `res://materials/floor/grid_faces.tres` (lit) + `grid_edges.tres` (unshaded cyan, `use_instance_color`).
+- The whole codebase is converted — no Godot 3 syntax remains (this file's old "Remaining patterns" list is resolved).
 
 ## Gotchas
 
-- `Server.next_player_num` is set by `NetworkManager.start_server()` before creating local clients — do not hard-code it.
+- `Server.next_player_num` is set by `NetworkManager.start_server()` after LOCAL/AI slots claim numbers — do not hard-code it.
 - `rpc_id(1, ...)` targets the server (peer 1 is always the server in ENet).
-- `TileManager.apply_toggle` validates `tile.state == RAISED` before toggling — tiles in FALLING/LOWERED/DISABLED are skipped.
-- `Global.my_player_number` is set at slot-creation time for the host human, or by `NetworkManager.set_my_player_number` RPC for remotes. If `my_player_number == -1`, the multi-selector fallback uses `selecting.min()`.
-- `%` unique node lookup requires the caller's node `owner` to be set. Dynamically created TileElements miss this → use a stored `pathing_manager` reference set by TileManager instead of `%PathingManager`.
-- `TileElement` no longer has `.player` — use `.selected_by` array or `.aoe` array for player ownership checks.
-- Server-only functions called from `_physics_process` (which runs on all peers) must self-guard with `if not multiplayer.is_server(): return`.
-- `create_tween()` returns a `RefCounted` Tween — store in a local var, use `.kill()` + `.is_valid()` guard, and do not use `@onready`.
-- `ImmediateMesh.clear_surfaces()` replaces `ImmediateGeometry.clear()`.
-- `EnergyManager` dictionaries use 1-based player numbers (1 through `MAX_PLAYERS`). All loops use `range(1, Global.MAX_PLAYERS + 1)`, not `for p in Global.MAX_PLAYERS` (which would iterate 0-3).
+- `TileManager.apply_toggle` validates `tile.state == RAISED` and LOWERED-with-no-building before toggling. Never call it directly — use `Global.send_command*`.
+- `Global.my_player_number` = -1 for a host with no LOCAL slot (spectator); `send_command_me` no-ops and HUD energy reads 0.
+- `%` unique-node lookup requires caller `owner`. Dynamically created TileElements miss this → use a stored `pathing_manager` ref (set by `TileManager.set_neighbours`) instead of `%PathingManager`.
+- `TileElement` has no `.player` — check `.selected_by` / `.aoe` / `player_owner` on buildings/units.
+- Server-only functions called from `_process`/`_physics_process` (which run on all peers) must self-guard.
+- `create_tween()` returns RefCounted — local var, `.kill()` + `.is_valid()` guard, no `@onready`.
+- Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client.
+- `EnergyManager`/job/player dicts are 1-based (1..`MAX_PLAYERS`). Loops: `range(1, Global.MAX_PLAYERS + 1)`.
 
 ## Lobby flow
 
-- When any REMOTE slot exists, "Start Lobby" loads `scenes/menu/Lobby.tscn` instead of going straight to World.
-- Lobby shows slot config, waits for all REMOTE peers to connect, then auto-starts World when `Server.peer_to_player.size()` equals the REMOTE slot count.
-- Host broadcasts `rpc("remote_start_game")` to all clients before transitioning; clients receive it via `Lobby.remote_start_game()` and load World.
-- Remote clients also load `Lobby.tscn` (not World.tscn) on connect, and wait for the host's RPC.
-- AI controllers check for `/root/World/TileManager` existence and skip actions during lobby (the node doesn't exist yet).
-- Back button calls `Global.network_manager.stop()` + `queue_free()` and returns to MainMenu.
-- `NetworkManager.stop()` also closes the client ENet peer (`multiplayer.multiplayer_peer.close()`) in client mode — not just the server peer.
+- When any REMOTE slot exists, "Start Lobby" loads `scenes/menu/Lobby.tscn`; otherwise straight to `World.tscn`. Remote clients always land on `Lobby.tscn` and wait.
+- Lobby waits until `Server.peer_to_player.size()` == REMOTE slot count, then host `rpc("remote_start_game")` + everyone loads World.
+- AI controllers check `/root/World/TileManager` existence and skip actions while it's absent (lobby).
+- Back button: `Global.network_manager.stop()` + `queue_free()` + null it, then MainMenu.
+- `NetworkManager.stop()` closes the client ENet peer too (`multiplayer.multiplayer_peer.close()`), not just the server peer.
 
 ## Floor (decorative only, no multiplayer sync)
 
-- `scenes/world/floor/Floor.tscn` — 50×50 tile visual floor with animated mountains
-- `scripts/world/floor/GridMultiMesh.gd` — `MultiMeshInstance3D` driving vertex-displacement mountains via per-instance custom data (Color stores 4 height values per column)
-- `scripts/world/floor/Grid.gd` — procedural grid mesh generator (generation disabled, uses `res://meshes/grid.tres`)
-- `scripts/world/floor/Monument.gd` + `MonumentHelper.gd` — procedural monuments with pulsing beacon
-- Materials: `res://materials/floor/grid_faces.tres` (lit, `source_color`) and `grid_edges.tres` (unshaded cyan edges)
-- 5s timer triggers mountain morph via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`
-- No collision, no Area3D, no RPC involvement
+- `scenes/world/floor/Floor.tscn` — 50×50 visual floor with animated mountains (vertex displacement via per-instance custom data), monuments with pulsing beacon, no collision, no RPCs. Timer morphs mountains via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`.
 
 ## UI rules
 
-- Only one slot can be "Host (Local)" — selecting LOCAL on a second slot snaps the first LOCAL back to Remote.
-- Zero LOCAL slots is allowed (Spectator mode): the host can watch but has no AIController, so host clicks route through `send_command_me` but get dropped by Server (no `peer_to_player` entry for the host).
+- One LOCAL slot max — selecting LOCAL on a second slot snaps the first back to Remote (`MainMenu._on_slot_selected`). Zero LOCAL slots = Spectator mode.
+- HUD modes: RAISE/LOWER (tile toggle, drag-select via `begin_drag`/`should_toggle`) and building placement (GEN/VAT/GARAGE/BEACON/NEST) → `TileElement` click sends `place_blueprint`. Building HUDs (SubViewports) send all building commands via `send_command_me` — commands carry `building_id`, never a node reference.
+
+## Running
+
+- Pass `--client` as CLI arg to launch a second instance on the Connect tab (`MainMenu` checks `OS.get_cmdline_args()`).
+- Default config for instances: "Run Instances" in the Godot editor with `--client` on the second.
