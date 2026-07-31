@@ -315,8 +315,12 @@ func set_constructed() -> void:
 	
 # --- Damage and Repair ---
 
-func apply_damage(amount: float) -> void:
+func apply_damage(amount: float, delay: float = 0.0) -> void:
 	if not multiplayer.is_server():
+		return
+	if delay > 0.0:
+		var tween := create_tween()
+		tween.tween_callback(apply_damage.bind(amount)).set_delay(delay)
 		return
 	_apply_damage(amount)
 

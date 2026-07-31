@@ -20,6 +20,13 @@ func _process(delta: float) -> void:
 		_scan_targets()
 	_update_firing(delta)
 
+func combat_target_position(combat_target : Variant) -> Vector3:
+	if not combat_target or not is_instance_valid(combat_target):
+		return Vector3.ZERO
+	if combat_target is Building:
+		return combat_target.location.pathing_centre + Vector3(0, Cairo.HEIGHT / 2.0, 0)
+	return combat_target.global_position
+
 func _enemy_list_for(unit: Unit) -> Array[int]:
 	if unit.orders.has("enemy") and not unit.orders["enemy"].is_empty():
 		return unit.orders["enemy"] as Array[int]
@@ -38,6 +45,10 @@ func _in_range(from: Vector3, to: Vector3) -> bool:
 	return from.distance_squared_to(to) < Config.COMBAT_RANGE * Config.COMBAT_RANGE
 
 func _has_los(from: Vector3, to: Vector3, exclude: Node = null) -> bool:
+	return true
+	#
+	# TODO DEBUG
+	#
 	var space = get_world_3d().direct_space_state if get_world_3d() else null
 	if not space:
 		return true
@@ -46,6 +57,9 @@ func _has_los(from: Vector3, to: Vector3, exclude: Node = null) -> bool:
 		query.exclude = [exclude]
 	var result = space.intersect_ray(query)
 	if result.is_empty():
+		return true
+	var collider = result.collider
+	if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING, TileManager.State.DISABLED]:
 		return true
 	var dist_to_target = from.distance_squared_to(to)
 	var hit_dist = from.distance_squared_to(result.position)
@@ -154,7 +168,10 @@ func _update_firing(delta: float) -> void:
 				var mode = _attacker_mode(u)
 				var dmg = Config.get_damage(u.type, u.combat_target, mode)
 				if dmg > 0:
-					u.combat_target.apply_damage(dmg)
+					var delay := 0.0
+					if u.type == UnitManager.Type.AERIAL:
+						delay = u.update_projectile_delay()
+					u.combat_target.apply_damage(dmg, delay)
 					if u.type == UnitManager.Type.AERIAL:
 						u.combat_fire_event += 1
 			if u.combat_burst_timer <= 0.0:

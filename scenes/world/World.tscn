@@ -84,4 +84,6 @@ omni_attenuation = 0.7
 omni_shadow_mode = 0
 script = ExtResource("7_252at")
 
+[node name="ProjectilesHolder" type="Node3D" parent="." unique_id=1832632869]
+
 [node name="HUD" parent="." unique_id=1691572145 instance=ExtResource("7_hud")]

@@ -18,17 +18,17 @@ func initialise(b: Building) -> void:
 	_beam_node.mesh = _make_beam_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.2, 0.05)
+	#mat.emission = Color(1.0, 0.2, 0.05)
+	mat.emission = Config.PLAYER_COLORS[ player_owner ]
 	mat.emission_energy_multiplier = 5.0
-	mat.albedo_color = Color(1.0, 0.15, 0.05, 0.85)
+	#mat.albedo_color = Color(1.0, 0.15, 0.05, 0.85)
+	mat.albedo_color = Config.PLAYER_COLORS[ player_owner ]
+	mat.albedo_color.a = 0.85
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_beam_node.material_override = mat
 	_beam_node.visible = false
-	var world = get_node_or_null("/root/World")
-	if world:
-		world.add_child(_beam_node)
-	else:
-		add_child(_beam_node)
+	var ph = get_node_or_null("/root/World/ProjectilesHolder")
+	ph.add_child(_beam_node)
 	tree_exiting.connect(_beam_node.queue_free)
 
 func _make_beam_mesh() -> ArrayMesh:
@@ -68,7 +68,7 @@ func _update_combat_visuals(delta: float) -> void:
 		return
 	if _beam_node.visible and combat_target and is_instance_valid(combat_target):
 		var from = _get_muzzle_global()
-		var to = _combat_target_position()
+		var to = combat_manager.combat_target_position(combat_target)
 		var dir = to - from
 		var dist = dir.length()
 		if dist < 0.1:

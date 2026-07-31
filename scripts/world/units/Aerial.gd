@@ -8,6 +8,7 @@ var mode: Mode = Mode.PATROL
 var lifetime: float = 120.0
 var _lifetime_timer: float = 0.0
 var _lifetime_bar: HealthBar3D
+var _projectile_delay := 0.0
 
 func get_mode() -> int:
 	return mode
@@ -58,6 +59,16 @@ func initialise(b: Building) -> void:
 	muzzle_node = $Body/Gun/Muzzle
 	weapon_forward_local = Vector3.FORWARD
 
+func update_projectile_delay() -> float:
+	if not combat_target or not is_instance_valid(combat_target):
+		_projectile_delay = 0.0
+		return _projectile_delay
+	var from = _get_muzzle_global()
+	var to = combat_manager.combat_target_position(combat_target)
+	var dist = from.distance_to(to)
+	_projectile_delay = clampf((dist / Config.COMBAT_RANGE) * Config.PROJECTILE_MAX_FLIGHT_TIME, 0.016, Config.PROJECTILE_MAX_FLIGHT_TIME)
+	return _projectile_delay
+
 func _on_fire_event() -> void:
 	_spawn_projectile()
 
@@ -74,18 +85,24 @@ func _spawn_projectile() -> void:
 	projectile.material_override = mat
 	projectile.scale = Vector3(0.2, 0.2, 0.2)
 	var from = _get_muzzle_global()
-	var to = _combat_target_position()
+	var to = combat_manager.combat_target_position(combat_target)
 	projectile.global_position = from
-	var world = get_node_or_null("/root/World")
-	if world:
-		world.add_child(projectile)
-	else:
-		get_parent().add_child(projectile)
-	var dist = from.distance_to(to)
-	var flight_time = (dist / Config.COMBAT_RANGE) * Config.PROJECTILE_MAX_FLIGHT_TIME
-	flight_time = clampf(flight_time, 0.016, Config.PROJECTILE_MAX_FLIGHT_TIME)
+	var ph = get_node_or_null("/root/World/ProjectilesHolder")
+	ph.add_child(projectile)
+	# On the server, CombatManager primes _projectile_delay right before incrementing
+	# combat_fire_event, so the cache is fresh here. Remote clients don't run
+	# CombatManager, so they must compute a fresh flight time each spawn.
+	var flight_time := _projectile_delay
+	if not multiplayer.is_server() or flight_time <= 0.0:
+		flight_time = update_projectile_delay()
+	var target_node = combat_target # The unit might change target, but we don't change this projectile
 	var tween = projectile.create_tween()
-	tween.tween_property(projectile, "global_position", to, flight_time)
+	tween.tween_method(func(t):
+		var pos = combat_manager.combat_target_position(target_node)
+		if pos == Vector3.ZERO:
+			pos = to 
+		projectile.global_position = from.lerp(pos, t)
+	, 0.0, 1.0, flight_time)
 	tween.tween_callback(projectile.queue_free)
 	# Safety — free projectile if the tween gets killed early
 	var timer = get_tree().create_timer(Config.PROJECTILE_MAX_FLIGHT_TIME * 2.0)

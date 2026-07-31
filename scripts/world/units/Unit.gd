@@ -46,10 +46,12 @@ var _move_target : Vector3 = Vector3.ZERO
 
 # --- Combat aiming ---
 
+@onready var combat_manager = get_node_or_null("/root/World/CombatManager")
+
 func update_weapon_aim(delta: float) -> bool:
 	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
 		return false
-	var target_pos = _combat_target_position()
+	var target_pos = combat_manager.combat_target_position(combat_target)
 	var dir = target_pos - weapon_node.global_position
 	if dir.length_squared() < 0.0001:
 		return false
@@ -77,7 +79,7 @@ func update_weapon_aim(delta: float) -> bool:
 func is_weapon_aligned() -> bool:
 	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
 		return false
-	var target_pos = _combat_target_position()
+	var target_pos = combat_manager.combat_target_position(combat_target)
 	var dir = target_pos - weapon_node.global_position
 	if dir.length_squared() < 0.0001:
 		return false
@@ -94,11 +96,6 @@ func _get_muzzle_global() -> Vector3:
 		weapon_node.force_update_transform()
 		return weapon_node.global_position
 	return global_position
-
-func _combat_target_position() -> Vector3:
-	if not combat_target or not is_instance_valid(combat_target):
-		return Vector3.ZERO
-	return combat_target.global_position
 
 # --- Combat visuals ---
 
@@ -459,7 +456,7 @@ func move(callback: Callable) -> void:
 	var current_y := position.y
 	_move_target = location.pathing_centre
 	_move_target.y = current_y
-	if state == State.IDLE:
+	if state == State.IDLE and type == UnitManager.Type.ZOOMBA:
 		# Rotate first, then move — gives a deliberate turn-then-walk feel
 		var rot_time := time / 4.0
 		var move_time := time - rot_time
@@ -515,8 +512,12 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 
 # --- Damage ---
 
-func apply_damage(amount: float) -> void:
+func apply_damage(amount: float, delay: float = 0.0) -> void:
 	if not multiplayer.is_server():
+		return
+	if delay > 0.0:
+		var tween := create_tween()
+		tween.tween_callback(apply_damage.bind(amount)).set_delay(delay)
 		return
 	_apply_damage(amount)
 
