@@ -222,6 +222,9 @@ func recompute_aoe() -> void:
 		t.gen_count = 0
 	var touched := {}
 	for b in %BuildingManager.buildings():
+		var radius : int = b.get_aoe_radius()
+		if b.type == BuildingManager.Type.GEN and b.is_empowered:
+			radius += 1
 		var queue := []
 		var visited := {}
 		visited[b.location] = true
@@ -234,7 +237,7 @@ func recompute_aoe() -> void:
 			if b.type == BuildingManager.Type.GEN:
 				current.gen_count += 1
 			touched[current] = true
-			if depth >= b.get_aoe_radius():
+			if depth >= radius:
 				continue
 			for n in current.neighbours:
 				if not visited.has(n):

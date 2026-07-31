@@ -7,6 +7,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/GeneratorHUD.tscn")
 # --- State ---
 
 var generation: float = 0.0
+var generation_extra: float = 0.0
 
 # --- Lifecycle ---
 
@@ -29,22 +30,33 @@ func initialise(pnum: int, tile: TileElement) -> void:
 # --- Energy ---
 
 func update_energy() -> void:
-	var total := 0
+	var total := 0.0
 	for t in _aoe_tiles:
-		total += t.gen_count
+		if t.gen_count > 0:
+			total += 1.0 / t.gen_count
 	generation = total
+	var total_extra := 0.0
+	for t in _aoe_tiles_extra:
+		if t.gen_count > 0:
+			total_extra += 1.0 / t.gen_count
+	generation_extra = total_extra
 
 func get_energy() -> float:
 	if state != State.CONSTRUCTED:
 		return 0.0
+	if is_empowered:
+		return generation + generation_extra
 	return generation
+
+func _empower_changed(_val: bool) -> void:
+	get_node_or_null("/root/World/TileManager").recompute_aoe()
 
 # --- Mouse hover ---
 
 func _on_mouse_entered() -> void:
 	if state != State.CONSTRUCTED:
 		return
-	for t in _aoe_tiles:
+	for t in _hover_tiles():
 		var color : Color
 		match t.gen_count:
 			1: color = Color.GREEN
@@ -54,5 +66,11 @@ func _on_mouse_entered() -> void:
 		t.request_emission(TileElement.EmissionEffect.GENERATOR_CATCHMENT, color, 0.5)
 
 func _on_mouse_exited() -> void:
-	for t in _aoe_tiles:
+	for t in _hover_tiles():
 		t.release_emission(TileElement.EmissionEffect.GENERATOR_CATCHMENT)
+
+func _hover_tiles() -> Array[TileElement]:
+	var tiles: Array[TileElement] = _aoe_tiles.duplicate()
+	if is_empowered:
+		tiles.append_array(_aoe_tiles_extra)
+	return tiles

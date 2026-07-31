@@ -20,6 +20,7 @@ var type: BuildingManager.Type
 var is_empowered: bool = false
 var orders: Dictionary = {}
 var _aoe_tiles: Array[TileElement] = []
+var _aoe_tiles_extra: Array[TileElement] = []
 
 # --- Health ---
 
@@ -126,12 +127,14 @@ func find_unit_spawn_location() -> TileElement:
 			return n
 	return location
 
-func get_aoe_radius() -> float:
+func get_aoe_radius() -> int:
 	return Config.BUILDING_AOE[type]
 	
 func _build_aoe_tiles() -> void:
 	var interactive: Array = get_tree().get_nodes_in_group("interactive")
 	_aoe_tiles.clear()
+	_aoe_tiles_extra.clear()
+	var radius := int(get_aoe_radius())
 	var queue := []
 	var visited := {}
 	visited[location] = true
@@ -140,15 +143,16 @@ func _build_aoe_tiles() -> void:
 		var entry = queue.pop_front()
 		var current = entry.tile as TileElement
 		var depth = entry.depth as int
-		_aoe_tiles.append(current)
-		if depth >= get_aoe_radius():
-			continue
-		for n in current.neighbours:
-			if n not in interactive:
-				continue
-			if not visited.has(n):
-				visited[n] = true
-				queue.append({tile = n, depth = depth + 1})
+		if depth <= radius:
+			_aoe_tiles.append(current)
+			for n in current.neighbours:
+				if n not in interactive:
+					continue
+				if not visited.has(n):
+					visited[n] = true
+					queue.append({tile = n, depth = depth + 1})
+		elif depth == radius + 1:
+			_aoe_tiles_extra.append(current)
 
 func check_work() -> void:
 	if not multiplayer.is_server():

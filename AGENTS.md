@@ -53,8 +53,8 @@ send_command_me / send_command
   ├─ Server exists? → Server.handle_command(pnum, command, args)
   │                     └─ reflection → _cmd_toggle_cell / _cmd_toggle_tile / ...
   └─ No server (remote client)? → rpc_id(1, "_on_remote_command", ...)
-                                   └─ Server._on_remote_command()
-                                      └─ peer_to_player[caller] → handle_command(pnum, ...)
+								   └─ Server._on_remote_command()
+									  └─ peer_to_player[caller] → handle_command(pnum, ...)
 ```
 
 **Key points**:
