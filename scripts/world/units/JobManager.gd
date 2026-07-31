@@ -165,6 +165,33 @@ func get_pathlength(from: TileElement, to: TileElement) -> int:
 			shortest = dist.size()
 	return shortest
 
+func check_job_still_valid(job: Dictionary) -> bool:
+	if not multiplayer.is_server():
+		return false
+	if job.is_empty():
+		return false
+	var pnum: int = job["pnum"]
+	match job["type"]:
+		Type.CONSTRUCT_BUILDING:
+			var b = job["location"].building
+			if not b or b.state != Building.State.BLUEPRINT:
+				return false
+		Type.TOGGLE_TILE:
+			var tile = job["location"] as TileElement
+			if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
+				return false
+			if tile.selected_by.count(pnum) == 0:
+				return false
+		Type.REPAIR_BUILDING:
+			var b = job["location"].building
+			if not b or b.health >= b.max_health:
+				return false
+		Type.CONSUME_ZOOMBA:
+			var b = job["location"].building
+			if not b or b.state != Building.State.CONSTRUCTED or b.type != BuildingManager.Type.GARAGE:
+				return false
+	return true
+
 # --- Job notifications ---
 
 func _notify_job_event(pnum: int, event: String, job: Dictionary) -> void:

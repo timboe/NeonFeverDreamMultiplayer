@@ -266,7 +266,8 @@ func pathing_callback() -> void:
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
-	if not check_job_still_valid():
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if jm and not jm.check_job_still_valid(job):
 		return job_finished()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
@@ -282,31 +283,6 @@ func pathing_callback() -> void:
 	location = _pathing_manager.get_tile(path[progress])
 	progress += 1
 	move(pathing_callback)
-
-func check_job_still_valid() -> bool:
-	if not multiplayer.is_server():
-		return false
-	if job.is_empty():
-		return false
-	if job["type"] == JobManager.Type.CONSTRUCT_BUILDING:
-		var b = job["location"].building
-		if not b or b.state != Building.State.BLUEPRINT:
-			return false
-	elif job["type"] == JobManager.Type.TOGGLE_TILE:
-		var tile = job["location"] as TileElement
-		if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
-			return false
-		if tile.selected_by.count( player_owner ) == 0:
-			return false
-	elif job["type"] == JobManager.Type.REPAIR_BUILDING:
-		var b = job["location"].building
-		if not b or b.health >= b.max_health:
-			return false
-	elif job["type"] == JobManager.Type.CONSUME_ZOOMBA:
-		var b = job["location"].building
-		if not b or b.state != Building.State.CONSTRUCTED or b.type != BuildingManager.Type.GARAGE:
-			return false
-	return true
 
 func check_pathing_valid() -> bool:
 	if not multiplayer.is_server():
