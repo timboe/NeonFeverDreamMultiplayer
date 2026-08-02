@@ -21,6 +21,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_setup_production(UnitManager.Type.AERIAL)
 	add_to_group("beacon")
 	add_to_group("beacon_player" + str(pnum))
+	_build_aoe_tiles()
 	_setup_hud()
 	orders["patrol"] = {}
 	orders["strike"] = {}
