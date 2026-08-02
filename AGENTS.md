@@ -274,7 +274,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 ## Avatar / FPS camera
 
 - `Global.VM.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
-- `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for clicking the MCP terminal HUD (`ScreenBody` collision → `Cursor3D`-style cursor + click).
+- `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for interacting with terminal HUDs (`ScreenBody` collision → drives the 2D `TerminalCursor` in the building's SubViewport HUD, propagating hover + click).
 - Avatars skip the job system entirely (`idle_callback` no-op; `assign_jobs` skips AVATAR; not in `HOME_TERRITORY_UNITS`). Avatar snapshots are relayed separately (see Snapshot section).
 
 ## Godot 4 conversion patterns

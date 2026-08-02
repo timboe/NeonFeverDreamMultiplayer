@@ -1,4 +1,4 @@
-extends Control
+extends TerminalHUD
 
 class_name VatHUD
 
@@ -13,8 +13,6 @@ var building: Vat
 @onready var hp_label: Label = $Window/VBox/HPRow/HPLabel
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
-var _cursor: Cursor3D
-
 func _ready() -> void:
 	if not empower_btn:
 		return
@@ -24,9 +22,6 @@ func _ready() -> void:
 func _on_empower_pressed() -> void:
 	if building:
 		Global.send_command_me("empower", [building.id])
-
-func setup_cursor_3d(screen: MeshInstance3D) -> void:
-	_cursor = Cursor3D.new(screen, Config.TERMINAL_SCREEN_SIZE)
 
 func _process(_delta: float) -> void:
 	if not building or not energy_bar:
@@ -45,21 +40,3 @@ func _process(_delta: float) -> void:
 	hp_bar.value = building.health
 	hp_label.text = str(int(building.health)) + " / " + str(int(building.max_health))
 	empower_indicator.visible = building.is_empowered
-
-func show_cursor_at_uv(uv: Vector2) -> void:
-	if _cursor:
-		_cursor.show_at_uv(uv, Config.TERMINAL_SCREEN_SIZE)
-
-func hide_cursor() -> void:
-	if _cursor:
-		_cursor.hide()
-
-func click_at_uv(uv: Vector2) -> void:
-	var viewport := get_viewport() as SubViewport
-	if _cursor:
-		_cursor.click_at_viewport(viewport, uv)
-
-func uv_from_collision(screen_mesh: MeshInstance3D, collision_point: Vector3) -> Vector2:
-	if _cursor:
-		return _cursor.uv_from_collision(Config.TERMINAL_SCREEN_SIZE, collision_point)
-	return Vector2.ZERO

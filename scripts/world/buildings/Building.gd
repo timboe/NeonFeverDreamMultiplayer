@@ -238,8 +238,6 @@ func _setup_hud() -> void:
 			screen.set_surface_override_material(0, mat)
 			mat.albedo_texture = _hud.get_texture()
 			mat.albedo_color = Color.WHITE
-		if ctrl.has_method("setup_cursor_3d"):
-			ctrl.setup_cursor_3d(screen)
 
 # --- Terminal positioning ---
 

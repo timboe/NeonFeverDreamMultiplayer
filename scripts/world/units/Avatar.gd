@@ -152,26 +152,27 @@ func _update_screen_cursor() -> void:
 		return
 	var col := screen_ray.get_collider()
 	if col and col.name == "ScreenBody":
-		var screen_mesh := col.get_parent() as MeshInstance3D
-		if screen_mesh:
-			var terminal := screen_mesh.get_parent()
-			if terminal:
-				var parent_building := terminal.get_parent()
-				if parent_building:
-					var mcp_hud_root := parent_building.get_node_or_null("MCPHUD/Root")
-					if mcp_hud_root:
-						var uv: Vector2 = mcp_hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())
-						mcp_hud_root.show_cursor_at_uv(uv)
-						if just_clicked:
-							mcp_hud_root.click_at_uv(uv)
-						return
+		var terminal: Node = col.get_parent()
+		if terminal:
+			# The ScreenBody collider's parent is the Terminal root; the actual
+			# display plane (and its material texture) is the "Screen" child.
+			var screen_mesh := terminal.get_node_or_null("Screen") as MeshInstance3D
+			var building := terminal.get_parent()
+			if screen_mesh and building:
+				var hud_root := building.get_node_or_null("BuildingHUD/Root")
+				if hud_root and hud_root.has_method("uv_from_collision"):
+					var uv: Vector2 = hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())
+					hud_root.show_cursor_at_uv(uv)
+					if just_clicked:
+						hud_root.click_at_uv(uv)
+					return
 	_hide_all_hud_cursors()
 
 func _hide_all_hud_cursors() -> void:
-	for b in get_tree().get_nodes_in_group("mcp"):
-		var mcp_hud_root := b.get_node_or_null("MCPHUD/Root")
-		if mcp_hud_root and mcp_hud_root.has_method("hide_cursor"):
-			mcp_hud_root.hide_cursor()
+	for b in get_tree().get_nodes_in_group("building"):
+		var hud_root := b.get_node_or_null("BuildingHUD/Root")
+		if hud_root and hud_root.has_method("hide_cursor"):
+			hud_root.hide_cursor()
 
 func draw_jaggy_to(dist: float) -> void:
 	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)

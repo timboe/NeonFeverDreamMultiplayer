@@ -35,6 +35,8 @@ var _drag_action: DragAction = DragAction.NONE
 @onready var energy_label: Label = %EnergyLabel
 @onready var energy_rate_label: Label = %EnergyRateLabel
 @onready var fps_button: Button = %FPSButton
+@onready var crosshair: Control = $HUDRoot/Crosshair
+@onready var mode_bar: PanelContainer = $HUDRoot/ModeBar
 
 var _tile_buttons: Dictionary = {}
 var _build_buttons: Dictionary = {}
@@ -79,6 +81,7 @@ func _ready() -> void:
 	_update_button_styles()
 
 func _process(_delta: float) -> void:
+	_update_camera_ui()
 	var e := _get_player_energy()
 	energy_bar.max_value = e.capacity
 	energy_bar.value = e.current
@@ -114,6 +117,16 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_damage_unit"):
 		for u in get_tree().get_nodes_in_group("unit"):
 			u.apply_damage(Config.UNIT_MAX_HP.get(u.type, 100.0) * 0.4)
+
+# --- Camera UI ---
+
+func _update_camera_ui() -> void:
+	var is_fps := false
+	var vm = Global.VM
+	if vm:
+		is_fps = vm.camera_status == vm.CameraStatus.FPS
+	crosshair.visible = is_fps
+	mode_bar.visible = not is_fps
 
 # --- Energy ---
 
