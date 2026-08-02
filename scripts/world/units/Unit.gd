@@ -2,55 +2,79 @@ extends Node3D
 
 class_name Unit
 
+# --- Constants ---
+
 const QUICK_ROTATE_TIME := 0.2
 const SPAWN_TIME := 2.0
 const SCRAM: int = 10
+const REPAIR_INTERVAL := 0.05
+const REPAIR_AMOUNT := 0.25
+const REPAIR_DELAY := 10.0
+
+# --- Types ---
+
+enum State {IDLE, PATHING, WORKING}
 
 # --- Identity ---
 
 var id: int # My ID within the UnitManager
 var type: UnitManager.Type # My type
 var player_owner: int # Player who owns me (copied from spawning building)
-var orders: Dictionary # My orders. Recieved from building on spawn
-
-func get_mode() -> int:
-	return -1
+var orders: Dictionary # My orders. Received from building on spawn
 
 # --- State machine ---
-
-enum State {IDLE, PATHING, WORKING}
 
 var state: State = State.IDLE
 var job: Dictionary = {}
 var health: float = 100.0
 var scram_count: int = 0
-
-const REPAIR_INTERVAL := 0.05
-const REPAIR_AMOUNT := 0.25
-const REPAIR_DELAY := 10.0
 var _repair_timer := 0.0
 
 # --- Pathfinding ---
 
 var path: PackedInt64Array = []
 var progress: int
-
-# --- Combat hold ---
-
-var combat_hold_tween: Tween
-
-# --- Location ---
-
 var location: TileElement
 var previous_location: TileElement
 var move_tween: Tween
 var _rotate_tween: Tween
 var _pathing_manager: PathingManager
-var _move_target : Vector3 = Vector3.ZERO
+var _move_target: Vector3 = Vector3.ZERO
 
-# --- Combat aiming ---
+# --- Rotation ---
+
+var quat_from: Quaternion
+var quat_to: Quaternion
+
+# --- Combat ---
 
 @onready var combat_manager = get_node_or_null("/root/World/CombatManager")
+var combat_hold_tween: Tween
+var combat_target: Variant = null
+var combat_fire_event: int = 0
+var combat_fire_timer: float = 0.0
+var combat_burst_timer: float = 0.0
+var combat_damage_tick_timer: float = 0.0
+var weapon_node: Node3D
+var muzzle_node: Node3D
+var weapon_forward_local: Vector3 = Vector3.FORWARD
+
+# --- Combat visuals ---
+
+var _last_fire_event: int = 0
+var _laser_timer: float = 0.0
+var _beam_node: MeshInstance3D
+
+# --- UI ---
+
+var _health_bar: HealthBar3D
+
+# --- Queries ---
+
+func get_mode() -> int:
+	return -1
+
+# --- Combat aiming ---
 
 func update_weapon_aim(delta: float) -> bool:
 	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
@@ -117,30 +141,6 @@ func _on_fire_event() -> void:
 
 func _hide_beam() -> void:
 	pass
-
-# --- Rotation ---
-
-var quat_from: Quaternion
-var quat_to: Quaternion
-
-# --- UI ---
-
-var _health_bar: HealthBar3D
-
-# --- Combat ---
-
-var combat_target: Variant = null
-var combat_fire_event: int = 0
-var combat_fire_timer: float = 0.0
-var combat_burst_timer: float = 0.0
-var combat_damage_tick_timer: float = 0.0
-var weapon_node: Node3D
-var muzzle_node: Node3D
-var weapon_forward_local: Vector3 = Vector3.FORWARD
-
-var _last_fire_event: int = 0
-var _laser_timer: float = 0.0
-var _beam_node: MeshInstance3D
 
 # --- Lifecycle ---
 
@@ -257,7 +257,7 @@ func idle_callback() -> void:
 	var backtrack = possible_destinations.find(previous_location)
 	if possible_destinations.size() > 1 and backtrack != -1:
 		possible_destinations.remove_at(backtrack)
-		
+
 	# Check if we are a PATROL unit with LOCAL patrol
 	if possible_destinations.size() > 1 \
 		and not orders.is_empty() \
@@ -265,7 +265,7 @@ func idle_callback() -> void:
 		and orders["stance"] == JobManager.Stance.HOLD \
 		and is_instance_valid(orders["source"]):
 		# Remove targets which are not under the building's AoE for player
-		var local_options : Array[TileElement] = []
+		var local_options: Array[TileElement] = []
 		for te in orders["source"]._aoe_tiles:
 			if te in possible_destinations:
 				local_options.append(te)
@@ -428,7 +428,7 @@ func start_work() -> void:
 		$Zapper.visible = true
 		$Zapper.target_position.y = Cairo.UNIT
 	match job["type"]:
-		JobManager.Type.TOGGLE_TILE:				
+		JobManager.Type.TOGGLE_TILE:
 			job["target"].do_toggle_countdown(self)
 		JobManager.Type.CONSTRUCT_BUILDING:
 			job["target"].building.start_construction(self)

@@ -14,7 +14,7 @@ const CAPACITY: float = 1000
 # --- State ---
 
 var capacity_mod_vats: float = 0.0
-var capacity_mult_empower : float = 1.0
+var capacity_mult_empower: float = 1.0
 
 # --- Visuals ---
 

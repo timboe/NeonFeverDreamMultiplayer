@@ -6,6 +6,7 @@ class_name MonorailMultimesh
 const HIDE_DEPTH: float = -3.0
 const CONNECT_TIME: float = 0.5
 const DISCONNECT_TIME: float = 0.2
+const _SNAP := 1000.0
 
 # --- State ---
 
@@ -277,8 +278,6 @@ func _compute_edge_transform(from_pos: Vector3, to_pos: Vector3) -> Transform3D:
 	return Transform3D(the_basis, origin)
 
 # --- Mesh extraction ---
-
-const _SNAP := 1000.0
 
 func _extract_monorail_mesh() -> Mesh:
 	var scene = preload("res://scenes/csg_bases/Monorail_CSG.tscn").instantiate()

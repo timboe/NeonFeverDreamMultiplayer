@@ -15,9 +15,14 @@ const HIDE_DEPTH: float = -50.0
 var building_dictionary: Dictionary = {}
 var _next_building_id: int = 1
 
+# --- Blueprints ---
+
+var enabled_blueprints: Dictionary = {}
+var disabled_blueprints: Dictionary = {}
+
 # --- Empower tracking ---
 
-var _empowered_by_player: Dictionary = {}  # pnum → Building
+var _empowered_by_player: Dictionary = {}  # pnum -> Building
 
 func set_empowered_for_player(pnum: int, building: Building) -> void:
 	var prev = _empowered_by_player.get(pnum)
@@ -34,11 +39,6 @@ func clear_empowered_for_player(pnum: int) -> void:
 		prev.is_empowered = false
 		prev.rpc("rpc_set_empowered", false)
 	_empowered_by_player.erase(pnum)
-
-# --- Blueprints ---
-
-var enabled_blueprints: Dictionary = {}
-var disabled_blueprints: Dictionary = {}
 
 # --- Lifecycle ---
 

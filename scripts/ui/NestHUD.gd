@@ -108,7 +108,7 @@ func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
-	var pct := int(building.virus_tank_building_ratio * 100)
+	var pct := int(building._virus_tank_building_ratio * 100)
 	ratio_slider.set_value_no_signal(pct)
 	# Label is "Tank / Building"; pct is building ratio, so tank = 100 - pct
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
@@ -121,7 +121,7 @@ func _process(_delta: float) -> void:
 	virus_nearest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.NEAREST)
 	virus_lowest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.LOWEST_HP)
 	# Show/hide building targeting section based on ratio
-	building_target_section.visible = building.virus_tank_building_ratio < 1.0
+	building_target_section.visible = building._virus_tank_building_ratio < 1.0
 	var um = get_node_or_null("/root/World/UnitManager")
 	if um:
 		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))

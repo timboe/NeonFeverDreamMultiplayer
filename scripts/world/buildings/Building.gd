@@ -2,8 +2,12 @@ extends StaticBody3D
 
 class_name Building
 
+# --- Constants ---
+
 const CONSTRUCTION_TIME: float = 5.0
 const HEALTH_BAR_HEIGHT: float = 22.0
+const REPAIR_INTERVAL := 0.05
+const REPAIR_AMOUNT := 2.5
 
 # --- Identity ---
 
@@ -27,9 +31,6 @@ var _aoe_tiles_extra: Array[TileElement] = []
 var health: float = 0.0
 var max_health: float = 0.0
 var _health_bar: HealthBar3D
-
-const REPAIR_INTERVAL := 0.05
-const REPAIR_AMOUNT := 2.5
 var _repair_timer := 0.0
 
 # --- Construction ---
@@ -44,6 +45,10 @@ var _production_cost: float = 0.0
 var _production_energy: float = 0.0
 var _production_timer: float = 0.0
 var _production_enabled: bool = true
+
+# --- HUD ---
+
+var _hud: SubViewport = null
 
 # --- Lifecycle ---
 
@@ -72,14 +77,14 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	# Do construction - consumes energy
 	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
-		var cost : float = Config.CONSTRUCTION_COST.get(type, 0.0)
+		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
 		var em = get_node_or_null("/root/World/EnergyManager")
 		if em:
 			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
 		if _construction_energy_spent >= cost:
 			set_constructed()
-	
+
 	# Do production - accumulate energy over time
 	if multiplayer.is_server() and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
 		if _production_timer > 0.0:
@@ -91,7 +96,7 @@ func _process(delta: float) -> void:
 				_production_energy += em.request_energy(player_owner, tick_amount)
 			if _production_energy >= _production_cost:
 				_produce_unit()
-	
+
 	# If under repair (on server)
 	if multiplayer.is_server() and state == State.CONSTRUCTED and _working_unit:
 		_repair_timer += delta
@@ -105,11 +110,11 @@ func _process(delta: float) -> void:
 				health = max_health
 				finish_repair()
 				return
-				
+
 	if _health_bar:
 		match state:
 			State.UNDER_CONSTRUCTION:
-				var cost : float = Config.CONSTRUCTION_COST.get(type, 0.0)
+				var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 				if cost > 0.0:
 					_health_bar.set_health(_construction_energy_spent, cost)
 				else:
@@ -129,7 +134,7 @@ func find_unit_spawn_location() -> TileElement:
 
 func get_aoe_radius() -> int:
 	return Config.BUILDING_AOE[type]
-	
+
 func _build_aoe_tiles() -> void:
 	var interactive: Array = get_tree().get_nodes_in_group("interactive")
 	_aoe_tiles.clear()
@@ -179,6 +184,8 @@ func rpc_set_empowered(val: bool) -> void:
 func _empower_changed(_val: bool) -> void:
 	pass
 
+# --- Production ---
+
 func _setup_production(unit_type: UnitManager.Type) -> void:
 	_production_type = unit_type
 	_production_cost = Config.UNIT_COST.get(unit_type, 0.0)
@@ -198,8 +205,6 @@ func _produce_unit() -> void:
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
 # --- HUD ---
-
-var _hud: SubViewport = null
 
 func _get_hud_scene() -> PackedScene:
 	return null
@@ -316,7 +321,7 @@ func set_constructed() -> void:
 		_working_unit.job_finished()
 	_working_unit = null
 	rpc("rpc_constructed", id)
-	
+
 # --- Damage and Repair ---
 
 func apply_damage(amount: float, delay: float = 0.0) -> void:

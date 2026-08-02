@@ -90,4 +90,4 @@ func get_energy() -> float:
 	return BASE_GENERATION
 
 func get_capacity() -> float:
-	return Config.BUILDING_ENERGY_CAPACITY[ type ]
+	return Config.BUILDING_ENERGY_CAPACITY[type]

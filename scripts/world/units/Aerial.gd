@@ -44,7 +44,7 @@ func initialise(b: Building) -> void:
 		mode = Mode.STRIKE if randf() > b.patrol_strike_ratio else Mode.PATROL
 	_move_target.y = 10.0 if mode == Mode.PATROL else 16.0
 	# Update orders based on strike or patrol
-	orders = b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"] 
+	orders = b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
 	# Override the base class spawn tween — fly from building to initial tile at constant height
