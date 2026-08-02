@@ -85,6 +85,11 @@ const WEAPON_BURST_DURATION: float = 0.4
 const DAMAGE_TICK_DURATION: float = 0.1
 const COMBAT_LOS_MASK: int = 1
 
+# Interception COMBAT job detection radii (world units).
+const PATROL_VIRUS_DETECT_RADIUS: float = 25.0 # PATROL spotting cloaked VIRUS (2-3 tiles)
+const STRIKE_VIRUS_DETECT_RADIUS: float = 10.0 # STRIKE direct-overfly detection (1 tile)
+const TANK_VIRUS_DETECT_RADIUS: float = 25.0   # TANK seeing an uncloaked VIRUS attacker
+
 static var TANK_AERIAL_MODE_MULTIPLIERS: Dictionary = {
 	AERIAL_MODE_PATROL: 6.0,
 	AERIAL_MODE_STRIKE: 5.0,

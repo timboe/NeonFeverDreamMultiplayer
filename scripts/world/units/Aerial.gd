@@ -9,6 +9,7 @@ var lifetime: float = 120.0
 var _lifetime_timer: float = 0.0
 var _lifetime_bar: HealthBar3D
 var _projectile_delay := 0.0
+var _idle_time := 0.0 # time spent jobless & idle (server) - prevents offense job thrash
 
 func get_mode() -> int:
 	return mode
@@ -20,6 +21,7 @@ func _process(delta: float) -> void:
 			_lifetime_timer += delta
 			if _lifetime_timer >= lifetime:
 				get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
+		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	if _lifetime_bar:
 		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
 
@@ -68,6 +70,63 @@ func update_projectile_delay() -> float:
 	var dist = from.distance_to(to)
 	_projectile_delay = clampf((dist / Config.COMBAT_RANGE) * Config.PROJECTILE_MAX_FLIGHT_TIME, 0.016, Config.PROJECTILE_MAX_FLIGHT_TIME)
 	return _projectile_delay
+
+# --- Offence: strike units generate their own personal combat job when idle ---
+
+func try_generate_offense_job() -> bool:
+	if not multiplayer.is_server():
+		return false
+	if mode != Mode.STRIKE:
+		return false
+	if _idle_time < 1.0:
+		return false
+	var target = _choose_strike_building()
+	if target == null:
+		return false
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if not jm:
+		return false
+	_idle_time = 0.0 # If the job is immediately abandoned, wait before re-targeting
+	jm.add_job(player_owner, JobManager.Type.COMBAT, target, self, true) # personal, auto-assigned to self
+	return true
+
+func _choose_strike_building() -> Building:
+	var enemies: Array = orders.get("enemy", [])
+	if enemies.is_empty():
+		for p in range(1, Global.MAX_PLAYERS + 1):
+			if p != player_owner:
+				enemies.append(p)
+	var target_types: Array = orders.get("target", [])
+	var priority: int = orders.get("priority", JobManager.Priority.NEAREST)
+	var bm = get_node_or_null("/root/World/BuildingManager") as BuildingManager
+	if not bm:
+		return null
+	var candidates: Array = []
+	for b in bm.buildings():
+		if b.player_owner not in enemies:
+			continue
+		if b.health <= 0:
+			continue
+		if not target_types.is_empty() and b.type not in target_types:
+			continue
+		candidates.append(b)
+	if candidates.is_empty():
+		return null
+	if priority == JobManager.Priority.LOWEST_HP:
+		var best: Building = candidates[0]
+		for b in candidates:
+			if b.health < best.health:
+				best = b
+		return best
+	# NEAREST
+	var best_n: Building = candidates[0]
+	var best_dist := global_position.distance_squared_to(best_n.global_position)
+	for b in candidates:
+		var d := global_position.distance_squared_to(b.global_position)
+		if d < best_dist:
+			best_dist = d
+			best_n = b
+	return best_n
 
 func _on_fire_event() -> void:
 	_spawn_projectile()

@@ -170,7 +170,7 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
 		# Cancel any pending toggle jobs on this tile
 		for job in %JobManager.jobs_dict.values():
-			if job["type"] == JobManager.Type.TOGGLE_TILE and job["location"] == tile:
+			if job["type"] == JobManager.Type.TOGGLE_TILE and job["target"] == tile:
 				%JobManager.remove_job(job["id"])
 				break
 

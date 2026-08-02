@@ -35,6 +35,10 @@ var _repair_timer := 0.0
 var path: PackedInt64Array = []
 var progress: int
 
+# --- Combat hold ---
+
+var combat_hold_tween: Tween
+
 # --- Location ---
 
 var location: TileElement
@@ -189,6 +193,26 @@ func assign_job(new_job: Dictionary) -> void:
 	job = new_job
 	path.resize(0)
 	progress = 0
+	# Kick off pathing immediately if nothing is already moving us
+	if move_tween == null or not move_tween.is_valid() or not move_tween.is_running():
+		pathing_callback()
+
+func _job_target_tile() -> TileElement:
+	if job.is_empty():
+		return null
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if jm:
+		return jm.target_tile(job["target"])
+	return null
+
+func _kill_combat_hold() -> void:
+	if combat_hold_tween and combat_hold_tween.is_valid():
+		combat_hold_tween.kill()
+	combat_hold_tween = null
+
+# Offence hook - overridden by units that generate their own jobs when idle.
+func try_generate_offense_job() -> bool:
+	return false
 
 # --- Idle state ---
 
@@ -200,6 +224,10 @@ func idle_callback() -> void:
 		assert(scram_count == 0)
 		path.resize(0)
 		pathing_callback()
+		return
+
+	# Offence hook - idle strike units generate their own combat job
+	if try_generate_offense_job():
 		return
 
 	# Get possible ways out of this tile. Only wander on to AoE tiles
@@ -269,6 +297,9 @@ func pathing_callback() -> void:
 	var jm = get_node_or_null("/root/World/JobManager") as JobManager
 	if jm and not jm.check_job_still_valid(job):
 		return job_finished()
+	# Combat jobs never enter WORKING - chase/orbit the target instead
+	if job["type"] == JobManager.Type.COMBAT:
+		return combat_pathing_callback()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
 		return start_work()
@@ -295,7 +326,10 @@ func check_pathing_valid() -> bool:
 				path.resize(0)
 				break
 	if path.size() == 0:
-		for n in job["location"].get_access_tiles():
+		var target_tile := _job_target_tile()
+		if target_tile == null:
+			return false
+		for n in target_tile.get_access_tiles():
 			var check_path = _pathing_manager.pathfind(location, n)
 			if check_path.size() > 0 and (path.size() == 0 or check_path.size() < path.size()):
 				path = check_path
@@ -307,6 +341,80 @@ func check_pathing_valid() -> bool:
 				return true
 			return false # We were unable to path
 	return true
+
+# --- Combat state (no WORKING - path to the target, keep moving in its vicinity) ---
+
+func combat_pathing_callback() -> void:
+	if not multiplayer.is_server():
+		return
+	if combat_hold_tween and combat_hold_tween.is_valid():
+		combat_hold_tween.kill()
+		combat_hold_tween = null
+	if job.is_empty() or job["type"] != JobManager.Type.COMBAT:
+		return
+	# First - check we didn't scram while moving.
+	if scram_count > 0:
+		state = State.IDLE
+		job = {}
+		return idle_callback()
+	assert(state == State.PATHING)
+	# Second - check our job is still valid
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if jm and not jm.check_job_still_valid(job):
+		return job_finished()
+	# Third - pick the next tile: orbit when adjacent, chase otherwise
+	var dest: TileElement = combat_next_tile()
+	if dest == null:
+		return abandon_job()
+	previous_location = location
+	if dest == location:
+		# No reachable alternative - hold adjacent and re-check shortly
+		combat_hold_tween = create_tween()
+		combat_hold_tween.tween_callback(combat_pathing_callback).set_delay(0.5)
+		return
+	location = dest
+	move(combat_pathing_callback)
+
+func combat_next_tile() -> TileElement:
+	if not multiplayer.is_server():
+		return null
+	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	if not jm:
+		return null
+	var target_tile: TileElement = jm.target_tile(job["target"])
+	if target_tile == null or not is_instance_valid(target_tile):
+		return null
+	var access: Array = target_tile.get_access_tiles()
+	# Already adjacent to the target - keep moving in its vicinity
+	if location in access:
+		var options: Array = access.duplicate()
+		var backtrack := options.find(previous_location)
+		if options.size() > 1 and backtrack != -1:
+			options.remove_at(backtrack)
+		var me := options.find(location)
+		if options.size() > 1 and me != -1:
+			options.remove_at(me)
+		if options.is_empty():
+			# Fall back to any lowered neighbour to stay mobile near the target
+			options = location.get_access_tiles()
+		if options.is_empty():
+			return location # Hold in place - no reachable alternatives
+		var dest: TileElement = options[Global.rand.randi() % options.size()]
+		job["path_dest"] = dest
+		return dest
+	# Path toward the target's access tiles (the target may have moved)
+	var best_path: PackedInt64Array = []
+	var best_dest: TileElement = null
+	for n in access:
+		var check_path := _pathing_manager.pathfind(location, n)
+		if check_path.size() > 0 and (best_path.size() == 0 or check_path.size() < best_path.size()):
+			best_path = check_path
+			best_dest = n
+	if best_path.size() < 2:
+		return null # Unable to reach the target
+	job["path_dest"] = best_dest
+	progress = 1
+	return _pathing_manager.get_tile(best_path[1])
 
 # --- Working state ---
 
@@ -321,11 +429,11 @@ func start_work() -> void:
 		$Zapper.target_position.y = Cairo.UNIT
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:				
-			job["location"].do_toggle_countdown(self)
+			job["target"].do_toggle_countdown(self)
 		JobManager.Type.CONSTRUCT_BUILDING:
-			job["location"].building.start_construction(self)
+			job["target"].building.start_construction(self)
 		JobManager.Type.REPAIR_BUILDING:
-			job["location"].building.start_repair(self)
+			job["target"].building.start_repair(self)
 		JobManager.Type.CONSUME_ZOOMBA:
 			_consume_for_tank()
 		_:
@@ -352,6 +460,7 @@ func remove_job() -> void:
 	if state == State.WORKING:
 		_cleanup_working_state()
 	state = State.IDLE
+	_kill_combat_hold()
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = null
@@ -366,9 +475,9 @@ func _cleanup_working_state() -> void:
 		_rotate_tween = null
 	match job["type"]:
 		JobManager.Type.TOGGLE_TILE:
-			job["location"].cancel_toggle_countdown(player_owner)
+			job["target"].cancel_toggle_countdown(player_owner)
 		JobManager.Type.CONSTRUCT_BUILDING:
-			var b = job["location"].building
+			var b = job["target"].building
 			if b and b.state == Building.State.UNDER_CONSTRUCTION:
 				b.cancel_construction()
 
@@ -380,6 +489,7 @@ func abandon_job() -> void:
 	if state == State.WORKING:
 		_cleanup_working_state()
 	state = State.IDLE
+	_kill_combat_hold()
 	var j_id = job["id"]
 	job = {}
 	if move_tween and move_tween.is_valid():
@@ -398,7 +508,7 @@ func scram() -> void:
 func _consume_for_tank() -> void:
 	if not multiplayer.is_server():
 		return
-	var garage = job["location"].building
+	var garage = job["target"].building
 	if not garage or not is_instance_valid(garage):
 		job_finished()
 		return
@@ -420,7 +530,7 @@ func _consume_for_tank() -> void:
 func move(callback: Callable) -> void:
 	if not multiplayer.is_server():
 		return
-	setup_rotation(location, null if job.is_empty() else job["location"])
+	setup_rotation(location, null if job.is_empty() else _job_target_tile())
 	var time: float = Config.UNIT_SPEED[type]
 	if scram_count > 0:
 		time *= 0.5
@@ -449,9 +559,10 @@ func move(callback: Callable) -> void:
 func quick_rotate() -> void:
 	if not multiplayer.is_server():
 		return
-	if job["location"] == null:
+	var target_tile := _job_target_tile()
+	if target_tile == null:
 		return
-	setup_rotation(job["location"], null)
+	setup_rotation(target_tile, null)
 	if _rotate_tween and _rotate_tween.is_valid():
 		_rotate_tween.kill()
 	_rotate_tween = create_tween()

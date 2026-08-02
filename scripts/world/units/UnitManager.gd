@@ -69,6 +69,7 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 		if unit.state == Unit.State.WORKING:
 			unit._cleanup_working_state()
 		unit.state = Unit.State.IDLE
+		unit._kill_combat_hold()
 		var j_id = unit.job["id"]
 		unit.job = {}
 		if unit.move_tween and unit.move_tween.is_valid():

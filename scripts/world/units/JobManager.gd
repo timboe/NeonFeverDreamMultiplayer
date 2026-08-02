@@ -2,7 +2,7 @@ extends Node3D
 
 class_name JobManager
 
-enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA}
+enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT}
 enum Orders {NONE, PATROL, ATTACK}
 enum Stance {WIDE, HOLD}
 enum Priority {NEAREST, LOWEST_HP}
@@ -40,6 +40,8 @@ func _process(_delta: float) -> void:
 				debug_mesh.surface_set_color(Color.CYAN)
 			Type.CONSUME_ZOOMBA:
 				debug_mesh.surface_set_color(Color.MAGENTA)
+			Type.COMBAT:
+				debug_mesh.surface_set_color(Color.RED)
 			_:
 				continue
 		debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
@@ -58,31 +60,47 @@ func _setup_debug() -> void:
 
 # --- Job lifecycle ---
 
-func add_job(pnum: int, type: Type, location: TileElement, personal : bool = false) -> void:
+# Resolve a job target (TileElement / Unit / Building) to the tile it occupies.
+func target_tile(target: Variant) -> TileElement:
+	if target is TileElement:
+		return target
+	if target is Unit or target is Building:
+		return target.location
+	return null
+
+func add_job(pnum: int, type: Type, target: Variant, request_assign: Unit = null, personal: bool = false, eligible_types: Array = [], scout_only: bool = false, territory_only: bool = false) -> int:
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
 	for the_job in jobs_dict.values():
 		if the_job["type"] != type:
 			continue
-		if the_job["location"] != location:
+		if the_job["target"] != target:
 			continue
 		if the_job["pnum"] != pnum:
 			continue
-		return # Already have this job
+		# Already have this job - still hand it to a waiting eligible unit
+		if request_assign and the_job["assigned"] == null:
+			_try_assign_job(the_job, request_assign)
+		return the_job["id"]
 	job_id += 1
 	var job := {"id": job_id, "pnum": pnum, "type": type,
-		"location": location, "assigned": null, "personal": personal,
+		"target": target, "assigned": null, "personal": personal,
+		"eligible_types": eligible_types, "scout_only": scout_only,
+		"territory_only": territory_only,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
 	jobs_dict[job_id] = job
 	_notify_job_event(job["pnum"], "added", job)
+	if request_assign:
+		_try_assign_job(job, request_assign)
+	return job_id
 
-func cancel_job(pnum: int, type: Type, location: TileElement) -> void:
+func cancel_job(pnum: int, type: Type, target: Variant) -> void:
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
 	for the_job in jobs_dict.values():
 		if the_job["pnum"] != pnum:
 			continue
 		if the_job["type"] != type:
 			continue
-		if the_job["location"] != location:
+		if the_job["target"] != target:
 			continue
 		remove_job(the_job["id"])
 		return
@@ -119,6 +137,14 @@ func abandon_job(id_to_abandon: int) -> void:
 func assign_jobs() -> void:
 	if not multiplayer.is_server():
 		return
+	# Remove unassigned jobs that are no longer valid (e.g. destroyed targets).
+	# Assigned jobs are validated by their unit's pathing loop instead.
+	for id_to_check in jobs_dict.keys():
+		var job = jobs_dict[id_to_check]
+		if job["assigned"] != null:
+			continue
+		if not check_job_still_valid(job):
+			remove_job(id_to_check)
 	# Decrement timers for all unassigned jobs
 	for job in jobs_dict.values():
 		if job["assigned"] != null:
@@ -145,16 +171,55 @@ func assign_nearest_job(unit: Unit) -> bool:
 			continue
 		if job["abandoned_timer"] > 0.0:
 			continue
-		var dist = get_pathlength(unit.location, job["location"])
+		if not _unit_eligible_for_job(unit, job):
+			continue
+		var tile := target_tile(job["target"])
+		if tile == null:
+			continue
+		var dist = get_pathlength(unit.location, tile)
 		if dist < best_dist:
 			best_dist = dist
 			best_job = job
 	if best_job != null:
-		best_job["assigned"] = unit
-		unit.assign_job(best_job)
-		_notify_job_event(best_job["pnum"], "assigned", best_job)
+		_try_assign_job(best_job, unit)
 		return true
 	return false
+
+func _try_assign_job(job: Dictionary, unit: Unit) -> bool:
+	if not is_instance_valid(unit):
+		return false
+	if unit.player_owner != job["pnum"]:
+		return false
+	if not unit.job.is_empty():
+		return false
+	if unit.state != Unit.State.IDLE:
+		return false
+	if unit.scram_count > 0:
+		return false
+	if unit.type == UnitManager.Type.AVATAR:
+		return false
+	if not _unit_eligible_for_job(unit, job):
+		return false
+	job["assigned"] = unit
+	job["abandoned_timer"] = 0.0
+	unit.assign_job(job)
+	_notify_job_event(job["pnum"], "assigned", job)
+	return true
+
+func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
+	var etypes: Array = job.get("eligible_types", [])
+	if not etypes.is_empty() and unit.type not in etypes:
+		return false
+	if job.get("scout_only", false):
+		if unit.type != UnitManager.Type.AERIAL:
+			return false
+		if not unit.has_method(&"get_mode") or unit.get_mode() != Config.AERIAL_MODE_PATROL:
+			return false
+	if job.get("territory_only", false):
+		var tile := target_tile(job["target"])
+		if tile == null or unit.player_owner not in tile.aoe:
+			return false
+	return true
 
 func get_pathlength(from: TileElement, to: TileElement) -> int:
 	var shortest := 9999
@@ -173,29 +238,47 @@ func check_job_still_valid(job: Dictionary) -> bool:
 	var pnum: int = job["pnum"]
 	match job["type"]:
 		Type.CONSTRUCT_BUILDING:
-			var b = job["location"].building
+			var b = job["target"].building
 			if not b or b.state != Building.State.BLUEPRINT:
 				return false
 		Type.TOGGLE_TILE:
-			var tile = job["location"] as TileElement
+			var tile = job["target"] as TileElement
 			if tile.state != TileManager.State.RAISED and tile.state != TileManager.State.LOWERED:
 				return false
 			if tile.selected_by.count(pnum) == 0:
 				return false
 		Type.REPAIR_BUILDING:
-			var b = job["location"].building
+			var b = job["target"].building
 			if not b or b.health >= b.max_health:
 				return false
 		Type.CONSUME_ZOOMBA:
-			var b = job["location"].building
+			var b = job["target"].building
 			if not b or b.state != Building.State.CONSTRUCTED or b.type != BuildingManager.Type.GARAGE:
 				return false
+		Type.COMBAT:
+			var t = job["target"]
+			if t == null or not is_instance_valid(t):
+				return false
+			if t is Unit:
+				if t.health <= 0:
+					return false
+			elif t is Building:
+				if t.health <= 0:
+					return false
+			else:
+				return false
+			if job.get("territory_only", false):
+				var tile := target_tile(t)
+				if tile == null or pnum not in tile.aoe:
+					return false
 	return true
 
 # --- Job notifications ---
 
 func _notify_job_event(pnum: int, event: String, job: Dictionary) -> void:
 	if not multiplayer.is_server():
+		return
+	if job["type"] == Type.COMBAT:
 		return
 	var text := _format_job_notification(event, job)
 	var loc := _get_job_location(job)
@@ -214,22 +297,22 @@ func _format_job_notification(event: String, job: Dictionary) -> String:
 	match event:
 		"added":
 			if job["type"] == Type.TOGGLE_TILE:
-				return "New %s job on tile %d" % [type_name, job["location"].id]
+				return "New %s job on tile %d" % [type_name, job["target"].id]
 			return "New %s job at %s" % [type_name, target]
 		"assigned":
 			if job["type"] == Type.TOGGLE_TILE:
-				return "%s assigned to toggle tile %d" % [who, job["location"].id]
+				return "%s assigned to toggle tile %d" % [who, job["target"].id]
 			return "%s assigned %s at %s" % [who, type_name, target]
 		"abandoned":
 			var suffix := ""
 			if job["abandoned_n"] > 1:
 				suffix = " (x%d)" % job["abandoned_n"]
 			if job["type"] == Type.TOGGLE_TILE:
-				return "%s job on tile %d abandoned%s" % [type_name, job["location"].id, suffix]
+				return "%s job on tile %d abandoned%s" % [type_name, job["target"].id, suffix]
 			return "%s job at %s abandoned%s" % [type_name, target, suffix]
 		"finished":
 			if job["type"] == Type.TOGGLE_TILE:
-				return "%s completed on tile %d" % [type_name, job["location"].id]
+				return "%s completed on tile %d" % [type_name, job["target"].id]
 			return "%s job at %s completed" % [type_name, target]
 	return "Job event: %s" % event
 
@@ -239,21 +322,28 @@ func _job_type_name(type: Type) -> String:
 		Type.REPAIR_BUILDING:    return "Repair"
 		Type.TOGGLE_TILE:        return "Toggle"
 		Type.CONSUME_ZOOMBA:     return "Consume"
+		Type.COMBAT:             return "Combat"
 	return "Job"
 
 func _unit_name(unit: Unit) -> String:
 	return UnitManager.Type.keys()[unit.type] + str(unit.id)
 
 func _target_name(job: Dictionary) -> String:
-	var loc = job["location"]
-	if not loc is TileElement:
-		return "Unknown"
-	if loc.building:
-		return "%s" % BuildingManager.Type.keys()[loc.building.type]
-	return "tile %d" % loc.id
+	var t = job["target"]
+	if t is Unit:
+		return UnitManager.Type.keys()[t.type] + str(t.id)
+	if t is Building:
+		return BuildingManager.Type.keys()[t.type]
+	if t is TileElement:
+		if t.building:
+			return "%s" % BuildingManager.Type.keys()[t.building.type]
+		return "tile %d" % t.id
+	return "Unknown"
 
 func _get_job_location(job: Dictionary) -> Vector3:
-	var loc = job["location"]
-	if loc is TileElement:
-		return loc.pathing_centre
+	var t = job["target"]
+	if t is TileElement:
+		return t.pathing_centre
+	if t is Unit or t is Building:
+		return t.location.pathing_centre
 	return Vector3.ZERO
