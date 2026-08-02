@@ -128,7 +128,7 @@ func _process(_delta: float) -> void:
 	strike_lowest_btn.set_pressed_no_signal(building._strike_priority == JobManager.Priority.LOWEST_HP)
 	patrol_hold_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.HOLD)
 	patrol_wide_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.WIDE)
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if um:
 		aerial_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.AERIAL))
 	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(building.type, 4.0)

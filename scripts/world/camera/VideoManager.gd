@@ -1,5 +1,7 @@
 extends Node3D
 
+class_name VideoManager
+
 # --- Types ---
 
 enum CameraStatus {OVERHEAD, TO_FPS, FPS, TO_OVERHEAD}
@@ -37,6 +39,7 @@ var linger: float = 0.0
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.VM = self
 	call_deferred("_connect_hud")
 
 func _connect_hud() -> void:

@@ -73,7 +73,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 # --- Command handlers ---
 
 func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int) -> void:
-	var tm := get_node_or_null("/root/World/TileManager")
+	var tm = Global.TM
 	if not tm:
 		push_warning("Server._cmd_place_blueprint: TileManager not found")
 		return
@@ -81,14 +81,14 @@ func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int) 
 	if not tile:
 		push_warning("Server._cmd_place_blueprint: tile not found: ", tile_id)
 		return
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		push_warning("Server._cmd_place_blueprint: BuildingManager not found")
 		return
 	bm.place_blueprint(player_number, tile, building_type)
 
 func _cmd_toggle_tile(player_number: int, tile_id: int) -> void:
-	var tm := get_node_or_null("/root/World/TileManager")
+	var tm = Global.TM
 	if not tm:
 		push_warning("Server._cmd_toggle_tile: TileManager not found")
 		return
@@ -102,7 +102,7 @@ func _can_control_building(player_number: int, b: Building) -> bool:
 	return b.player_owner == player_number
 
 func _cmd_toggle_production(player_number: int, building_id: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -112,7 +112,7 @@ func _cmd_toggle_production(player_number: int, building_id: int) -> void:
 		b.toggle_production()
 
 func _cmd_set_garage_ratio(player_number: int, building_id: int, ratio: float) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -122,7 +122,7 @@ func _cmd_set_garage_ratio(player_number: int, building_id: int, ratio: float) -
 		b.zoomba_tank_ratio = clampf(ratio, 0.0, 1.0)
 
 func _cmd_set_beacon_ratio(player_number: int, building_id: int, ratio: float) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -132,7 +132,7 @@ func _cmd_set_beacon_ratio(player_number: int, building_id: int, ratio: float) -
 		b.patrol_strike_ratio = clampf(ratio, 0.0, 1.0)
 
 func _cmd_set_nest_ratio(player_number: int, building_id: int, ratio: float) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -142,7 +142,7 @@ func _cmd_set_nest_ratio(player_number: int, building_id: int, ratio: float) -> 
 		b.set_virus_tank_building_ratio(ratio)
 
 func _cmd_set_enemy_targets(player_number: int, building_id: int, targets: Array) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -152,7 +152,7 @@ func _cmd_set_enemy_targets(player_number: int, building_id: int, targets: Array
 		b.set_enemy_targets(targets as Array[int])
 
 func _cmd_set_building_targets(player_number: int, building_id: int, targets: Array) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -162,7 +162,7 @@ func _cmd_set_building_targets(player_number: int, building_id: int, targets: Ar
 		b.set_building_targets(targets as Array[BuildingManager.Type])
 
 func _cmd_set_strike_priority(player_number: int, building_id: int, priority: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -172,7 +172,7 @@ func _cmd_set_strike_priority(player_number: int, building_id: int, priority: in
 		b.set_strike_priority(priority as JobManager.Priority)
 
 func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -182,7 +182,7 @@ func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -
 		b.set_patrol_stance(stance as JobManager.Stance)
 
 func _cmd_set_virus_priority(player_number: int, building_id: int, priority: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -192,7 +192,7 @@ func _cmd_set_virus_priority(player_number: int, building_id: int, priority: int
 		b.set_virus_priority(priority)
 
 func _cmd_empower(player_number: int, building_id: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var b = bm.get_building_by_id(building_id)
@@ -201,6 +201,6 @@ func _cmd_empower(player_number: int, building_id: int) -> void:
 	bm.set_empowered_for_player(player_number, b)
 
 func _cmd_clear_empower(player_number: int) -> void:
-	var bm := get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if bm:
 		bm.clear_empowered_for_player(player_number)

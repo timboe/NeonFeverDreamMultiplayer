@@ -12,6 +12,7 @@ var debug_mesh_instance: MeshInstance3D
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.PM = self
 	astar = AStar3D.new()
 	if debug_enabled:
 		_setup_debug()
@@ -92,4 +93,4 @@ func get_point(id: int) -> Vector3:
 	return astar.get_point_position(id)
 
 func get_tile(id: int) -> TileElement:
-	return get_node("/root/World/TileManager").tile_dictionary[id]
+	return Global.TM.tile_dictionary[id]

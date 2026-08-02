@@ -46,7 +46,7 @@ func _process(delta: float) -> void:
 	super._process(delta)
 	if liquid == null or state != State.CONSTRUCTED:
 		return
-	var em = get_node_or_null("/root/World/EnergyManager")
+	var em = Global.EM
 	if em == null:
 		return
 	var e = em.get_player_energy(player_owner)

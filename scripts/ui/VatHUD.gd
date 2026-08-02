@@ -31,7 +31,7 @@ func setup_cursor_3d(screen: MeshInstance3D) -> void:
 func _process(_delta: float) -> void:
 	if not building or not energy_bar:
 		return
-	var em = get_node_or_null("/root/World/EnergyManager")
+	var em = Global.EM
 	if em:
 		var e = em.get_player_energy(building.player_owner)
 		energy_bar.max_value = e.capacity

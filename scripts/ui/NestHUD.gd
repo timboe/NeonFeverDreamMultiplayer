@@ -122,7 +122,7 @@ func _process(_delta: float) -> void:
 	virus_lowest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.LOWEST_HP)
 	# Show/hide building targeting section based on ratio
 	building_target_section.visible = building._virus_tank_building_ratio < 1.0
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if um:
 		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))
 	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(building.type, 5.0)

@@ -49,7 +49,7 @@ func get_energy() -> float:
 	return generation
 
 func _empower_changed(_val: bool) -> void:
-	get_node_or_null("/root/World/TileManager").recompute_aoe()
+	Global.TM.recompute_aoe()
 
 # --- Mouse hover ---
 

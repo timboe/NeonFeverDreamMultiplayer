@@ -34,7 +34,7 @@ func _process(_delta: float) -> void:
 	var mcp := building as MCP
 	if not mcp:
 		return
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if not um:
 		return
 	var current: int = um.unit_count(mcp.player_owner, UnitManager.Type.ZOOMBA)

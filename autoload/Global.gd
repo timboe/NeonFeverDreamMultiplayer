@@ -6,6 +6,22 @@ const TILE_OFFSET: float = 1.95 # Tile extends this far below floor level
 const GRID_OFFSET: float = 2.0 # Grid is this far below floor level
 const level = preload("res://levels/skirmish_01.gd")
 
+# --- Manager references ---
+# Each manager registers itself in its _ready(). Null until World is loaded.
+
+var GM: GameManager = null
+var BM: BuildingManager = null
+var EM: EnergyManager = null
+var TM: TileManager = null
+var UM: UnitManager = null
+var JM: JobManager = null
+var CM: CombatManager = null
+var VM: VideoManager = null
+var PM: PathingManager = null
+var NM: NotificationManager = null
+
+# --- Network ---
+
 var network_manager: NetworkManager
 var game_config: GameConfig
 var my_player_number: int = -1

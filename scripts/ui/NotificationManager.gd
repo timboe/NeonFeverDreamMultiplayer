@@ -12,6 +12,7 @@ var _notification_data: Dictionary = {}
 var _next_id := 0
 
 func _ready() -> void:
+	Global.NM = self
 	notification_list = %List
 	for child in notification_list.get_children():
 		if child is Label:

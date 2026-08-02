@@ -18,7 +18,7 @@ func _on_timer() -> void:
 	if not srv:
 		_restart_timer()
 		return
-	var tm = get_node_or_null("/root/World/TileManager")
+	var tm = Global.TM
 	if not tm:
 		_restart_timer()
 		return

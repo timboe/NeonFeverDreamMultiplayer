@@ -48,7 +48,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 # --- Queries ---
 
 func zoomba_cap() -> int:
-	var tm = get_node_or_null("/root/World/TileManager")
+	var tm = Global.TM
 	return floor(sqrt(tm.player_aoe_totals.get(player_owner, 0)))
 
 # --- Production ---
@@ -56,7 +56,7 @@ func zoomba_cap() -> int:
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if not um:
 		return
 	# Avatar takes priority

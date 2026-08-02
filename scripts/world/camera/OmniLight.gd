@@ -16,7 +16,7 @@ func _physics_process(delta: float) -> void:
 	visible = %CameraRTS.current
 	if not visible:
 		return
-	if %CameraManager.camera_status != %CameraManager.CameraStatus.OVERHEAD:
+	if Global.VM.camera_status != Global.VM.CameraStatus.OVERHEAD:
 		return
 	var mouse_pos := get_viewport().get_mouse_position()
 	var from: Vector3 = %CameraRTS.project_ray_origin(mouse_pos)

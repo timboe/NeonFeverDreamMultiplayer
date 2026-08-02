@@ -118,7 +118,7 @@ func _input(event: InputEvent) -> void:
 # --- Energy ---
 
 func _get_player_energy() -> Dictionary:
-	var em = get_node_or_null("/root/World/EnergyManager")
+	var em = Global.EM
 	if em:
 		return em.get_player_energy(Global.my_player_number)
 	return {"current": 0.0, "capacity": 0.0, "rate": 0.0}

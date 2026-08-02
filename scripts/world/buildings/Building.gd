@@ -62,7 +62,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	add_to_group("building")
 	add_to_group("building_player" + str(pnum))
 	_health_bar = preload("res://scripts/ui/HealthBar3D.gd").new()
-	var container = get_node_or_null("/root/World/BuildingManager/HealthBars")
+	var container = Global.BM.get_node_or_null("HealthBars")
 	if container:
 		container.add_child(_health_bar)
 	_health_bar.global_position.x = tile.pathing_centre.x
@@ -79,7 +79,7 @@ func _process(delta: float) -> void:
 	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
 		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
-		var em = get_node_or_null("/root/World/EnergyManager")
+		var em = Global.EM
 		if em:
 			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
 		if _construction_energy_spent >= cost:
@@ -90,7 +90,7 @@ func _process(delta: float) -> void:
 		if _production_timer > 0.0:
 			_production_timer -= delta
 		elif _production_enabled:
-			var em = get_node_or_null("/root/World/EnergyManager")
+			var em = Global.EM
 			if em and _production_cost > 0.0:
 				var tick_amount := _production_cost * delta
 				_production_energy += em.request_energy(player_owner, tick_amount)
@@ -167,7 +167,7 @@ func check_work() -> void:
 	if not _production_enabled:
 		return
 	if health < max_health:
-		get_node_or_null("/root/World/JobManager").add_job(player_owner, JobManager.Type.REPAIR_BUILDING, location)
+		Global.JM.add_job(player_owner, JobManager.Type.REPAIR_BUILDING, location)
 
 func toggle_production() -> void:
 	if not multiplayer.is_server():
@@ -196,7 +196,7 @@ func _produce_unit() -> void:
 		return
 	if _production_type == UnitManager.Type.NONE:
 		return
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if not um:
 		return
 	var uid: int = um.next_unit_id()
@@ -339,14 +339,14 @@ func _apply_damage(damage: float) -> void:
 		health -= damage
 		if health <= 0:
 			health = 0
-			get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
+			Global.BM.rpc("rpc_remove_building", id)
 	else:
 		# If under construction, attacks directly deplete the energy being used to build
 		_construction_energy_spent -= damage
 		if _construction_energy_spent <= 0:
 			_construction_energy_spent = 0
 			rpc("rpc_constructed", id) # Remove blueprint as well
-			get_node_or_null("/root/World/BuildingManager").rpc("rpc_remove_building", id)
+			Global.BM.rpc("rpc_remove_building", id)
 
 func start_repair(unit: Unit) -> void:
 	if not multiplayer.is_server():
@@ -365,7 +365,7 @@ func finish_repair() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func rpc_constructed(bid: int) -> void:
-	var bm = get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var bp = bm.get_node_or_null("Blueprint_" + str(bid))

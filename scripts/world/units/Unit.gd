@@ -48,7 +48,7 @@ var quat_to: Quaternion
 
 # --- Combat ---
 
-@onready var combat_manager = get_node_or_null("/root/World/CombatManager")
+@onready var combat_manager = Global.CM
 var combat_hold_tween: Tween
 var combat_target: Variant = null
 var combat_fire_event: int = 0
@@ -158,7 +158,7 @@ func initialise(b: Building) -> void:
 	add_child(_health_bar)
 	_health_bar.set_bar_size(1.6, 0.2)
 	# Cache pathing manager to avoid repeated absolute path lookups
-	_pathing_manager = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
+	_pathing_manager = Global.PM
 	# Following animates the unit in and starts the callback loop.
 	# This all happens only the server.
 	if not multiplayer.is_server():
@@ -200,7 +200,7 @@ func assign_job(new_job: Dictionary) -> void:
 func _job_target_tile() -> TileElement:
 	if job.is_empty():
 		return null
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	if jm:
 		return jm.target_tile(job["target"])
 	return null
@@ -294,7 +294,7 @@ func pathing_callback() -> void:
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	if jm and not jm.check_job_still_valid(job):
 		return job_finished()
 	# Combat jobs never enter WORKING - chase/orbit the target instead
@@ -359,7 +359,7 @@ func combat_pathing_callback() -> void:
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	if jm and not jm.check_job_still_valid(job):
 		return job_finished()
 	# Third - pick the next tile: orbit when adjacent, chase otherwise
@@ -378,7 +378,7 @@ func combat_pathing_callback() -> void:
 func combat_next_tile() -> TileElement:
 	if not multiplayer.is_server():
 		return null
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	if not jm:
 		return null
 	var target_tile: TileElement = jm.target_tile(job["target"])
@@ -450,7 +450,7 @@ func job_finished() -> void:
 	if has_node("Zapper"):
 		$Zapper.visible = false
 	state = State.IDLE
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	jm.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
 
 # Job was removed - we could be in any state
@@ -495,7 +495,7 @@ func abandon_job() -> void:
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = null
-	var jm = get_node_or_null("/root/World/JobManager")
+	var jm = Global.JM
 	if jm:
 		jm.abandon_job(j_id)
 	idle_callback()
@@ -512,7 +512,7 @@ func _consume_for_tank() -> void:
 	if not garage or not is_instance_valid(garage):
 		job_finished()
 		return
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if not um:
 		job_finished()
 		return
@@ -613,4 +613,4 @@ func _apply_damage(damage: float) -> void:
 	_repair_timer = -REPAIR_DELAY
 	if health <= 0:
 		health = 0
-		get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
+		Global.UM.rpc("rpc_remove_unit", id)

@@ -20,6 +20,7 @@ var debug_mesh_instance: MeshInstance3D
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.JM = self
 	if debug_enabled:
 		_setup_debug()
 
@@ -223,7 +224,7 @@ func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
 
 func get_pathlength(from: TileElement, to: TileElement) -> int:
 	var shortest := 9999
-	var pm = get_node_or_null("/root/World/TileManager/PathingManager")
+	var pm = Global.PM
 	for n in to.get_access_tiles():
 		var dist = pm.pathfind(from, n)
 		if dist.size() != 0 and dist.size() < shortest:

@@ -22,14 +22,16 @@ World
 ├── UnitManager %       unit dict, spawn/remove, displacement
 ├── JobManager %        job pool + assignment
 ├── CombatManager %     target scanning + firing (server only)
-├── CameraManager %     RTS↔FPS camera transitions, shake
+├── VideoManager %      RTS↔FPS camera transitions, shake
 │   ├── CameraRTS %
 │   └── OmniLight3D_RTS %
 ├── ProjectilesHolder
 └── HUD                 CanvasLayer, group "hud"
 ```
 
-`%ManagerName` works in scene-owned scripts (unique_name_in_owner is set). Dynamically created nodes (TileElements) miss the owner lookup — gameplay code generally uses absolute `/root/World/...` paths or a stored ref instead.
+Managers are accessed via the typed `Global` aliases above (all null until World loads). `%ManagerName` unique-name lookup still works in scene-owned scripts but is deprecated in favour of the `Global` aliases. Dynamically created nodes (TileElements) miss the owner lookup — gameplay code should use the `Global` aliases or a stored ref instead.
+
+Every manager registers itself in its `_ready()` on `Global` with a short alias: `Global.GM` (GameManager), `Global.BM` (BuildingManager), `Global.EM` (EnergyManager), `Global.TM` (TileManager), `Global.UM` (UnitManager), `Global.JM` (JobManager), `Global.CM` (CombatManager), `Global.VM` (VideoManager), `Global.PM` (PathingManager), `Global.NM` (NotificationManager). All are null until World loads. Prefer these over `get_node_or_null("/root/World/...")`.
 
 ## Multiplayer architecture
 
@@ -82,7 +84,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 - Server packs all units+buildings into one `PackedFloat64Array` every 0.05s (`SNAPSHOT_INTERVAL`), `rpc("apply_snapshot")` unreliable. Each entity = `SLOT_COUNT`(10) floats.
 - Unit slots: pos x/y/z, rot.y, state, health, type-specific extras (ZOOMBA: zapper visible + target y; AERIAL: mode; VIRUS: cloaked), `combat_target` (0=none, +unit id, -building id), `combat_fire_event` (visual trigger). AVATAR packs its `FPSBody` transform, not the root.
 - Clients buffer up to `MAX_SNAPSHOT_BUFFER`(4) and interpolate with `INTERPOLATION_DELAY`(0.075) render time.
-- Avatars: each client sends `receive_avatar_snapshot` at 20Hz **only while `CameraManager.camera_status == FPS`**; the server interpolates per-pnum avatar snapshots for the other peers. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_entities` to avoid control cycles.
+- Avatars: each client sends `receive_avatar_snapshot` at 20Hz **only while `Global.VM.camera_status == FPS`**; the server interpolates per-pnum avatar snapshots for the other peers. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_entities` to avoid control cycles.
 - `_apply_unit` asserts type match and is client-only — the server never mutates client state.
 
 ## Key classes
@@ -98,7 +100,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, `pathfind`, debug renderer |
 | `MonorailMultimesh` | `scripts/world/tiles/MonorailMultimesh.gd` | Active: monorail rail meshes + caps between tiles, tweened connect/disconnect |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Resource: `player_count`, `port`, `server_ip`, `slots` array (LOCAL/REMOTE/AI/CLOSED) |
-| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshots/interpolation, 1s job tick (`%JobManager.assign_jobs()` + each building `check_work()`), avatar relay |
+| `GameManager` | `scripts/core/game/GameManager.gd` | Snapshots/interpolation, 1s job tick (`Global.JM.assign_jobs()` + each building `check_work()`), avatar relay |
 | `EnergyManager` | `scripts/core/game/EnergyManager.gd` | Server-only energy sim (see Economy) |
 | `CombatManager` | `scripts/core/game/CombatManager.gd` | Server-only target scan + firing (see Combat) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random `toggle_tile` on a timer via `send_command(player_number, ...)` |
@@ -120,7 +122,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `Virus` | `scripts/world/units/Virus.gd` | Cloaked attack unit |
 | `Avatar` | `scripts/world/units/Avatar.gd` | FPS character: `FPSBody` (CharacterBody3D + FPSCamera), ignores job system, screen-cursor terminal clicks |
 | `JobManager` | `scripts/world/units/JobManager.gd` | Job pool + worker-centric assignment, abandon timers, `personal` jobs, job-event notifications |
-| `CameraManager` | `scripts/world/camera/CameraManager.gd` | CameraStatus (OVERHEAD/TO_FPS/FPS/TO_OVERHEAD), 2s transition tween, mouse capture, trauma shake. **Converted — no dead Godot 3 code.** |
+| `VideoManager` | `scripts/world/camera/VideoManager.gd` | CameraStatus (OVERHEAD/TO_FPS/FPS/TO_OVERHEAD), 2s transition tween, mouse capture, trauma shake. **Converted — no dead Godot 3 code.** |
 | `CameraRTS` | `scripts/world/camera/CameraRTS.gd` | Overhead camera controls |
 | `HUD` | `scripts/ui/HUD.gd` | Tile/build mode buttons, drag select, energy bar, FPS toggle, debug keys |
 | `NotificationManager` | `scripts/ui/NotificationManager.gd` | Job-event on-screen notifications (`rpc_add_job_notification`) |
@@ -271,7 +273,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ## Avatar / FPS camera
 
-- `CameraManager.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
+- `Global.VM.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
 - `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for clicking the MCP terminal HUD (`ScreenBody` collision → `Cursor3D`-style cursor + click).
 - Avatars skip the job system entirely (`idle_callback` no-op; `assign_jobs` skips AVATAR; not in `HOME_TERRITORY_UNITS`). Avatar snapshots are relayed separately (see Snapshot section).
 

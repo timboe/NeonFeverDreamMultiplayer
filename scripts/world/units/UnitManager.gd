@@ -7,6 +7,11 @@ enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS}
 var unit_dictionary: Dictionary # int (id) -> Unit
 var _next_unit_id: int = 1
 
+# --- Lifecycle ---
+
+func _ready() -> void:
+	Global.UM = self
+
 # --- Accessors ---
 
 func units() -> Array:
@@ -46,7 +51,7 @@ func add_to_dict_and_scene(uid: int, u: Unit) -> void:
 
 @rpc("authority", "call_local")
 func rpc_spawn_unit(uid: int, type: int, building_id: int) -> void:
-	var bm = get_node_or_null("%BuildingManager")
+	var bm = Global.BM
 	if not bm:
 		return
 	var building = bm.get_building_by_id(building_id)
@@ -75,7 +80,7 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 		if unit.move_tween and unit.move_tween.is_valid():
 			unit.move_tween.kill()
 		unit.move_tween = null
-		var jm = get_node_or_null("/root/World/JobManager")
+		var jm = Global.JM
 		if jm:
 			jm.abandon_job(j_id)
 	else:

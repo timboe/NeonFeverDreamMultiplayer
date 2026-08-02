@@ -20,7 +20,7 @@ func _process(delta: float) -> void:
 		if state != State.WORKING:
 			_lifetime_timer += delta
 			if _lifetime_timer >= lifetime:
-				get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
+				Global.UM.rpc("rpc_remove_unit", id)
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	if _lifetime_bar:
 		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
@@ -83,7 +83,7 @@ func try_generate_offense_job() -> bool:
 	var target = _choose_strike_building()
 	if target == null:
 		return false
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	if not jm:
 		return false
 	_idle_time = 0.0 # If the job is immediately abandoned, wait before re-targeting
@@ -98,7 +98,7 @@ func _choose_strike_building() -> Building:
 				enemies.append(p)
 	var target_types: Array = orders.get("target", [])
 	var priority: int = orders.get("priority", JobManager.Priority.NEAREST)
-	var bm = get_node_or_null("/root/World/BuildingManager") as BuildingManager
+	var bm = Global.BM
 	if not bm:
 		return null
 	var candidates: Array = []

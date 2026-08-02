@@ -74,7 +74,7 @@ func _process(_delta: float) -> void:
 	tank_label.text = str(building.cached_tank_count)
 	# Ratio total across all garages
 	var total_ratio := 0.0
-	var bm = get_node_or_null("/root/World/BuildingManager")
+	var bm = Global.BM
 	if bm:
 		for b in bm.buildings():
 			if b is Garage and b.player_owner == building.player_owner:

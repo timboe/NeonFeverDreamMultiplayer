@@ -28,7 +28,7 @@ func get_tile_by_id(id: int) -> TileElement:
 
 func remove_tile_from_pathing(tile: TileElement) -> void:
 	$PathingManager.disconnect_tile(tile)
-	%UnitManager.displace_units_on_tile(tile)
+	Global.UM.displace_units_on_tile(tile)
 
 func populate(physics_body_instance: StaticBody3D, rotation_group: String) -> void:
 	var mesh_instance := MeshInstance3D.new()
@@ -154,6 +154,7 @@ func _generate() -> void:
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.TM = self
 	_generate()
 
 func _physics_process(_delta: float) -> void:
@@ -202,14 +203,14 @@ func apply_loaded_level() -> void:
 	for tile in get_tree().get_nodes_in_group("tiles"):
 		if tile.get_id() in Global.level.MCP_ARRAY:
 			var player_number = (Global.level.MCP_ARRAY.find(tile.get_id()) + 1)
-			var mcp_type = %BuildingManager.Type.MCP_1
+			var mcp_type = Global.BM.Type.MCP_1
 			match player_number:
-				1: mcp_type = %BuildingManager.Type.MCP_1
-				2: mcp_type = %BuildingManager.Type.MCP_2
-				3: mcp_type = %BuildingManager.Type.MCP_3
-				4: mcp_type = %BuildingManager.Type.MCP_4
+				1: mcp_type = Global.BM.Type.MCP_1
+				2: mcp_type = Global.BM.Type.MCP_2
+				3: mcp_type = Global.BM.Type.MCP_3
+				4: mcp_type = Global.BM.Type.MCP_4
 				_: printerr("Unknown player number ", player_number)
-			%BuildingManager.place_building(player_number, tile, mcp_type)
+			Global.BM.place_building(player_number, tile, mcp_type)
 		elif tile.get_id() in Global.level.LOWERED:
 			tile.set_lowered()
 	recompute_aoe()
@@ -221,7 +222,7 @@ func recompute_aoe() -> void:
 		t.aoe.clear()
 		t.gen_count = 0
 	var touched := {}
-	for b in %BuildingManager.buildings():
+	for b in Global.BM.buildings():
 		var radius : int = b.get_aoe_radius()
 		if b.type == BuildingManager.Type.GEN and b.is_empowered:
 			radius += 1
@@ -282,7 +283,7 @@ func recompute_aoe() -> void:
 
 	for v in get_tree().get_nodes_in_group("vat"):
 		v.update_capacity()
-	%EnergyManager.recalculate_capacity()
+	Global.EM.recalculate_capacity()
 
 	for t in touched: # Un-select anything no longer under AoE
 		for s in t.selected_by:
@@ -309,9 +310,9 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 		return
 	var result = tile.toggle_selected_by(pnum)
 	if result:
-		%JobManager.add_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
+		Global.JM.add_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	else:
-		%JobManager.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
+		Global.JM.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 

@@ -27,10 +27,7 @@ func _init(screen: MeshInstance3D, screen_size: float) -> void:
 		tree.current_scene.add_child(_sprite)
 
 func _get_camera_manager() -> Node:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree:
-		return tree.root.get_node_or_null("World/CameraManager")
-	return null
+	return Global.VM
 
 func show_at_uv(uv: Vector2, screen_size: float) -> void:
 	if not _sprite or not _screen_mesh:

@@ -17,7 +17,7 @@ func _process(delta: float) -> void:
 				health -= _health_decay_rate * DECAY_INTERVAL
 				if health <= 0:
 					health = 0
-					get_node_or_null("/root/World/UnitManager").rpc("rpc_remove_unit", id)
+					Global.UM.rpc("rpc_remove_unit", id)
 					return
 	_update_cloak_visual()
 

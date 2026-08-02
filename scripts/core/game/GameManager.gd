@@ -16,6 +16,11 @@ var _avatar_snapshot_timer := 0.0
 var _snapshots: Array = []
 var _avatar_snapshots: Dictionary = {}
 
+# --- Lifecycle ---
+
+func _ready() -> void:
+	Global.GM = self
+
 # --- Main loop ---
 
 func _process(delta: float) -> void:
@@ -34,15 +39,15 @@ func _process(delta: float) -> void:
 	_interpolate_avatars()
 	while _job_timer >= JOB_TICK_INTERVAL:
 		_job_timer -= JOB_TICK_INTERVAL
-		%JobManager.assign_jobs()
-		for b in %BuildingManager.buildings():
+		Global.JM.assign_jobs()
+		for b in Global.BM.buildings():
 			b.check_work()
 
 # --- Server: send ---
 
 func _send_snapshot() -> void:
-	var ud: Dictionary = %UnitManager.unit_dictionary
-	var bd: Dictionary = %BuildingManager.building_dictionary
+	var ud: Dictionary = Global.UM.unit_dictionary
+	var bd: Dictionary = Global.BM.building_dictionary
 	var data := PackedFloat64Array()
 	data.append(bd.size())
 	for b in bd.values():
@@ -59,7 +64,7 @@ func _send_avatar_snapshot() -> void:
 	var avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
 	if not avatar:
 		return
-	var cam = get_node_or_null("/root/World/CameraManager")
+	var cam = Global.VM
 	if cam and cam.camera_status != cam.CameraStatus.FPS:
 		return
 	var data := PackedFloat64Array()
@@ -199,7 +204,7 @@ func _interpolate() -> void:
 	_apply_snapshot_entities(s0)
 
 func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
-	var ud: Dictionary = %UnitManager.unit_dictionary
+	var ud: Dictionary = Global.UM.unit_dictionary
 	for id_val in s1["units"]:
 		var u = ud.get(id_val) as Unit
 		if not u:
@@ -212,7 +217,7 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 			_apply_interpolated_unit(u, e0, e1, t, e1["type"])
 		else:
 			_apply_unit(u, e1["type"], e1["slots"])
-	var bd: Dictionary = %BuildingManager.building_dictionary
+	var bd: Dictionary = Global.BM.building_dictionary
 	for id_val in s1["buildings"]:
 		var b = bd.get(id_val) as Building
 		if not b:
@@ -262,7 +267,7 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 	_apply_unit(u, type_val, slots)
 
 func _apply_snapshot_entities(snapshot: Dictionary) -> void:
-	var ud: Dictionary = %UnitManager.unit_dictionary
+	var ud: Dictionary = Global.UM.unit_dictionary
 	for id_val in snapshot["units"]:
 		var u = ud.get(id_val) as Unit
 		if not u:
@@ -271,7 +276,7 @@ func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 			continue
 		var e = snapshot["units"][id_val]
 		_apply_unit(u, e["type"] as UnitManager.Type, e["slots"])
-	var bd: Dictionary = %BuildingManager.building_dictionary
+	var bd: Dictionary = Global.BM.building_dictionary
 	for id_val in snapshot["buildings"]:
 		var b = bd.get(id_val) as Building
 		if not b:
@@ -318,9 +323,9 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.cloaked = slots[6] > 0.5
 	var tid = roundi(slots[8])
 	if tid > 0:
-		u.combat_target = %UnitManager.unit_dictionary.get(tid)
+		u.combat_target = Global.UM.unit_dictionary.get(tid)
 	elif tid < 0:
-		u.combat_target = %BuildingManager.building_dictionary.get(-tid)
+		u.combat_target = Global.BM.building_dictionary.get(-tid)
 	else:
 		u.combat_target = null
 	u.combat_fire_event = roundi(slots[9])

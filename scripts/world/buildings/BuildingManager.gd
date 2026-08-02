@@ -43,6 +43,7 @@ func clear_empowered_for_player(pnum: int) -> void:
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.BM = self
 	enabled_blueprints[Type.GEN] = $BlueprintsEnabled/Generator
 	enabled_blueprints[Type.VAT] = $BlueprintsEnabled/Vat
 	enabled_blueprints[Type.GARAGE] = $BlueprintsEnabled/Garage
@@ -138,13 +139,13 @@ func place_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	if check_access(tile).size() == 0:
 		return
 	update_blueprint(player_number, tile, type)
-	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
+	Global.TM.remove_tile_from_pathing(tile)
 	var bid := next_building_id()
 	rpc("broadcast_place_blueprint", bid, player_number, tile.id, type)
 
 @rpc("authority", "call_local", "reliable")
 func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Type) -> void:
-	var tm = get_node_or_null("/root/World/TileManager")
+	var tm = Global.TM
 	var tile = tm.get_tile_by_id(tid)
 	var new_building := new_building_instance(type)
 	new_building.visible = false
@@ -164,14 +165,14 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	if player_number == Global.my_player_number:
 		var hud = get_tree().get_first_node_in_group("hud")
 		hud.build_mode = HUD.Mode.NONE
-	get_node_or_null("/root/World/TileManager").recompute_aoe()
+	Global.TM.recompute_aoe()
 	if multiplayer.is_server():
 		if type in Config.CONSTRUCTION_COST:
-			%JobManager.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
+			Global.JM.add_job(player_number, JobManager.Type.CONSTRUCT_BUILDING, tile)
 		# Cancel any pending toggle jobs on this tile
-		for job in %JobManager.jobs_dict.values():
+		for job in Global.JM.jobs_dict.values():
 			if job["type"] == JobManager.Type.TOGGLE_TILE and job["target"] == tile:
-				%JobManager.remove_job(job["id"])
+				Global.JM.remove_job(job["id"])
 				break
 
 # Skips all construction phases, used during level setup
@@ -183,8 +184,8 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 	b.state = b.State.CONSTRUCTED
 	if tile.state != TileManager.State.LOWERED:
 		tile.set_lowered()
-	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(tile)
-	get_node_or_null("/root/World/TileManager").recompute_aoe()
+	Global.TM.remove_tile_from_pathing(tile)
+	Global.TM.recompute_aoe()
 
 # --- Removal ---
 
@@ -199,10 +200,10 @@ func rpc_remove_building(id: int) -> void:
 		if tile:
 			tile.building = null
 		b.queue_free()
-		get_node_or_null("/root/World/TileManager").recompute_aoe()
+		Global.TM.recompute_aoe()
 		# Reconnect tile to pathing (reverse of remove_tile_from_pathing)
 		if tile and tile.state == TileManager.State.LOWERED:
-			var pm = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
+			var pm = Global.PM
 			if pm:
 				for n in tile.neighbours:
 					if n.state == TileManager.State.LOWERED and n.building == null:

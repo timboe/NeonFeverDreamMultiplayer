@@ -19,6 +19,7 @@ var _second_timer := 0.0
 # --- Lifecycle ---
 
 func _ready() -> void:
+	Global.EM = self
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		energy[p] = 0.0
 		capacity[p] = 0.0

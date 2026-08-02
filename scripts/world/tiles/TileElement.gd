@@ -107,7 +107,7 @@ func set_lowered() -> void:
 # Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
 func set_rising() -> void:
 	state = TileManager.State.RISING
-	get_node_or_null("/root/World/TileManager").remove_tile_from_pathing(self)
+	Global.TM.remove_tile_from_pathing(self)
 
 func add_neighbour(n: StaticBody3D) -> void:
 	if not neighbours.has(n):
@@ -239,7 +239,7 @@ func do_toggle_countdown(z: Unit) -> void:
 	var t = create_tween()
 	t.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
 	_working_unit_dict[pnum] = {"unit": z, "job_id": z.job["id"], "countdown_tween": t}
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 0, pnum) # MODE 0
+	Global.TM.rpc("rpc_toggle_animation", id, 0, pnum) # MODE 0
 
 func cancel_toggle_countdown(pnum: int) -> void:
 	if not multiplayer.is_server():
@@ -250,7 +250,7 @@ func cancel_toggle_countdown(pnum: int) -> void:
 	if entry["countdown_tween"] and entry["countdown_tween"].is_valid():
 		entry["countdown_tween"].kill()
 	_working_unit_dict.erase(pnum)
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
+	Global.TM.rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
 
 func _cancel_other_workers(except_pnum: int) -> void:
 	if not multiplayer.is_server():
@@ -267,7 +267,7 @@ func _cancel_other_workers(except_pnum: int) -> void:
 		var unit = entry["unit"] as Unit
 		if is_instance_valid(unit) and not unit.job.is_empty():
 			unit.job_finished()
-		get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
+		Global.TM.rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
 
 # Point of no return - raising or lowering if this gets called.
 func begin_toggle() -> void:
@@ -302,7 +302,7 @@ func begin_toggle() -> void:
 		set_rising()
 
 	selected_by.clear()
-	get_node_or_null("/root/World/TileManager").rpc("broadcast_tile_selection", id, selected_by.duplicate())
+	Global.TM.rpc("broadcast_tile_selection", id, selected_by.duplicate())
 
 	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
 	var thunk_time := thunk_distance * 2
@@ -310,7 +310,7 @@ func begin_toggle() -> void:
 	var dest = -HEIGHT if state == TileManager.State.FALLING else -Global.TILE_OFFSET
 
 	# Set the animation going everywhere (routed through TileManager for reliable RPC delivery)
-	get_node_or_null("/root/World/TileManager").rpc("rpc_toggle_animation", id, 2, 0, thunk_distance, thunk_time, fall_time, dest)
+	Global.TM.rpc("rpc_toggle_animation", id, 2, 0, thunk_distance, thunk_time, fall_time, dest)
 
 	# Finished animation callback only runs on the server
 	var t = create_tween()
@@ -374,10 +374,10 @@ func done_toggle() -> void:
 		t.origin.y = -Global.TILE_OFFSET
 		transform = t
 		set_tile_mm_height(-Global.TILE_OFFSET)
-		var bm = get_node_or_null("/root/World/BuildingManager") as BuildingManager
+		var bm = Global.BM
 		if bm:
 			bm.position_all_terminals()
-	var jm = get_node_or_null("/root/World/JobManager") as JobManager
+	var jm = Global.JM
 	var entries = _working_unit_dict.duplicate()
 	_working_unit_dict.clear()
 	for pnum in entries:
@@ -395,7 +395,7 @@ func _on_StaticBody_mouse_entered() -> void:
 		update_selection_and_aoe_visual()
 		return
 	if hud.is_placing():
-		get_node_or_null("/root/World/BuildingManager").update_blueprint(Global.my_player_number, self, hud.building_being_placed())
+		Global.BM.update_blueprint(Global.my_player_number, self, hud.building_being_placed())
 		request_emission(EmissionEffect.TILE_HOVER, Color.WHITE, 0.1)
 		update_selection_and_aoe_visual()
 		return
@@ -409,7 +409,7 @@ func _on_StaticBody_mouse_exited() -> void:
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if hud and hud.is_placing():
 		var type = hud.building_being_placed()
-		var bm = get_node_or_null("/root/World/BuildingManager")
+		var bm = Global.BM
 		bm.enabled_blueprints[type].transform.origin.y = BuildingManager.HIDE_DEPTH
 		bm.disabled_blueprints[type].transform.origin.y = BuildingManager.HIDE_DEPTH
 	release_emission(EmissionEffect.TILE_HOVER)

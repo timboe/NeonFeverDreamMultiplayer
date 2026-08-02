@@ -2,16 +2,9 @@ extends Node3D
 class_name CombatManager
 
 var _scan_timer := 0.0
-var _unit_manager: UnitManager
-var _building_manager: BuildingManager
-var _pathing_manager: PathingManager
-var _job_manager: JobManager
 
 func _ready() -> void:
-	_unit_manager = get_node_or_null("/root/World/UnitManager") as UnitManager
-	_building_manager = get_node_or_null("/root/World/BuildingManager") as BuildingManager
-	_pathing_manager = get_node_or_null("/root/World/TileManager/PathingManager") as PathingManager
-	_job_manager = get_node_or_null("/root/World/JobManager") as JobManager
+	Global.CM = self
 
 func _process(delta: float) -> void:
 	if not multiplayer.is_server():
@@ -90,9 +83,9 @@ func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health
 
 func _scan_targets() -> void:
-	if _job_manager == null:
+	if Global.JM == null:
 		return
-	for unit in _unit_manager.units():
+	for unit in Global.UM.units():
 		match unit.type:
 			UnitManager.Type.TANK:
 				_scan_tank(unit)
@@ -121,7 +114,7 @@ func _scan_tank(tank: Unit) -> void:
 		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(tank, t):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
-	for c in _unit_manager.units():
+	for c in Global.UM.units():
 		if c == tank or c.health <= 0:
 			continue
 		if c.player_owner not in enemies:
@@ -133,7 +126,7 @@ func _scan_tank(tank: Unit) -> void:
 					continue
 				var seen := _can_see(tank, c)
 				if seen:
-					_job_manager.add_job(tank.player_owner, JobManager.Type.COMBAT, c, tank, false, [UnitManager.Type.TANK], false, true)
+					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT, c, tank, false, [UnitManager.Type.TANK], false, true)
 					var dmg := Config.get_damage(tank.type, c)
 					var score := _score_for_damage(dmg, c.health)
 					if score > best_score:
@@ -144,7 +137,7 @@ func _scan_tank(tank: Unit) -> void:
 				if c.cloaked or _dist_2d(tank, c) > Config.TANK_VIRUS_DETECT_RADIUS:
 					continue
 				if _can_see(tank, c):
-					_job_manager.add_job(tank.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.AERIAL], true, true)
+					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.AERIAL], true, true)
 	tank.combat_target = best_target
 
 func _scan_aerial(aerial: Unit) -> void:
@@ -162,7 +155,7 @@ func _scan_aerial(aerial: Unit) -> void:
 		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(aerial, t):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
-	for c in _unit_manager.units():
+	for c in Global.UM.units():
 		if c == aerial or c.health <= 0:
 			continue
 		if c.player_owner not in enemies:
@@ -173,7 +166,7 @@ func _scan_aerial(aerial: Unit) -> void:
 				# Spot an enemy tank and queue a kill-TANK job for a VIRUS
 				var seen := _can_see(aerial, c)
 				if seen:
-					_job_manager.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.VIRUS])
+					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.VIRUS])
 					if dmg > 0:
 						var score := _score_for_damage(dmg, c.health)
 						if score > best_score:
@@ -184,7 +177,7 @@ func _scan_aerial(aerial: Unit) -> void:
 				var radius := Config.PATROL_VIRUS_DETECT_RADIUS if is_patrol else Config.STRIKE_VIRUS_DETECT_RADIUS
 				if _dist_2d(aerial, c) <= radius:
 					var scout := aerial if is_patrol else null
-					_job_manager.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, scout, false, [UnitManager.Type.AERIAL], true, true)
+					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, scout, false, [UnitManager.Type.AERIAL], true, true)
 				if dmg > 0:
 					var score := _score_for_damage(dmg, c.health)
 					if score > best_score and _can_see(aerial, c):
@@ -196,8 +189,8 @@ func _scan_aerial(aerial: Unit) -> void:
 					if score > best_score and _can_see(aerial, c):
 						best_score = score
 						best_target = c
-	if _building_manager:
-		for b in _building_manager.buildings():
+	if Global.BM:
+		for b in Global.BM.buildings():
 			if b.player_owner not in enemies or b.health <= 0:
 				continue
 			var dmg = Config.get_damage(aerial.type, b, mode)
@@ -213,7 +206,7 @@ func _scan_virus(virus: Unit) -> void:
 	if virus.health <= 0:
 		return
 	var enemies := _enemy_list_for(virus)
-	for c in _unit_manager.units():
+	for c in Global.UM.units():
 		if c == virus or c.health <= 0:
 			continue
 		if c.type != UnitManager.Type.TANK:
@@ -221,10 +214,10 @@ func _scan_virus(virus: Unit) -> void:
 		if c.player_owner not in enemies:
 			continue
 		if _can_see(virus, c):
-			_job_manager.add_job(virus.player_owner, JobManager.Type.COMBAT, c, virus, false, [UnitManager.Type.VIRUS])
+			Global.JM.add_job(virus.player_owner, JobManager.Type.COMBAT, c, virus, false, [UnitManager.Type.VIRUS])
 
 func _update_firing(delta: float) -> void:
-	for u in _unit_manager.units():
+	for u in Global.UM.units():
 		if u.health <= 0:
 			u.combat_target = null
 			continue

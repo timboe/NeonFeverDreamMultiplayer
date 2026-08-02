@@ -34,7 +34,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if not um:
 		return
 	var uid: int = um.next_unit_id()

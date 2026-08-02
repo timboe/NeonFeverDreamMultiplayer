@@ -40,7 +40,7 @@ func _process(delta: float) -> void:
 		_update_tank_count()
 
 func _update_tank_count() -> void:
-	var um = get_node_or_null("/root/World/UnitManager")
+	var um = Global.UM
 	if um:
 		cached_tank_count = um.unit_count(player_owner, UnitManager.Type.TANK)
 
@@ -54,10 +54,10 @@ func check_work() -> void:
 		return
 	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job
 	if _production_energy >= _production_cost and _production_timer <= 0:
-		var um = get_node_or_null("/root/World/UnitManager")
+		var um = Global.UM
 		if not um:
 			return
-		var jm = get_node_or_null("/root/World/JobManager")
+		var jm = Global.JM
 		if not jm:
 			return
 		var total_zoombas : int = um.unit_count(player_owner, UnitManager.Type.ZOOMBA)
