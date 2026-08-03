@@ -55,6 +55,9 @@ func setup(tile_dictionary: Dictionary) -> void:
 	_monorail_body.name = "MonorailBody"
 	# Keep the rail body off collision layer 1 so it never blocks combat LOS rays.
 	_monorail_body.collision_layer = 2
+	# Not mouse-pickable: the rail sits above tiles, so it must not intercept the
+	# picking ray (otherwise hovering a monorail would block placing on the tile).
+	_monorail_body.input_ray_pickable = false
 	add_child(_monorail_body)
 	_shape = _build_collision_shape(rail_mesh)
 

@@ -131,10 +131,7 @@ func _process(delta: float) -> void:
 			if not is_instance_valid(_working_unit):
 				finish_repair()
 				return
-			health += REPAIR_AMOUNT
-			if health >= max_health:
-				health = max_health
-				finish_repair()
+			if _repair_heal():
 				return
 
 	if _health_bar:
@@ -401,6 +398,16 @@ func finish_repair() -> void:
 	if is_instance_valid(_working_unit):
 		_working_unit.job_finished()
 	_working_unit = null
+
+# One repair-heal tick. Returns true when the repair is complete (health full).
+# Subclasses (Vat shared pools) override to redirect healing.
+func _repair_heal() -> bool:
+	health += REPAIR_AMOUNT
+	if health >= max_health:
+		health = max_health
+		finish_repair()
+		return true
+	return false
 
 # --- RPC ---
 

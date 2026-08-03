@@ -88,10 +88,18 @@ func request_energy(pnum: int, amount: float) -> float:
 func recalculate_capacity() -> void:
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		capacity[p] = 0.0
-	var vats := get_tree().get_nodes_in_group("vat")
-	for v in vats:
-		if v.state == Building.State.CONSTRUCTED:
-			capacity[v.player_owner] += v.get_capacity()
+	# Iterate the building dictionary rather than the "vat" group: rpc_remove_building
+	# erases a vat from the dictionary before calling recompute_aoe(), while queue_free
+	# is deferred — so the group would still contain the just-destroyed vat and keep
+	# counting its capacity.
+	var bm = Global.BM
+	if not bm:
+		return
+	for b in bm.buildings():
+		# "vat" group includes both Vats and MCPs (the MCP is the baseline 1000e
+		# supplier) — both expose get_capacity().
+		if b.is_in_group("vat") and b.state == Building.State.CONSTRUCTED:
+			capacity[b.player_owner] += b.get_capacity()
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		if energy[p] > capacity[p]:
 			energy[p] = capacity[p]
