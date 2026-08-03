@@ -36,6 +36,12 @@ func _ready() -> void:
 	_hide_controls(self)
 
 func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
+	# The Terminal isn't part of the ghost — hide it. (queue_free breaks
+	# Node.duplicate() of the building templates, so we hide instead; the
+	# visible=false override survives duplication into placed ghosts.)
+	if node.name == "Terminal":
+		node.visible = false
+		return
 	for c in node.get_children():
 		apply_blueprint_material(c, mat)
 	if node is MeshInstance3D and node.mesh:
@@ -43,6 +49,5 @@ func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
 			node.set_surface_override_material(i, mat)
 	elif node is CSGCombiner3D:
 		node.material_override = mat
-	# TODO node.name == "Terminal" is not working here
-	elif node is GPUParticles3D or node is Zapper or node is CollisionShape3D or node.name == "Terminal":
+	elif node is GPUParticles3D or node is Zapper or node is CollisionShape3D:
 		node.visible = false

@@ -344,24 +344,34 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 			if ct and ct.is_valid():
 				ct.kill()
 		_countdown_tweens.clear()
+		# The thunk is a short step from the current position toward the destination,
+		# so it works for both lowering (jolt down) and raising (jolt up). It's scaled
+		# by the total travel distance to match the old dest * thunk_distance magnitude.
+		var start := transform.origin.y
+		var travel := absf(dest - start)
+		var dir := 1.0 if dest > start else -1.0
+		var thunk_pos : float = start + dir * thunk_distance * travel
 		$Particles.emitting = true
 		toggle_tween = create_tween()
 		# Need to alter collision box and nav mesh
-		toggle_tween.tween_property(self, "position:y", dest * thunk_distance, thunk_time)\
+		toggle_tween.tween_property(self, "position:y", thunk_pos, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		toggle_tween.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), dest * thunk_distance, thunk_time)\
+		toggle_tween.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), thunk_pos, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.parallel().tween_property(self, "position:y", dest, fall_time)\
-			.from(dest * thunk_distance).set_delay(thunk_time)\
+			.from(thunk_pos).set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		toggle_tween.parallel().tween_method(set_tile_mm_height, dest * thunk_distance, dest, fall_time)\
+		toggle_tween.parallel().tween_method(set_tile_mm_height, thunk_pos, dest, fall_time)\
 			.set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.tween_callback(_apply_emission)
 		if not multiplayer.is_server():
 			toggle_tween.tween_callback(_sync_state_after_toggle.bind(dest))
+			# Reposition terminals once this tile's state is final on the client.
+			# (The server repositions in done_toggle after finalizing its own state.)
+			toggle_tween.tween_callback(_reposition_terminals_after_toggle)
 
 func done_toggle() -> void:
 	if not multiplayer.is_server():
@@ -374,18 +384,15 @@ func done_toggle() -> void:
 		t.origin.y = -Global.TILE_OFFSET
 		transform = t
 		set_tile_mm_height(-Global.TILE_OFFSET)
-		var bm = Global.BM
-		if bm:
-			bm.position_all_terminals()
-	var jm = Global.JM
+	Global.BM.position_all_terminals()
 	var entries = _working_unit_dict.duplicate()
 	_working_unit_dict.clear()
 	for pnum in entries:
 		var entry = entries[pnum]
-		if jm and entry["job_id"] >= 0 and jm.jobs_dict.has(entry["job_id"]):
-			var j = jm.jobs_dict[entry["job_id"]]
+		if entry["job_id"] >= 0 and Global.JM.jobs_dict.has(entry["job_id"]):
+			var j = Global.JM.jobs_dict[entry["job_id"]]
 			if j["assigned"] == null or j["assigned"] == entry["unit"]:
-				jm.remove_job(entry["job_id"])
+				Global.JM.remove_job(entry["job_id"])
 
 # --- Input handlers ---
 
@@ -430,3 +437,6 @@ func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, 
 
 func _sync_state_after_toggle(dest: float) -> void:
 	state = TileManager.State.LOWERED if dest < -Global.FLOOR_HEIGHT else TileManager.State.RAISED
+
+func _reposition_terminals_after_toggle() -> void:
+	Global.BM.position_all_terminals()

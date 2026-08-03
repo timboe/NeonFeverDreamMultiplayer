@@ -46,8 +46,7 @@ func _ready() -> void:
 	_build_strike_buttons()
 
 func _on_empower_pressed() -> void:
-	if building:
-		Global.send_command_me("empower", [building.id])
+	_empower_building(building)
 
 func _build_enemy_buttons() -> void:
 	for i in range(1, 5):

@@ -214,6 +214,9 @@ func apply_loaded_level() -> void:
 		elif tile.get_id() in Global.level.LOWERED:
 			tile.set_lowered()
 	recompute_aoe()
+	# MCPs may have been placed before their LOWERED neighbours were lowered, so
+	# re-evaluate terminal positions/hiding now that the grid is final.
+	Global.BM.position_all_terminals()
 
 # --- AoE computation ---
 

@@ -53,6 +53,14 @@ func zoomba_cap() -> int:
 
 # --- Production ---
 
+func _can_produce() -> bool:
+	var um = Global.UM
+	if not um:
+		return false
+	if um.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
+		return true
+	return um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap()
+
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
@@ -73,8 +81,9 @@ func _produce_unit() -> void:
 		_production_energy = 0.0
 		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 		return
-	# At cap — hold energy, don't consume
-	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+	# At cap — _can_produce() should prevent reaching here; hold defensively.
+	_production_timer = 0.0
+	_production_energy = 0.0
 
 # --- Energy ---
 

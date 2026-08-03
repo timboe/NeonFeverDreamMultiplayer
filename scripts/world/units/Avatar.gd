@@ -153,12 +153,12 @@ func _update_screen_cursor() -> void:
 	var col := screen_ray.get_collider()
 	if col and col.name == "ScreenBody":
 		var terminal: Node = col.get_parent()
-		if terminal:
+		if terminal and terminal.visible:
 			# The ScreenBody collider's parent is the Terminal root; the actual
 			# display plane (and its material texture) is the "Screen" child.
 			var screen_mesh := terminal.get_node_or_null("Screen") as MeshInstance3D
-			var building := terminal.get_parent()
-			if screen_mesh and building:
+			var building := terminal.get_parent() as Building
+			if screen_mesh and building and building.player_owner == Global.my_player_number:
 				var hud_root := building.get_node_or_null("BuildingHUD/Root")
 				if hud_root and hud_root.has_method("uv_from_collision"):
 					var uv: Vector2 = hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())

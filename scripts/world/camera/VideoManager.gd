@@ -60,6 +60,12 @@ func _on_toggle_camera() -> void:
 		CameraStatus.FPS:
 			to_overhead_cam_start()
 
+# Drop out of FPS mode if the player is in it (used when interacting with a
+# terminal, e.g. pressing Empower).
+func force_leave_fps() -> void:
+	if camera_status == CameraStatus.FPS:
+		to_overhead_cam_start()
+
 func to_fps_cam_start() -> void:
 	avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
 	if not avatar:
@@ -84,6 +90,8 @@ func to_fps_cam_end() -> void:
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
 	if fps_camera:
 		fps_camera.current = true
+	# Re-entering FPS clears the player's empowered building (see empower flow).
+	Global.send_command_me("clear_empower", [])
 
 func to_overhead_cam_start() -> void:
 	camera_status = CameraStatus.TO_OVERHEAD

@@ -73,8 +73,14 @@ func check_access(tile: TileElement) -> Array:
 	return tile.get_access_tiles()
 
 func position_all_terminals() -> void:
+	# Resolve each player's MCP tile once instead of per building.
+	var mcp_by_player: Dictionary = {}
 	for b in building_dictionary.values():
-		b.position_terminal()
+		var pnum: int = b.player_owner
+		if not mcp_by_player.has(pnum):
+			var mcp_nodes := get_tree().get_nodes_in_group("mcp_player" + str(pnum))
+			mcp_by_player[pnum] = mcp_nodes[0].location if not mcp_nodes.is_empty() else null
+		b.position_terminal(mcp_by_player[pnum])
 
 # --- Blueprint ---
 
@@ -153,7 +159,9 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
-	new_building.position_terminal()
+	# A new building changes access tiles for everyone, so reposition all
+	# terminals (the new building is already in building_dictionary).
+	position_all_terminals()
 	var new_blueprint = enabled_blueprints[type].duplicate()
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true
@@ -201,6 +209,9 @@ func rpc_remove_building(id: int) -> void:
 			tile.building = null
 		b.queue_free()
 		Global.TM.recompute_aoe()
+		# A neighbour may have just been unblocked (freed access tile) or lost
+		# one — re-evaluate every terminal.
+		position_all_terminals()
 		# Reconnect tile to pathing (reverse of remove_tile_from_pathing)
 		if tile and tile.state == TileManager.State.LOWERED:
 			var pm = Global.PM

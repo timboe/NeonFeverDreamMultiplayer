@@ -20,8 +20,7 @@ func _ready() -> void:
 	empower_btn.pressed.connect(_on_empower_pressed)
 
 func _on_empower_pressed() -> void:
-	if building:
-		Global.send_command_me("empower", [building.id])
+	_empower_building(building)
 
 func _process(_delta: float) -> void:
 	if not building or not energy_bar:

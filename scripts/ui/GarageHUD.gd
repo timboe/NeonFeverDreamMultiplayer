@@ -49,8 +49,7 @@ func _on_enemy_toggle(pnum: int) -> void:
 	Global.send_command_me("set_enemy_targets", [building.id, targets])
 
 func _on_empower_pressed() -> void:
-	if building:
-		Global.send_command_me("empower", [building.id])
+	_empower_building(building)
 
 func _on_ratio_changed(value: float) -> void:
 	if building:

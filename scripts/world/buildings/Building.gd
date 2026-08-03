@@ -8,6 +8,9 @@ const CONSTRUCTION_TIME: float = 5.0
 const HEALTH_BAR_HEIGHT: float = 22.0
 const REPAIR_INTERVAL := 0.05
 const REPAIR_AMOUNT := 2.5
+# Squared XZ distance tolerance when matching shared pentagon edge vertices in
+# _compute_edge (0.1 world units at Cairo.UNIT = 10).
+const EDGE_MATCH_EPSILON: float = 0.01
 
 # --- Identity ---
 
@@ -89,7 +92,9 @@ func _process(delta: float) -> void:
 	if multiplayer.is_server() and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
 		if _production_timer > 0.0:
 			_production_timer -= delta
-		elif _production_enabled:
+			if not _can_produce():
+				_production_timer = 0.0
+		elif _production_enabled and _can_produce():
 			var em = Global.EM
 			if em and _production_cost > 0.0:
 				var tick_amount := _production_cost * delta
@@ -191,6 +196,12 @@ func _setup_production(unit_type: UnitManager.Type) -> void:
 	_production_cost = Config.UNIT_COST.get(unit_type, 0.0)
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
+# Whether the building is able to produce a unit right now. Subclasses that can
+# saturate (e.g. MCP at its zoomba cap) override this to stop the production
+# cycle (and thus the countdown) while they can't actually spawn anything.
+func _can_produce() -> bool:
+	return true
+
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
@@ -241,7 +252,7 @@ func _setup_hud() -> void:
 
 # --- Terminal positioning ---
 
-func position_terminal() -> void:
+func position_terminal(mcp_tile: TileElement = null) -> void:
 	var terminal := get_node_or_null("Terminal")
 	if not terminal:
 		return
@@ -249,24 +260,31 @@ func position_terminal() -> void:
 	if candidates.is_empty():
 		candidates = location.get_access_tiles()
 	if candidates.is_empty():
-		if location.neighbours.size() > 0:
-			candidates = [location.neighbours[0]]
-		else:
-			return
-	var mcp_nodes := get_tree().get_nodes_in_group("mcp_player" + str(player_owner))
-	if mcp_nodes.is_empty():
+		# No lowered access tiles — the building is penned in. Hide the terminal
+		# rather than floating it on a raised neighbour.
+		terminal.visible = false
 		return
-	var mcp_tile: TileElement = mcp_nodes[0].location
+	terminal.visible = true
 	var best := candidates[0]
-	var best_dist := best.pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
-	for i in range(1, candidates.size()):
-		var d := candidates[i].pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
-		if d < best_dist:
-			best_dist = d
-			best = candidates[i]
+	if mcp_tile == null:
+		var mcp_nodes := get_tree().get_nodes_in_group("mcp_player" + str(player_owner))
+		if not mcp_nodes.is_empty():
+			mcp_tile = mcp_nodes[0].location
+	if mcp_tile:
+		var best_dist := best.pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
+		for i in range(1, candidates.size()):
+			var d := candidates[i].pathing_centre.distance_squared_to(mcp_tile.pathing_centre)
+			if d < best_dist:
+				best_dist = d
+				best = candidates[i]
 	var edge_data := _compute_edge(best)
-	terminal.global_position = Vector3(edge_data.midpoint.x, 0.0, edge_data.midpoint.z)
-	terminal.rotation.y = atan2(-edge_data.normal.z, edge_data.normal.x) + PI - location.rotation.y
+	# Sit the terminal on the chosen tile's surface (raised or lowered) rather
+	# than assuming the world floor is y=0.
+	var ground_y := best.global_position.y + Cairo.HEIGHT
+	var world_pos := Vector3(edge_data.midpoint.x, ground_y, edge_data.midpoint.z)
+	# Keep position and rotation in the same (building-local) space.
+	terminal.position = to_local(world_pos)
+	terminal.rotation.y = atan2(-edge_data.normal.z, edge_data.normal.x) + PI - rotation.y
 
 func _compute_edge(neighbour: TileElement) -> Dictionary:
 	var a_xform := location.global_transform
@@ -276,13 +294,17 @@ func _compute_edge(neighbour: TileElement) -> Dictionary:
 		var av: Vector3 = a_xform * v
 		for w in Cairo.BASE_VERTICES:
 			var bw: Vector3 = b_xform * w
-			if av.distance_squared_to(bw) < 0.01:
+			# Compare in XZ only — adjacent tiles can be at different heights
+			# (raised building tile vs lowered access tile) yet share the edge
+			# vertically, so a full 3D distance would never match.
+			if Vector2(av.x, av.z).distance_squared_to(Vector2(bw.x, bw.z)) < EDGE_MATCH_EPSILON:
 				shared.append(av)
 				break
 		if shared.size() == 2:
 			break
 	if shared.size() == 2:
 		var midpoint := (shared[0] + shared[1]) * 0.5
+		midpoint.y = 0.0
 		var edge := shared[1] - shared[0]
 		var perp := Vector3(edge.z, 0.0, -edge.x).normalized()
 		var outward := (midpoint - location.pathing_centre).normalized()
