@@ -28,10 +28,11 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_update_orders()
 
 func set_enemy_targets(targets: Array[int]) -> void:
-	_enemy_targets = targets
+	_enemy_targets = _clean_enemy_targets(targets)
 	_update_orders()
 
 func _update_orders() -> void:
+	_enemy_targets = _clean_enemy_targets(_enemy_targets)
 	orders["enemy"] = _enemy_targets
 
 func _process(delta: float) -> void:

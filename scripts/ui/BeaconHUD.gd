@@ -2,7 +2,6 @@ extends TerminalHUD
 
 class_name BeaconHUD
 
-const PLAYER_NAMES: Array[String] = ["", "Red", "Blue", "Green", "Yellow"]
 const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.MCP_1: "MCP",
 	BuildingManager.Type.GEN: "Generator",
@@ -49,9 +48,12 @@ func _on_empower_pressed() -> void:
 	_empower_building(building)
 
 func _build_enemy_buttons() -> void:
+	var own: int = building.player_owner if building else 0
 	for i in range(1, 5):
+		if i == own:
+			continue
 		var btn := Button.new()
-		btn.text = PLAYER_NAMES[i]
+		btn.text = Config.PLAYER_NAMES[i - 1]
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)

@@ -145,7 +145,9 @@ func _hide_beam() -> void:
 
 func initialise(b: Building) -> void:
 	player_owner = b.player_owner
-	orders = b.orders
+	# Copy orders at spawn — later building order changes (e.g. enemy-target
+	# toggles) must not retroactively affect units already in the world.
+	orders = b.orders.duplicate()
 	var spawn_tile: TileElement = b.find_unit_spawn_location()
 	location = spawn_tile
 	global_transform.origin = spawn_tile.pathing_centre

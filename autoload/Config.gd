@@ -178,3 +178,11 @@ static var PLAYER_COLORS: Array[Color] = [
 	Color.YELLOW,
 	Color.ORANGE_RED,
 ]
+
+# 0-based, aligned with PLAYER_COLORS — index player_number - 1.
+static var PLAYER_NAMES: Array[String] = [
+	"Red",
+	"Green",
+	"Yellow",
+	"Orange",
+]

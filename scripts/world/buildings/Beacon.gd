@@ -43,8 +43,9 @@ func _produce_unit() -> void:
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 4.0)
 
 func _update_orders() -> void:
+	_enemy_targets = _clean_enemy_targets(_enemy_targets)
 	orders["patrol"]["stance"] = _patrol_stance
-	#
+	orders["patrol"]["enemy"] = _enemy_targets
 	orders["strike"]["enemy"] = _enemy_targets
 	orders["strike"]["target"] = _building_targets
 	orders["strike"]["priority"] = _strike_priority
@@ -54,7 +55,7 @@ func set_strike_priority(sp: JobManager.Priority) -> void:
 	_update_orders()
 
 func set_enemy_targets(et: Array[int]) -> void:
-	_enemy_targets = et
+	_enemy_targets = _clean_enemy_targets(et)
 	_update_orders()
 
 func set_patrol_stance(ps: JobManager.Stance) -> void:

@@ -28,12 +28,13 @@ func combat_target_position(combat_target : Variant) -> Vector3:
 		return body.global_position
 	return combat_target.global_position
 func _enemy_list_for(unit: Unit) -> Array[int]:
-	if unit.orders.has("enemy") and not unit.orders["enemy"].is_empty():
-		return unit.orders["enemy"] as Array[int]
+	# Explicit enemy list only — no fallback to "everyone". An empty list means
+	# the unit attacks nothing. Never include the unit's own team.
 	var players: Array[int] = []
-	for p in range(1, Global.MAX_PLAYERS + 1):
-		if p != unit.player_owner:
-			players.append(p)
+	if unit.orders.has("enemy") and not unit.orders["enemy"].is_empty():
+		for p in unit.orders["enemy"]:
+			if p != unit.player_owner:
+				players.append(int(p))
 	return players
 
 func _attacker_mode(unit: Unit) -> int:

@@ -239,6 +239,17 @@ func _produce_unit() -> void:
 func _get_hud_scene() -> PackedScene:
 	return null
 
+# --- Targeting ---
+
+# Enemy target lists may come from HUD toggles or defaults like [1,2,3,4] that
+# include the owner itself — a building can never target its own team.
+func _clean_enemy_targets(targets: Array) -> Array[int]:
+	var out: Array[int] = []
+	for p in targets:
+		if p != player_owner:
+			out.append(int(p))
+	return out
+
 func _setup_hud() -> void:
 	var hud_scene := _get_hud_scene()
 	if not hud_scene:
@@ -257,8 +268,8 @@ func _setup_hud() -> void:
 	move_child(_hud, 0)
 	# Instantiate the HUD scene fresh — each building gets its own nodes
 	var ctrl = hud_scene.instantiate()
-	_hud.add_child(ctrl)
 	ctrl.building = self
+	_hud.add_child(ctrl)
 	var screen = get_node_or_null("Terminal/Screen")
 	if screen:
 		var mat = screen.get_surface_override_material(0)

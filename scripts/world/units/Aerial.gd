@@ -43,8 +43,9 @@ func initialise(b: Building) -> void:
 	if b is Beacon:
 		mode = Mode.STRIKE if randf() > b.patrol_strike_ratio else Mode.PATROL
 	_move_target.y = 10.0 if mode == Mode.PATROL else 16.0
-	# Update orders based on strike or patrol
-	orders = b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]
+	# Update orders based on strike or patrol. Copy the chosen orders dict so
+	# later building order changes don't retroactively affect already-spawned units.
+	orders = (b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]).duplicate()
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
 	# Override the base class spawn tween — fly from building to initial tile at constant height
@@ -91,11 +92,13 @@ func try_generate_offense_job() -> bool:
 	return true
 
 func _choose_strike_building() -> Building:
-	var enemies: Array = orders.get("enemy", [])
+	# Explicit enemy list only — no fallback to "everyone"; empty means no strikes.
+	var enemies: Array = []
+	for p in orders.get("enemy", []):
+		if p != player_owner:
+			enemies.append(p)
 	if enemies.is_empty():
-		for p in range(1, Global.MAX_PLAYERS + 1):
-			if p != player_owner:
-				enemies.append(p)
+		return null
 	var target_types: Array = orders.get("target", [])
 	var priority: int = orders.get("priority", JobManager.Priority.NEAREST)
 	var bm = Global.BM

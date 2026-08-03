@@ -26,13 +26,14 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_update_orders()
 	
 func _update_orders() -> void:
+	_enemy_targets = _clean_enemy_targets(_enemy_targets)
 	orders["enemy"] = _enemy_targets
 	orders["target"] = _building_targets
 	orders["priority"] = _virus_priority
 	orders["tank_ratio"] = _virus_tank_building_ratio
 
 func set_enemy_targets(et: Array[int]) -> void:
-	_enemy_targets = et
+	_enemy_targets = _clean_enemy_targets(et)
 	_update_orders()
 
 func set_building_targets(bt: Array[BuildingManager.Type]) -> void:
