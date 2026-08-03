@@ -214,11 +214,12 @@ func _setup_production(unit_type: UnitManager.Type) -> void:
 	_production_cost = Config.UNIT_COST.get(unit_type, 0.0)
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
-# Whether the building is able to produce a unit right now. Subclasses that can
-# saturate (e.g. MCP at its zoomba cap) override this to stop the production
-# cycle (and thus the countdown) while they can't actually spawn anything.
+# Whether the building is able to produce a unit right now. Unit producers stop
+# when hemmed in — no lowered neighbouring tile without a building — since units
+# need an access tile to spawn onto. Subclasses that saturate (e.g. MCP at its
+# zoomba cap) override this.
 func _can_produce() -> bool:
-	return true
+	return not location.get_access_tiles().is_empty()
 
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
