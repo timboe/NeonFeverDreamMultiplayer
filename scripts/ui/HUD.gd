@@ -37,7 +37,8 @@ var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
 @onready var _root: Control = $HUDRoot
 @onready var energy_bar: ProgressBar = %EnergyBar
 @onready var energy_label: Label = %EnergyLabel
-@onready var energy_rate_label: Label = %EnergyRateLabel
+@onready var energy_prod_label: Label = %EnergyProdLabel
+@onready var energy_cons_label: Label = %EnergyConsLabel
 @onready var fps_button: Button = %FPSButton
 @onready var crosshair: Control = $HUDRoot/Crosshair
 @onready var mode_bar: PanelContainer = $HUDRoot/ModeBar
@@ -94,10 +95,10 @@ func _process(_delta: float) -> void:
 	energy_bar.value = e.current
 	energy_label.text = str(int(e.current))
 
-	var rate: float = e.rate
-	energy_rate_label.text = ("+" if rate >= 0 else "") + str(int(rate)) + "/s"
-	energy_rate_label.add_theme_color_override(
-		"font_color", Color.GREEN if rate >= 0 else Color.RED)
+	energy_prod_label.text = "+" + str(int(e.produced)) + "/s"
+	energy_cons_label.text = "-" + str(int(e.consumed)) + "/s"
+	energy_prod_label.add_theme_color_override("font_color", Color.GREEN)
+	energy_cons_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.4))
 
 	if e.capacity > 0 and e.current / e.capacity < 0.2:
 		var fill_sb := _root.get_theme_stylebox("fill", "ProgressBar") as StyleBoxFlat
@@ -197,7 +198,7 @@ func _get_player_energy() -> Dictionary:
 	var em = Global.EM
 	if em:
 		return em.get_player_energy(Global.my_player_number)
-	return {"current": 0.0, "capacity": 0.0, "rate": 0.0}
+	return {"current": 0.0, "capacity": 0.0, "produced": 0.0, "consumed": 0.0}
 
 # --- Mode buttons ---
 

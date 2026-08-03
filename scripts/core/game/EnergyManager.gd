@@ -4,17 +4,33 @@ class_name EnergyManager
 
 const TICK_INTERVAL := 0.05
 const SECOND_INTERVAL := 1.0
+# Number of ticks that make up the full 1s rolling window.
+const HISTORY_SAMPLES: int = int(SECOND_INTERVAL / TICK_INTERVAL)
 
 var energy: Dictionary = {}
 var capacity: Dictionary = {}
+# Internal supply-scaling stats used to ration consumers when demand exceeds
+# production and reserves are too low to cover the gap (see request_energy).
 var rate_of_change: Dictionary = {}
-
-var _generated: Dictionary = {}
-var _requested: Dictionary = {}
 var _ratio: Dictionary = {}
 
+# Rolling 1-second statistics (per player): energy generated, actually consumed
+# and requested, integrated over the last second. Each tick the per-tick delta is
+# pushed into the history ring buffer and the oldest sample is dropped, so the
+# sum is a stable per-second rate rather than a ramping accumulator.
+var _produced: Dictionary = {}
+var _consumed: Dictionary = {}
+var _requested: Dictionary = {}
+
+# Per-tick accumulators, drained into the rolling buffers every tick.
+var _consumed_tick: Dictionary = {}
+var _requested_tick: Dictionary = {}
+
+var _gen_history: Dictionary = {}
+var _cons_history: Dictionary = {}
+var _req_history: Dictionary = {}
+
 var _tick_timer := 0.0
-var _second_timer := 0.0
 
 # --- Lifecycle ---
 
@@ -24,9 +40,15 @@ func _ready() -> void:
 		energy[p] = 0.0
 		capacity[p] = 0.0
 		rate_of_change[p] = 0.0
-		_generated[p] = 0.0
-		_requested[p] = 0.0
 		_ratio[p] = 1.0
+		_produced[p] = 0.0
+		_consumed[p] = 0.0
+		_requested[p] = 0.0
+		_consumed_tick[p] = 0.0
+		_requested_tick[p] = 0.0
+		_gen_history[p] = []
+		_cons_history[p] = []
+		_req_history[p] = []
 
 func _process(delta: float) -> void:
 	if not multiplayer.is_server():
@@ -34,15 +56,17 @@ func _process(delta: float) -> void:
 	if not Global.game_started:
 		return
 	_tick_timer += delta
-	_second_timer += delta
 	while _tick_timer >= TICK_INTERVAL:
 		_tick_timer -= TICK_INTERVAL
 		_energy_tick()
-	while _second_timer >= SECOND_INTERVAL:
-		_second_timer -= SECOND_INTERVAL
-		_second_tick()
 
 # --- Tick functions ---
+
+func _push_sample(history: Array, rolling: Dictionary, key: int, sample: float) -> void:
+	history.append(sample)
+	rolling[key] += sample
+	if history.size() > HISTORY_SAMPLES:
+		rolling[key] -= history.pop_front()
 
 func _energy_tick() -> void:
 	var generators := get_tree().get_nodes_in_group("generator")
@@ -59,18 +83,15 @@ func _energy_tick() -> void:
 		var tick_gen: float = tick_rates.get(p, 0.0)
 		if tick_gen > 0.0:
 			energy[p] = minf(energy[p] + tick_gen, capacity[p])
-			_generated[p] += tick_gen
+		_push_sample(_gen_history[p], _produced, p, tick_gen)
+		_push_sample(_cons_history[p], _consumed, p, _consumed_tick[p])
+		_consumed_tick[p] = 0.0
+		_push_sample(_req_history[p], _requested, p, _requested_tick[p])
+		_requested_tick[p] = 0.0
+		# Refresh supply/demand from the trailing 1s of data.
+		rate_of_change[p] = _produced[p] - _requested[p]
+		_ratio[p] = _produced[p] / _requested[p] if _requested[p] > 0.0 else 1.0
 	_broadcast_energy()
-
-func _second_tick() -> void:
-	for p in range(1, Global.MAX_PLAYERS + 1):
-		rate_of_change[p] = _generated[p] - _requested[p]
-		if _requested[p] > 0.0:
-			_ratio[p] = _generated[p] / _requested[p]
-		else:
-			_ratio[p] = 1.0
-		_generated[p] = 0.0
-		_requested[p] = 0.0
 
 # --- Public API ---
 
@@ -82,7 +103,8 @@ func request_energy(pnum: int, amount: float) -> float:
 		allocated *= _ratio.get(pnum, 1.0)
 	allocated = minf(allocated, energy[pnum])
 	energy[pnum] -= allocated
-	_requested[pnum] += amount
+	_requested_tick[pnum] += amount
+	_consumed_tick[pnum] += allocated
 	return allocated
 
 func recalculate_capacity() -> void:
@@ -113,7 +135,8 @@ func _broadcast_energy() -> void:
 		data.append(p)
 		data.append(energy[p])
 		data.append(capacity[p])
-		data.append(rate_of_change[p])
+		data.append(_produced[p])
+		data.append(_consumed[p])
 	rpc("apply_energy", data)
 
 @rpc("authority", "call_remote", "unreliable")
@@ -124,7 +147,8 @@ func apply_energy(data: PackedFloat64Array) -> void:
 		var pnum := int(data[idx]); idx += 1
 		energy[pnum] = data[idx]; idx += 1
 		capacity[pnum] = data[idx]; idx += 1
-		rate_of_change[pnum] = data[idx]; idx += 1
+		_produced[pnum] = data[idx]; idx += 1
+		_consumed[pnum] = data[idx]; idx += 1
 
 # --- Queries ---
 
@@ -132,5 +156,8 @@ func get_player_energy(pnum: int) -> Dictionary:
 	return {
 		"current": energy.get(pnum, 0.0),
 		"capacity": capacity.get(pnum, 0.0),
-		"rate": rate_of_change.get(pnum, 0.0),
+		# Total energy generated and actually consumed per second, integrated over
+		# the trailing 1 second of ticks.
+		"produced": _produced.get(pnum, 0.0),
+		"consumed": _consumed.get(pnum, 0.0),
 	}
