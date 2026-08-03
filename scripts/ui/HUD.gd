@@ -110,13 +110,9 @@ func _input(event: InputEvent) -> void:
 		for zoomba in get_tree().get_nodes_in_group("zoomba"):
 			zoomba.scram()
 	if event.is_action_pressed("ui_damage_building"):
-		for b in get_tree().get_nodes_in_group("building"):
-			if b is MCP:
-				continue
-			b.apply_damage(b.max_health * 0.4)
+		Global.send_command_me("debug_damage_building", [])
 	if event.is_action_pressed("ui_damage_unit"):
-		for u in get_tree().get_nodes_in_group("unit"):
-			u.apply_damage(Config.UNIT_MAX_HP.get(u.type, 100.0) * 0.4)
+		Global.send_command_me("debug_damage_unit", [])
 
 # --- Camera UI ---
 

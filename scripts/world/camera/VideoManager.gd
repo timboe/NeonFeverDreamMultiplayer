@@ -31,6 +31,7 @@ var quat_to: Quaternion
 var trauma: float = 0.0
 var _time: float = 0.0
 var linger: float = 0.0
+var _cam_tween: Tween
 
 # --- Nodes ---
 
@@ -67,6 +68,32 @@ func force_leave_fps() -> void:
 	if camera_status == CameraStatus.FPS:
 		to_overhead_cam_start()
 
+# Snap straight back to the RTS camera with no tween — used when the local
+# player's avatar dies while in FPS mode.
+func exit_fps_immediate() -> void:
+	if camera_status != CameraStatus.FPS and camera_status != CameraStatus.TO_FPS:
+		return
+	if _cam_tween and _cam_tween.is_valid():
+		_cam_tween.kill()
+		_cam_tween = null
+	camera_status = CameraStatus.OVERHEAD
+	overhead_camera.current = true
+	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera") if avatar else null
+	if fps_camera:
+		fps_camera.current = false
+	# Park the RTS camera behind and above where the avatar was — closer and
+	# pitched more steeply down than the normal retreat so it homes in on the
+	# destruction site.
+	var anchor: Transform3D = fps_camera.get_global_transform() if fps_camera else (avatar.get_global_transform() if avatar else overhead_camera.get_global_transform())
+	var forward: Vector3 = -anchor.basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var pos: Vector3 = anchor.origin - forward * (-UNPOSESS_DISTANCE.x * 0.5)
+	pos.y = UNPOSESS_DISTANCE.y
+	overhead_camera.global_position = pos
+	overhead_camera.rotation_degrees = Vector3(-55, rad_to_deg(anchor.basis.get_euler().y), 0)
+	call_deferred("_show_mouse")
+
 func to_fps_cam_start() -> void:
 	avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
 	if not avatar:
@@ -84,6 +111,7 @@ func to_fps_cam_start() -> void:
 	tw.tween_property(overhead_camera, "position", camera_target, TRANSITION_TIME).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_method(quat_transform, 0.0, 1.0, TRANSITION_TIME).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_callback(to_fps_cam_end).set_delay(TRANSITION_TIME)
+	_cam_tween = tw
 
 func to_fps_cam_end() -> void:
 	camera_status = CameraStatus.FPS
@@ -91,6 +119,7 @@ func to_fps_cam_end() -> void:
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
 	if fps_camera:
 		fps_camera.current = true
+	_cam_tween = null
 	# Re-entering FPS clears the player's empowered building (see empower flow).
 	Global.send_command_me("clear_empower", [])
 
@@ -121,9 +150,11 @@ func to_overhead_cam_start() -> void:
 	tw.tween_property(overhead_camera, "position", target_tf.origin, TRANSITION_TIME).from(start_tf.origin)
 	tw.parallel().tween_method(quat_transform, 0.0, 1.0, TRANSITION_TIME)
 	tw.tween_callback(to_overhead_cam_end).set_delay(TRANSITION_TIME)
+	_cam_tween = tw
 
 func to_overhead_cam_end() -> void:
 	camera_status = CameraStatus.OVERHEAD
+	_cam_tween = null
 	call_deferred("_show_mouse")
 
 func quat_transform(amount: float) -> void:

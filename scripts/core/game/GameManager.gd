@@ -209,9 +209,12 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 		var u = ud.get(id_val) as Unit
 		if not u:
 			continue
-		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
-			continue
 		var e1 = s1["units"][id_val]
+		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
+			# Local avatar is client-authoritative for movement — only sync health.
+			if (e1["type"] as UnitManager.Type) == UnitManager.Type.AVATAR:
+				u.health = e1["slots"][4]
+			continue
 		var e0 = s0["units"].get(id_val)
 		if e0:
 			_apply_interpolated_unit(u, e0, e1, t, e1["type"])
@@ -272,10 +275,14 @@ func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 		var u = ud.get(id_val) as Unit
 		if not u:
 			continue
-		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
-			continue
 		var e = snapshot["units"][id_val]
-		_apply_unit(u, e["type"] as UnitManager.Type, e["slots"])
+		var type_val := e["type"] as UnitManager.Type
+		if u.type == UnitManager.Type.AVATAR and u.player_owner == Global.my_player_number:
+			# Local avatar is client-authoritative for movement — only sync health.
+			if type_val == UnitManager.Type.AVATAR:
+				u.health = e["slots"][4]
+			continue
+		_apply_unit(u, type_val, e["slots"])
 	var bd: Dictionary = Global.BM.building_dictionary
 	for id_val in snapshot["buildings"]:
 		var b = bd.get(id_val) as Building
@@ -358,9 +365,15 @@ func _interpolate_avatars() -> void:
 				var t := clampf((render_time - s0["time"]) / interval, 0.0, 1.0)
 				var e0 := {"type": UnitManager.Type.AVATAR, "slots": s0["slots"]}
 				var e1 := {"type": UnitManager.Type.AVATAR, "slots": s1["slots"]}
+				# Health is server-authoritative — don't let the client's snapshot
+				# overwrite it (that would let the avatar cheat death).
+				var health_before: float = avatar.health
 				_apply_interpolated_unit(avatar, e0, e1, t, UnitManager.Type.AVATAR)
+				avatar.health = health_before
 				continue
+		var health_before: float = avatar.health
 		_apply_unit(avatar, UnitManager.Type.AVATAR, s0["slots"])
+		avatar.health = health_before
 
 # --- Utilities ---
 

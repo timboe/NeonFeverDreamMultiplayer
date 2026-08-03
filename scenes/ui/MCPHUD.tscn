@@ -6,6 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://cj8417d0etwfo" path="res://images/cursor.png" id="4_h4j6h"]
 [ext_resource type="Script" uid="uid://bdc7sk5hb4we7" path="res://scripts/ui/TerminalCursor.gd" id="5_cursor"]
 
+[sub_resource type="StyleBoxFlat" id="health_fill"]
+bg_color = Color(0.2, 1, 0.3, 1)
+
 [node name="Root" type="Control" unique_id=1111829975]
 layout_mode = 3
 anchors_preset = 15
@@ -76,6 +79,19 @@ size_flags_horizontal = 3
 text = "0 / 0"
 horizontal_alignment = 2
 
+[node name="AvatarRow" type="HBoxContainer" parent="Window/VBox" unique_id=9000001]
+layout_mode = 2
+
+[node name="AvatarLabel" type="Label" parent="Window/VBox/AvatarRow" unique_id=9000002]
+layout_mode = 2
+text = "Avatar"
+
+[node name="AvatarCountLabel" type="Label" parent="Window/VBox/AvatarRow" unique_id=9000003]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0 / 1"
+horizontal_alignment = 2
+
 [node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=621870860]
 layout_mode = 2
 
@@ -87,6 +103,30 @@ text = "Next Unit"
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 show_percentage = false
+
+[node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=9000004]
+layout_mode = 2
+
+[node name="HealthRow" type="HBoxContainer" parent="Window/VBox" unique_id=9000005]
+layout_mode = 2
+
+[node name="HealthLabel" type="Label" parent="Window/VBox/HealthRow" unique_id=9000006]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Base Integrity"
+
+[node name="HealthValueLabel" type="Label" parent="Window/VBox/HealthRow" unique_id=9000007]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "15000"
+horizontal_alignment = 2
+
+[node name="HealthBar" type="ProgressBar" parent="Window/VBox" unique_id=9000008]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+show_percentage = false
+theme_override_styles/fill = SubResource("health_fill")
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=2096735821]
 custom_maximum_size = Vector2(64, 64)

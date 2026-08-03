@@ -204,3 +204,15 @@ func _cmd_clear_empower(player_number: int) -> void:
 	var bm = Global.BM
 	if bm:
 		bm.clear_empowered_for_player(player_number)
+
+# --- Debug helpers (server-authoritative so they work from any peer) ---
+
+func _cmd_debug_damage_unit(_player_number: int) -> void:
+	for u in get_tree().get_nodes_in_group("unit"):
+		u.apply_damage(Config.UNIT_MAX_HP.get(u.type, 100.0) * 0.4)
+
+func _cmd_debug_damage_building(_player_number: int) -> void:
+	for b in get_tree().get_nodes_in_group("building"):
+		if b is MCP:
+			continue
+		b.apply_damage(b.max_health * 0.4)
