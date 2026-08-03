@@ -276,6 +276,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - `Global.VM.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
 - `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for interacting with terminal HUDs (`ScreenBody` collision → drives the 2D `TerminalCursor` in the building's SubViewport HUD, propagating hover + click).
 - Avatars skip the job system entirely (`idle_callback` no-op; `assign_jobs` skips AVATAR; not in `HOME_TERRITORY_UNITS`). Avatar snapshots are relayed separately (see Snapshot section).
+- **The `Avatar` root (a `Unit`) never moves from its spawn tile — only its `FPSBody` (CharacterBody3D) travels the world.** Any system needing the avatar's real position must read the `FPSBody`'s transform (e.g. `avatar.get_node("FPSBody").global_position`), never the root's `global_position`/`location`. This drives combat aim (`CombatManager` aims at the body), snapshot/interpolation (avatar snapshots pack the `FPSBody` transform), and camera transitions.
 
 ## Godot 4 conversion patterns
 
@@ -297,6 +298,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - Server-only functions called from `_process`/`_physics_process` (which run on all peers) must self-guard.
 - `create_tween()` returns RefCounted — local var, `.kill()` + `.is_valid()` guard, no `@onready`.
 - Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client.
+- **Avatar root stays put** — the `Avatar` (Unit) node remains at its spawn tile; only its `FPSBody` child moves. Always read `avatar.get_node("FPSBody").global_position` for where the avatar actually is.
 - `EnergyManager`/job/player dicts are 1-based (1..`MAX_PLAYERS`). Loops: `range(1, Global.MAX_PLAYERS + 1)`.
 
 ## Lobby flow
@@ -318,5 +320,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ## Running
 
+- Godot 4.7 binary: `C:\Users\timbo\Documents\Godot_v4.7-stable_win64.exe` (also `Godot_v3.6.2-stable_win64.exe` beside it for older projects). Use it for headless checks, e.g. `& "C:\Users\timbo\Documents\Godot_v4.7-stable_win64.exe" --headless --path <project> --quit-after 90` to catch parse/script errors.
+- The user can run interactive tests inside the engine themselves (launch the game, join/multiplayer, place buildings, etc.) — when verifying a fix, prefer asking the user to test interactively rather than relying on headless reproduction.
 - Pass `--client` as CLI arg to launch a second instance on the Connect tab (`MainMenu` checks `OS.get_cmdline_args()`).
 - Default config for instances: "Run Instances" in the Godot editor with `--client` on the second.

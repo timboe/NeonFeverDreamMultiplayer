@@ -10,6 +10,7 @@ enum CameraStatus {OVERHEAD, TO_FPS, FPS, TO_OVERHEAD}
 
 const TRANSITION_TIME: float = 2.0
 const PLAYER_LOWER_DEPTH: float = 5.0
+# On leaving FPS: x = distance the camera retreats behind the avatar, y = RTS height.
 const UNPOSESS_DISTANCE := Vector2(-40, 50)
 const SLOW_MO: float = 0.9
 const RUMBLE_OFFSET: float = 0.75
@@ -96,22 +97,28 @@ func to_fps_cam_end() -> void:
 func to_overhead_cam_start() -> void:
 	camera_status = CameraStatus.TO_OVERHEAD
 	var avatar_body = avatar.get_node_or_null("FPSBody")
-	overhead_camera.transform.origin = avatar_body.global_position if avatar_body else avatar.global_position
-	overhead_camera.rotation.y = avatar_body.global_rotation.y if avatar_body else avatar.rotation.y
-	var start_tf: Transform3D = overhead_camera.transform
-	overhead_camera.transform.origin += avatar.global_transform.basis.z * UNPOSESS_DISTANCE.y
-	overhead_camera.transform.origin.y = UNPOSESS_DISTANCE.y
-	overhead_camera.rotation.x = deg_to_rad(-45)
-	var target_tf: Transform3D = overhead_camera.transform
+	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
+	# Start from the FPS camera's actual transform (inside the avatar), then
+	# retreat backwards through the avatar and up to the RTS height, keeping the
+	# same XZ view direction as the avatar.
+	var start_tf: Transform3D = fps_camera.get_global_transform() if fps_camera else (avatar_body.get_global_transform() if avatar_body else avatar.get_global_transform())
+	var forward := -start_tf.basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var target_pos := start_tf.origin - forward * (-UNPOSESS_DISTANCE.x)
+	target_pos.y = UNPOSESS_DISTANCE.y
+	var yaw := start_tf.basis.get_euler().y
+	var target_tf := Transform3D(Basis.from_euler(Vector3(deg_to_rad(-45), yaw, 0)), target_pos)
 	overhead_camera.transform = start_tf
 	overhead_camera.current = true
-	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
 	if fps_camera:
 		fps_camera.current = false
 	quat_from = Quaternion(start_tf.basis)
 	quat_to = Quaternion(target_tf.basis)
-	var tw = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(overhead_camera, "position", target_tf.origin, TRANSITION_TIME)
+	# EASE_IN_OUT so the camera gracefully backs out of the avatar rather than
+	# whipping backward (EASE_OUT fast-start reads as an instant jump out).
+	var tw = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(overhead_camera, "position", target_tf.origin, TRANSITION_TIME).from(start_tf.origin)
 	tw.parallel().tween_method(quat_transform, 0.0, 1.0, TRANSITION_TIME)
 	tw.tween_callback(to_overhead_cam_end).set_delay(TRANSITION_TIME)
 
