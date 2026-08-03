@@ -63,7 +63,6 @@ var weapon_forward_local: Vector3 = Vector3.FORWARD
 
 var _last_fire_event: int = 0
 var _laser_timer: float = 0.0
-var _beam_node: MeshInstance3D
 
 # --- UI ---
 

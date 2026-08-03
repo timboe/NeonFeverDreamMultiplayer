@@ -9,6 +9,9 @@ var server: Server
 var ai_controllers: Array[AIController] = []
 var config: GameConfig
 
+# Emitted when a client connect attempt resolves: true = connected, false = failed.
+signal connect_result(success: bool)
+
 # --- Server (host) ---
 
 func start_server(server_config: GameConfig) -> void:
@@ -52,9 +55,19 @@ func connect_to_server(ip: String, port: int) -> void:
 	var err := peer.create_client(ip, port)
 	if err != OK:
 		push_error("Failed to connect: ", err)
+		connect_result.emit(false)
 		return
 	multiplayer.multiplayer_peer = peer
 	multiplayer.connected_to_server.connect(_on_connected)
+	multiplayer.connected_to_server.connect(_on_connect_success)
+	multiplayer.connection_failed.connect(_on_connect_failed)
+	multiplayer.server_disconnected.connect(_on_connect_failed)
+
+func _on_connect_success() -> void:
+	connect_result.emit(true)
+
+func _on_connect_failed() -> void:
+	connect_result.emit(false)
 
 func _on_connected() -> void:
 	print("Connected to server")
@@ -72,3 +85,7 @@ func stop() -> void:
 	if multiplayer.multiplayer_peer:
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = null
+	for sig in [multiplayer.connected_to_server, multiplayer.connection_failed, multiplayer.server_disconnected]:
+		for cb in [_on_connected, _on_connect_success, _on_connect_failed]:
+			if sig.is_connected(cb):
+				sig.disconnect(cb)

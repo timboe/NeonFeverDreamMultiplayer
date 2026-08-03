@@ -31,6 +31,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
+	if not Global.game_started:
+		return
 	_tick_timer += delta
 	_second_timer += delta
 	while _tick_timer >= TICK_INTERVAL:

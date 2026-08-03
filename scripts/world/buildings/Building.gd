@@ -100,7 +100,7 @@ func _on_hover_exited() -> void:
 
 func _process(delta: float) -> void:
 	# Do construction - consumes energy
-	if multiplayer.is_server() and state == State.UNDER_CONSTRUCTION:
+	if multiplayer.is_server() and Global.game_started and state == State.UNDER_CONSTRUCTION:
 		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
 		var em = Global.EM
@@ -110,7 +110,7 @@ func _process(delta: float) -> void:
 			set_constructed()
 
 	# Do production - accumulate energy over time
-	if multiplayer.is_server() and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
+	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
 		if _production_timer > 0.0:
 			_production_timer -= delta
 			if not _can_produce():
@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 				_produce_unit()
 
 	# If under repair (on server)
-	if multiplayer.is_server() and state == State.CONSTRUCTED and _working_unit:
+	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED and _working_unit:
 		_repair_timer += delta
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL

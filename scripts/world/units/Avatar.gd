@@ -32,10 +32,14 @@ func _ready() -> void:
 	ray_render.mesh = ray_mesh
 
 func _physics_process(delta: float) -> void:
+	if not Global.game_started:
+		return
 	process_input(delta)
 	process_movement(delta)
 
 func _input(event: InputEvent) -> void:
+	if not Global.game_started:
+		return
 	if not camera.current:
 		return
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:

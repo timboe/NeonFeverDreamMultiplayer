@@ -9,6 +9,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
+	if not Global.game_started:
+		return
 	_scan_timer += delta
 	while _scan_timer >= Config.COMBAT_SCAN_INTERVAL:
 		_scan_timer -= Config.COMBAT_SCAN_INTERVAL

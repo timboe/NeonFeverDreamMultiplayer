@@ -153,6 +153,8 @@ func _generate() -> void:
 
 # --- Lifecycle ---
 
+signal level_loaded
+
 func _ready() -> void:
 	Global.TM = self
 	_generate()
@@ -170,6 +172,7 @@ func _physics_process(_delta: float) -> void:
 	disabled_tiles_to_multimesh()
 	enabled_tiles_to_multimesh()
 	apply_loaded_level()
+	level_loaded.emit()
 	$MonorailMultimesh.finish_setup()
 
 # --- Neighbour + pathing setup ---

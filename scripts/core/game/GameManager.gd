@@ -16,20 +16,44 @@ var _avatar_snapshot_timer := 0.0
 var _snapshots: Array = []
 var _avatar_snapshots: Dictionary = {}
 
+# --- Game start gate ---
+
+const READY_TIMEOUT: float = 15.0
+
+var _server_ready: bool = false
+var _world_ready: bool = false  # client: this peer has finished initialising World
+var _expected_clients: int = 0
+var _ready_peers: Dictionary = {}  # pnum -> true
+var _start_timeout: float = 0.0
+
 # --- Lifecycle ---
 
 func _ready() -> void:
 	Global.GM = self
+	Global.game_started = false
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	# Deferred so it runs after every manager has finished _ready (incl. the
+	# tile grid generation and MCP placement).
+	call_deferred("_on_world_ready")
 
 # --- Main loop ---
 
 func _process(delta: float) -> void:
 	if not multiplayer.is_server():
-		_avatar_snapshot_timer += delta
-		while _avatar_snapshot_timer >= AVATAR_SEND_INTERVAL:
-			_avatar_snapshot_timer -= AVATAR_SEND_INTERVAL
-			_send_avatar_snapshot()
-		_interpolate()
+		if Global.game_started:
+			_avatar_snapshot_timer += delta
+			while _avatar_snapshot_timer >= AVATAR_SEND_INTERVAL:
+				_avatar_snapshot_timer -= AVATAR_SEND_INTERVAL
+				_send_avatar_snapshot()
+			_interpolate()
+		return
+	# Server
+	if not Global.game_started:
+		if _server_ready:
+			_start_timeout += delta
+			if _start_timeout >= READY_TIMEOUT:
+				_start_timeout = 0.0
+				rpc("rpc_game_start")
 		return
 	_snapshot_timer += delta
 	_job_timer += delta
@@ -42,6 +66,89 @@ func _process(delta: float) -> void:
 		Global.JM.assign_jobs()
 		for b in Global.BM.buildings():
 			b.check_work()
+
+# --- Game start gate ---
+
+func _on_world_ready() -> void:
+	var srv = Global.network_manager.server
+	if srv:
+		_server_ready = true
+		_expected_clients = srv.peer_to_player.size()
+		# Ask clients to confirm readiness (a client may have sent its first
+		# client_ready before this server node existed, so that RPC was dropped).
+		if _expected_clients > 0:
+			rpc("rpc_request_client_ready")
+		_maybe_start_game()
+	else:
+		_world_ready = true
+		rpc_id(1, "rpc_client_ready")
+
+# Server asks each client to (re)send client_ready — only if that client has
+# actually finished loading the World (a client still loading will send its own
+# client_ready from _on_world_ready later, once the server node exists).
+@rpc("authority", "call_remote", "reliable")
+func rpc_request_client_ready() -> void:
+	if _world_ready:
+		rpc_id(1, "rpc_client_ready")
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_client_ready() -> void:
+	var srv = Global.network_manager.server
+	if not srv:
+		return
+	var caller := multiplayer.get_remote_sender_id()
+	var pnum = srv.peer_to_player.get(caller)
+	if pnum == null:
+		return
+	_ready_peers[pnum] = true
+	_broadcast_progress()
+	_maybe_start_game()
+
+func _maybe_start_game() -> void:
+	if not _server_ready:
+		return
+	if _ready_peers.size() >= _expected_clients:
+		_broadcast_progress()
+		rpc("rpc_game_start")
+
+func _on_peer_disconnected(peer_id: int) -> void:
+	if not multiplayer.is_server() or Global.game_started:
+		return
+	var srv = Global.network_manager.server
+	if srv:
+		var pnum = srv.peer_to_player.get(peer_id)
+		if pnum != null:
+			_ready_peers.erase(pnum)
+	_expected_clients = maxi(0, _expected_clients - 1)
+	_broadcast_progress()
+	_maybe_start_game()
+
+@rpc("authority", "call_local", "reliable")
+func rpc_game_start() -> void:
+	Global.game_started = true
+	_hide_loading_overlay()
+
+func _broadcast_progress() -> void:
+	var ready_status := _ready_peers.size()
+	_set_overlay_progress(ready_status, _expected_clients)
+	rpc("ready_progress", ready_status, _expected_clients)
+
+@rpc("authority", "call_remote", "reliable")
+func ready_progress(ready_status: int, expected: int) -> void:
+	_set_overlay_progress(ready_status, expected)
+
+func _set_overlay_progress(ready_status: int, expected: int) -> void:
+	var overlay := _loading_overlay()
+	if overlay and overlay.has_method("set_progress"):
+		overlay.set_progress(ready_status, expected)
+
+func _hide_loading_overlay() -> void:
+	var overlay := _loading_overlay()
+	if overlay:
+		overlay.hide()
+
+func _loading_overlay() -> Node:
+	return get_tree().get_first_node_in_group("loading_overlay")
 
 # --- Server: send ---
 
@@ -367,13 +474,13 @@ func _interpolate_avatars() -> void:
 				var e1 := {"type": UnitManager.Type.AVATAR, "slots": s1["slots"]}
 				# Health is server-authoritative — don't let the client's snapshot
 				# overwrite it (that would let the avatar cheat death).
-				var health_before: float = avatar.health
+				var health_before_instance1: float = avatar.health
 				_apply_interpolated_unit(avatar, e0, e1, t, UnitManager.Type.AVATAR)
-				avatar.health = health_before
+				avatar.health = health_before_instance1
 				continue
-		var health_before: float = avatar.health
+		var health_before_instance2: float = avatar.health
 		_apply_unit(avatar, UnitManager.Type.AVATAR, s0["slots"])
-		avatar.health = health_before
+		avatar.health = health_before_instance2
 
 # --- Utilities ---
 

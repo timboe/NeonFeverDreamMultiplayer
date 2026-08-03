@@ -15,6 +15,9 @@ var enet_peer: ENetMultiplayerPeer
 var peer_to_player: Dictionary = {}
 var player_to_peer: Dictionary = {}
 var next_player_num: int = 1
+# False until the host has set up and entered the lobby; clients connecting
+# before that are rejected so they get a connection failure instead of joining.
+var accepting_clients: bool = false
 
 # --- Lifecycle ---
 
@@ -54,6 +57,11 @@ func handle_command(pnum: int, command: String, args: Array) -> void:
 # --- Peer management ---
 
 func _on_peer_connected(peer_id: int) -> void:
+	if not accepting_clients:
+		# Host isn't ready (not in the lobby) — reject so the client sees a
+		# connection failure rather than silently joining.
+		enet_peer.disconnect_peer(peer_id)
+		return
 	var pnum := next_player_num
 	next_player_num += 1
 	peer_to_player[peer_id] = pnum
