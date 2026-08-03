@@ -109,6 +109,8 @@ func _process(_delta: float) -> void:
 			fill_sb.bg_color = Color.CYAN
 
 func _input(event: InputEvent) -> void:
+	if not Global.game_started:
+		return
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		end_drag()
 	if event.is_action_pressed("ui_capture_toggle"):

@@ -20,6 +20,9 @@ var VM: VideoManager = null
 var PM: PathingManager = null
 var NM: NotificationManager = null
 
+# False until every peer has loaded the World and the server signals game_start.
+var game_started: bool = false
+
 # --- Network ---
 
 var network_manager: NetworkManager

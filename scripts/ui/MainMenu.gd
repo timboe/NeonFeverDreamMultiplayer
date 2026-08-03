@@ -8,8 +8,12 @@ class_name MainMenu
 @onready var connect_port_line: LineEdit = $VBoxContainer/ModeTabs/ConnectSection/ConnectPortLine
 @onready var start_button: Button = $VBoxContainer/StartButton
 @onready var mode_tabs: TabContainer = $VBoxContainer/ModeTabs
+@onready var connect_error_dialog: AcceptDialog = $ConnectErrorDialog
 
 var slot_option_buttons: Array[OptionButton] = []
+var _connect_timer: Timer
+
+const CONNECT_TIMEOUT: float = 8.0
 
 func _ready():
 	mode_tabs.tab_changed.connect(_on_tab_changed)
@@ -110,5 +114,39 @@ func _connect_to_server():
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
 	get_tree().root.add_child(nm)
 	Global.network_manager = nm
+	nm.connect_result.connect(_on_connect_result)
+	start_button.disabled = true
+	start_button.text = "Connecting..."
+	# Safety net: ENet can hang in "connecting" without ever firing
+	# connection_failed (e.g. unreachable host), so force the error on timeout.
+	_connect_timer = Timer.new()
+	_connect_timer.one_shot = true
+	_connect_timer.wait_time = CONNECT_TIMEOUT
+	_connect_timer.timeout.connect(_handle_connect_failure)
+	add_child(_connect_timer)
+	_connect_timer.start()
 	nm.connect_to_server(ip, port)
-	get_tree().change_scene_to_file("res://scenes/menu/Lobby.tscn")
+
+func _on_connect_result(success: bool):
+	if _connect_timer:
+		_connect_timer.stop()
+	if success:
+		get_tree().change_scene_to_file("res://scenes/menu/Lobby.tscn")
+		return
+	_handle_connect_failure()
+
+func _handle_connect_failure():
+	if _connect_timer:
+		_connect_timer.stop()
+		_connect_timer.queue_free()
+		_connect_timer = null
+	# Connection failed (server not running, not ready, or unreachable).
+	if Global.network_manager:
+		var nm := Global.network_manager
+		Global.network_manager = null
+		nm.connect_result.disconnect(_on_connect_result)
+		nm.stop()
+		nm.queue_free()
+	start_button.disabled = false
+	start_button.text = "Connect"
+	connect_error_dialog.popup_centered()

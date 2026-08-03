@@ -43,6 +43,23 @@ var _cam_tween: Tween
 func _ready() -> void:
 	Global.VM = self
 	call_deferred("_connect_hud")
+	# The player's MCP only exists once the level is loaded (first physics
+	# frame), so position the initial RTS camera over it then.
+	if Global.TM:
+		Global.TM.level_loaded.connect(_position_initial_camera)
+
+func _position_initial_camera() -> void:
+	var mcp = get_tree().get_first_node_in_group("mcp_player" + str(Global.my_player_number))
+	if not mcp:
+		return
+	# Use the tile's pathing centre (the middle of the MCP's tile).
+	var tile := mcp.location as TileElement
+	var centre: Vector3 = tile.pathing_centre if tile else mcp.global_position
+	# Back in x from the tile centre (same distance as the FPS->RTS exit), up at
+	# the RTS height, and looking down at it.
+	var cam_pos := Vector3(centre.x - (-UNPOSESS_DISTANCE.x), UNPOSESS_DISTANCE.y, centre.z)
+	overhead_camera.global_position = cam_pos
+	overhead_camera.look_at(centre, Vector3.UP)
 
 func _connect_hud() -> void:
 	var hud = get_tree().get_first_node_in_group("hud")

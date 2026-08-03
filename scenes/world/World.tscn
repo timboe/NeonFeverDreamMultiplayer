@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://bjdjfiocjvvij" path="res://scripts/world/units/UnitManager.gd" id="7_l5ull"]
 [ext_resource type="Script" uid="uid://c7fxwvdnwg7js" path="res://scripts/world/units/JobManager.gd" id="8_16fjv"]
 [ext_resource type="Script" uid="uid://c8oef3uwcppa8" path="res://scripts/core/game/CombatManager.gd" id="9_combat"]
+[ext_resource type="PackedScene" uid="uid://csovc61v6c4qk" path="res://scenes/ui/LoadingOverlay.tscn" id="10_overlay"]
 
 [node name="World" type="Node3D" unique_id=943865623]
 
@@ -87,3 +88,5 @@ script = ExtResource("7_252at")
 [node name="ProjectilesHolder" type="Node3D" parent="." unique_id=1832632869]
 
 [node name="HUD" parent="." unique_id=1691572145 instance=ExtResource("7_hud")]
+
+[node name="LoadingOverlay" parent="." unique_id=1878422403 instance=ExtResource("10_overlay")]

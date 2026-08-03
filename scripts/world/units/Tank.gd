@@ -2,6 +2,10 @@ extends Unit
 
 class_name Tank
 
+# --- Combat visuals ---
+
+var _beam_node: MeshInstance3D
+
 func initialise(b: Building) -> void:
 	super.initialise(b)
 	type = UnitManager.Type.TANK

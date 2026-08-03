@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://csovc61v6c4qk"]
+
+[ext_resource type="Script" uid="uid://oaco1ga32wpd" path="res://scripts/ui/LoadingOverlay.gd" id="1_3k5h3"]
+
+[node name="LoadingOverlay" type="CanvasLayer" unique_id=798664433]
+layer = 100
+script = ExtResource("1_3k5h3")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=349094453]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.92)
+
+[node name="Center" type="VBoxContainer" parent="." unique_id=1536276201]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -100.0
+offset_right = 160.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Center" unique_id=760075262]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Neon Fever Dream"
+horizontal_alignment = 1
+
+[node name="LoadingLabel" type="Label" parent="Center" unique_id=595847195]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "LOADING..."
+horizontal_alignment = 1
+
+[node name="ProgressLabel" type="Label" parent="Center" unique_id=1696646519]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Players ready: 0 / 0"
+horizontal_alignment = 1
+
+[node name="PulseBar" type="ColorRect" parent="Center" unique_id=1261764283]
+custom_minimum_size = Vector2(240, 16)
+layout_mode = 2
+size_flags_horizontal = 4
+color = Color(0, 1, 1, 1)

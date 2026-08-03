@@ -14,6 +14,9 @@ func _ready() -> void:
 	_restart_timer()
 
 func _on_timer() -> void:
+	if not Global.game_started:
+		_restart_timer()
+		return
 	var srv = Global.network_manager.server
 	if not srv:
 		_restart_timer()

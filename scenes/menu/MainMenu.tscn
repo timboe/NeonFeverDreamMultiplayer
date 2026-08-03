@@ -80,4 +80,8 @@ text = "Start Game"
 one_shot = true
 autostart = true
 
+[node name="ConnectErrorDialog" type="AcceptDialog" parent="." unique_id=578281470]
+title = "Connection Failed"
+dialog_text = "Could not connect to the server. The host may not have started the game lobby yet."
+
 [connection signal="timeout" from="VBoxContainer/StartButton/AUTO_START" to="." method="_on_start_pressed"]
