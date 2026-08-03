@@ -7,7 +7,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/GarageHUD.tscn")
 var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
 var cached_tank_count: int = 0
 var patrol_stance: JobManager.Stance = JobManager.Stance.HOLD
-var _enemy_targets: Array[int] = []
+var _enemy_targets: Array[int] = [1, 2, 3, 4]
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -60,6 +60,11 @@ func check_work() -> void:
 		var jm = Global.JM
 		if not jm:
 			return
+		# Don't start a new cycle while the previous CONSUME_ZOOMBA job is still
+		# pending (a zoomba hasn't arrived yet) — otherwise the garage spends
+		# energy on a conversion that hasn't happened.
+		if jm.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+			return
 		var total_zoombas : int = um.unit_count(player_owner, UnitManager.Type.ZOOMBA)
 		var claimed : int = jm.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 		# Always keep at least 1 zoomba free
@@ -75,6 +80,16 @@ func check_work() -> void:
 		# building issues a fresh job on its next production cycle.
 		_production_energy = 0.0
 		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+
+# Only spend production energy when the previous CONSUME_ZOOMBA job has finished
+# (a tank was actually produced) and the building isn't hemmed in.
+func _can_produce() -> bool:
+	if not super._can_produce():
+		return false
+	var jm = Global.JM
+	if jm and jm.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+		return false
+	return true
 
 func _produce_unit() -> void:
 	# Override to do nothing — Garage uses CONSUME_ZOOMBA job instead

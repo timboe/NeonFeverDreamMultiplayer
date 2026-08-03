@@ -244,6 +244,7 @@ func _pack_building(data: PackedFloat64Array, b: Building) -> void:
 	slots[1] = b.health
 	slots[2] = b._construction_energy_spent
 	slots[3] = b.max_health
+	slots[4] = 1.0 if b._production_enabled else 0.0
 	for s in slots:
 		data.append(s)
 
@@ -453,6 +454,7 @@ func _apply_building(b: Building, slots: Array) -> void:
 	b.health = slots[1]
 	b._construction_energy_spent = slots[2]
 	b.max_health = slots[3]
+	b._production_enabled = slots[4] > 0.5
 
 # --- Server: avatar interpolation ---
 

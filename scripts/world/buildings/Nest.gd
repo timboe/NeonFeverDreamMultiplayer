@@ -6,7 +6,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/NestHUD.tscn")
 
 var _virus_tank_building_ratio: float = 0.5
 var _virus_priority: JobManager.Priority = JobManager.Priority.NEAREST
-var _enemy_targets: Array[int] = []
+var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = []
 
 func _get_hud_scene() -> PackedScene:

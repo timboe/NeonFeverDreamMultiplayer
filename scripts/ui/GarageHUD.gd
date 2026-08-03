@@ -63,10 +63,15 @@ func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
+	prod_btn.set_pressed_no_signal(building._production_enabled)
 	var pct := int(building.zoomba_tank_ratio * 100)
 	ratio_slider.set_value_no_signal(pct)
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
-	tank_label.text = str(building.cached_tank_count)
+	var um = Global.UM
+	if um:
+		var tanks: int = um.unit_count(building.player_owner, UnitManager.Type.TANK)
+		var zoombas: int = um.unit_count(building.player_owner, UnitManager.Type.ZOOMBA)
+		tank_label.text = str(tanks) + " / " + str(maxi(0, zoombas - 1))
 	# Ratio total across all garages
 	var total_ratio := 0.0
 	var bm = Global.BM
@@ -75,15 +80,15 @@ func _process(_delta: float) -> void:
 			if b is Garage and b.player_owner == building.player_owner:
 				total_ratio += b.zoomba_tank_ratio
 	var total_pct := int(total_ratio * 100)
-	ratio_total_label.text = "Total: " + str(total_pct) + "%"
+	ratio_total_label.text = "Total requested over all Garages: " + str(total_pct) + "%"
 	if total_pct > 100:
 		ratio_total_label.add_theme_color_override("font_color", Color.RED)
 	else:
 		ratio_total_label.add_theme_color_override("font_color", Color.WHITE)
-	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(building.type, 6.0)
-	if building._production_timer > 0.0:
-		var progress := (cooldown - building._production_timer) / cooldown * 100.0
-		spawn_bar.value = progress
+	# "Next Tank" tracks the production energy accumulated toward the tank cost —
+	# the cooldown timer is held at 0 while a conversion job is pending.
+	if building._production_cost > 0.0:
+		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
 	else:
 		spawn_bar.value = 0.0
 	empower_indicator.visible = building.is_empowered

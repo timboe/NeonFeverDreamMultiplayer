@@ -113,6 +113,12 @@ func count_jobs(pnum: int, type: Type) -> int:
 			c += 1
 	return c
 
+func has_job(pnum: int, type: Type, target: Variant) -> bool:
+	for job in jobs_dict.values():
+		if job["pnum"] == pnum and job["type"] == type and job["target"] == target:
+			return true
+	return false
+
 func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):
 		var job = jobs_dict[id_to_remove]

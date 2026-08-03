@@ -143,7 +143,11 @@ func _update_tooltip() -> void:
 	var hovered: Building = bm.hovered_building if bm else null
 	var vm = Global.VM
 	var in_rts: bool = vm != null and vm.camera_status == vm.CameraStatus.OVERHEAD
-	if in_rts and hovered and is_instance_valid(hovered) and hovered.state == Building.State.CONSTRUCTED:
+	# Tooltip is only for the current player's buildings — no need to build the
+	# HUD preview for other players' local instances.
+	if in_rts and hovered and is_instance_valid(hovered) \
+		and hovered.state == Building.State.CONSTRUCTED \
+		and hovered.player_owner == Global.my_player_number:
 		_set_tooltip_building(hovered)
 		_scale_tooltip_hud()
 		var vp_size := Vector2(get_viewport().size)

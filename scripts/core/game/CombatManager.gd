@@ -27,7 +27,6 @@ func combat_target_position(combat_target : Variant) -> Vector3:
 	if body:
 		return body.global_position
 	return combat_target.global_position
-
 func _enemy_list_for(unit: Unit) -> Array[int]:
 	if unit.orders.has("enemy") and not unit.orders["enemy"].is_empty():
 		return unit.orders["enemy"] as Array[int]

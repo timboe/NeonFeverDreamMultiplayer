@@ -103,6 +103,7 @@ func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
+	prod_btn.set_pressed_no_signal(building._production_enabled)
 	var pct := int(building._virus_tank_building_ratio * 100)
 	ratio_slider.set_value_no_signal(pct)
 	# Label is "Tank / Building"; pct is building ratio, so tank = 100 - pct

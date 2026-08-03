@@ -7,7 +7,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/BeaconHUD.tscn")
 var patrol_strike_ratio: float = 0.5
 var _strike_priority: JobManager.Priority = JobManager.Priority.NEAREST
 var _patrol_stance: JobManager.Stance = JobManager.Stance.HOLD
-var _enemy_targets: Array[int] = []
+var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = []
 
 func _get_hud_scene() -> PackedScene:

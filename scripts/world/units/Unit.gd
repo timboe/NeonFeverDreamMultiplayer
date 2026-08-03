@@ -386,16 +386,23 @@ func combat_next_tile() -> TileElement:
 	var access: Array = target_tile.get_access_tiles()
 	# Already adjacent to the target - keep moving in its vicinity
 	if location in access:
-		var options: Array = access.duplicate()
-		var backtrack := options.find(previous_location)
-		if options.size() > 1 and backtrack != -1:
-			options.remove_at(backtrack)
-		var me := options.find(location)
-		if options.size() > 1 and me != -1:
-			options.remove_at(me)
+		# Orbit: step to an access tile that is adjacent to the current tile so
+		# the unit moves tile-to-tile around the target — never a straight slide
+		# across the grid to a far access tile.
+		var options: Array = []
+		for t in access:
+			if t != location and t != previous_location and t in location.neighbours:
+				options.append(t)
 		if options.is_empty():
-			# Fall back to any lowered neighbour to stay mobile near the target
+			# Fall back to any lowered neighbour (still adjacent) to stay mobile
 			options = location.get_access_tiles()
+			if options.size() > 1:
+				var me := options.find(location)
+				if me != -1:
+					options.remove_at(me)
+				var back := options.find(previous_location)
+				if options.size() > 1 and back != -1:
+					options.remove_at(back)
 		if options.is_empty():
 			return location # Hold in place - no reachable alternatives
 		var dest: TileElement = options[Global.rand.randi() % options.size()]
