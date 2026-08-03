@@ -150,6 +150,7 @@ func _hide_loading_overlay() -> void:
 func _loading_overlay() -> Node:
 	return get_tree().get_first_node_in_group("loading_overlay")
 
+
 # --- Server: send ---
 
 func _send_snapshot() -> void:
