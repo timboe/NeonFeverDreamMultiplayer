@@ -158,12 +158,16 @@ func _spawn_projectile() -> void:
 	if not multiplayer.is_server() or flight_time <= 0.0:
 		flight_time = update_projectile_delay()
 	var target_node = combat_target # The unit might change target, but we don't change this projectile
+	var last_pos := to
 	var tween = projectile.create_tween()
 	tween.tween_method(func(t):
-		var pos = combat_manager.combat_target_position(target_node)
-		if pos == Vector3.ZERO:
-			pos = to 
-		projectile.global_position = from.lerp(pos, t)
+		# Track the target's live position so that if it's destroyed mid-flight we
+		# keep flying to its last-known position instead of snapping back to spawn.
+		if is_instance_valid(target_node):
+			var pos = combat_manager.combat_target_position(target_node)
+			if pos != Vector3.ZERO:
+				last_pos = pos
+		projectile.global_position = from.lerp(last_pos, t)
 	, 0.0, 1.0, flight_time)
 	tween.tween_callback(projectile.queue_free)
 	# Safety — free projectile if the tween gets killed early
