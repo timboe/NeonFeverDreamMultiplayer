@@ -123,7 +123,7 @@ static var AERIAL_AERIAL_MODE_MULTIPLIERS: Dictionary = {
 	},
 }
 
-static func get_damage(attacker_type: UnitManager.Type, target, attacker_mode: int = AERIAL_MODE_PATROL) -> float:
+func get_damage(attacker_type: UnitManager.Type, target, attacker_mode: int = AERIAL_MODE_PATROL) -> float:
 	if attacker_type == UnitManager.Type.TANK:
 		if target is Unit and target.type == UnitManager.Type.AERIAL:
 			var mode = target.mode if target.has_method(&"get_mode") else AERIAL_MODE_PATROL
