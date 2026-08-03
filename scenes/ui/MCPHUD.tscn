@@ -66,6 +66,16 @@ text = "⚡"
 [node name="Sep" type="HSeparator" parent="Window/VBox" unique_id=486582985]
 layout_mode = 2
 
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox" unique_id=9000009]
+layout_mode = 2
+
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=9000010]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0, 1, 1, 1)
+text = "⚡ EMPOWERED"
+horizontal_alignment = 1
+
 [node name="ZoombaRow" type="HBoxContainer" parent="Window/VBox" unique_id=2022667089]
 layout_mode = 2
 

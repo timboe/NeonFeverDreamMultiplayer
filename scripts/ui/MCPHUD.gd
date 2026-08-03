@@ -10,6 +10,7 @@ var building: Building
 @onready var avatar_count_label: Label = $Window/VBox/AvatarRow/AvatarCountLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
+@onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 @onready var health_bar: ProgressBar = $Window/VBox/HealthBar
 @onready var health_value_label: Label = $Window/VBox/HealthRow/HealthValueLabel
 
@@ -48,3 +49,4 @@ func _process(_delta: float) -> void:
 	health_bar.max_value = mcp.max_health
 	health_bar.value = mcp.health
 	health_value_label.text = str(int(mcp.health)) + " / " + str(int(mcp.max_health))
+	empower_indicator.visible = mcp.is_empowered
