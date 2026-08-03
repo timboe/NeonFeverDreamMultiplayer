@@ -21,12 +21,16 @@ const MODE_TO_BUILDING_TYPE: Dictionary = {
 	Mode.BEACON: BuildingManager.Type.BEACON,
 	Mode.NEST: BuildingManager.Type.NEST,
 }
+# Terminal HUDs are designed for this viewport size; scaled to fit the tooltip.
+const HUD_DESIGN_SIZE: float = 480.0
 
 # --- State ---
 
 var tile_mode: Mode = Mode.LOWER
 var build_mode: Mode = Mode.NONE
 var _drag_action: DragAction = DragAction.NONE
+var _tooltip_hud  # cached tooltip HUD Control (per building type)
+var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
 
 # --- Nodes ---
 
@@ -37,6 +41,8 @@ var _drag_action: DragAction = DragAction.NONE
 @onready var fps_button: Button = %FPSButton
 @onready var crosshair: Control = $HUDRoot/Crosshair
 @onready var mode_bar: PanelContainer = $HUDRoot/ModeBar
+@onready var tooltip: PanelContainer = $HUDRoot/Tooltip
+@onready var tooltip_viewport: SubViewport = $HUDRoot/Tooltip/SubViewportContainer/Viewport
 
 var _tile_buttons: Dictionary = {}
 var _build_buttons: Dictionary = {}
@@ -82,6 +88,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_update_camera_ui()
+	_update_tooltip()
 	var e := _get_player_energy()
 	energy_bar.max_value = e.capacity
 	energy_bar.value = e.current
@@ -124,6 +131,60 @@ func _update_camera_ui() -> void:
 	crosshair.visible = is_fps
 	mode_bar.visible = not is_fps
 
+# --- RTS building tooltip ---
+
+func _exit_tree() -> void:
+	_free_tooltip_hud()
+
+func _update_tooltip() -> void:
+	var bm = Global.BM
+	var hovered: Building = bm.hovered_building if bm else null
+	var vm = Global.VM
+	var in_rts: bool = vm != null and vm.camera_status == vm.CameraStatus.OVERHEAD
+	if in_rts and hovered and is_instance_valid(hovered) and hovered.state == Building.State.CONSTRUCTED:
+		_set_tooltip_building(hovered)
+		_scale_tooltip_hud()
+		var vp_size := Vector2(get_viewport().size)
+		var mouse := get_viewport().get_mouse_position()
+		var pos := mouse + Vector2(24, 24)
+		pos.x = clampf(pos.x, 0.0, maxf(0.0, vp_size.x - tooltip.size.x))
+		pos.y = clampf(pos.y, 0.0, maxf(0.0, vp_size.y - tooltip.size.y))
+		tooltip.position = pos
+		tooltip.visible = true
+	else:
+		tooltip.visible = false
+
+func _set_tooltip_building(b: Building) -> void:
+	if _tooltip_hud and _tooltip_hud_type == b.type and _tooltip_hud.building == b:
+		return
+	if _tooltip_hud_type != b.type:
+		_free_tooltip_hud()
+		var hud_scene: PackedScene = b._get_hud_scene()
+		if not hud_scene:
+			return
+		var ctrl = hud_scene.instantiate()
+		tooltip_viewport.add_child(ctrl)
+		_tooltip_hud = ctrl
+		_tooltip_hud_type = b.type
+		if ctrl.has_method("set_tooltip_mode"):
+			ctrl.set_tooltip_mode(true)
+	_tooltip_hud.building = b
+
+# The SubViewport renders at the tooltip's (smaller) size, so scale the HUD —
+# designed for HUD_DESIGN_SIZE — down around its centre to fit inside it.
+func _scale_tooltip_hud() -> void:
+	if not _tooltip_hud:
+		return
+	var k := minf(Vector2(tooltip_viewport.size).x, Vector2(tooltip_viewport.size).y) / HUD_DESIGN_SIZE
+	_tooltip_hud.pivot_offset = _tooltip_hud.size * 0.5
+	_tooltip_hud.scale = Vector2.ONE * k
+
+func _free_tooltip_hud() -> void:
+	if _tooltip_hud:
+		_tooltip_hud.queue_free()
+		_tooltip_hud = null
+	_tooltip_hud_type = BuildingManager.Type.NONE
+
 # --- Energy ---
 
 func _get_player_energy() -> Dictionary:
@@ -146,6 +207,10 @@ func _on_mode_pressed(mode: Mode) -> void:
 			build_mode = mode
 	_update_button_styles()
 	mode_changed.emit(mode)
+
+func clear_build_mode() -> void:
+	build_mode = Mode.NONE
+	_update_button_styles()
 
 func _update_button_styles() -> void:
 	for mode in _tile_buttons:
@@ -188,7 +253,9 @@ func _style_all_panels() -> void:
 
 func _style_panel(panel: PanelContainer) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.02, 0.02, 0.05, 0.88)
+	# The RTS tooltip shows a building HUD (which has its own black background),
+	# so keep its fill black for a uniform backdrop.
+	sb.bg_color = Color(0, 0, 0, 1) if panel == tooltip else Color(0.02, 0.02, 0.05, 0.88)
 	sb.set_border_width_all(2)
 	sb.border_color = Color(0, 1, 1, 0.7)
 	sb.shadow_color = Color(0, 1, 1, 0.3)

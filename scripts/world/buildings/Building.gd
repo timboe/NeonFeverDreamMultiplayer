@@ -72,10 +72,31 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_health_bar.global_position.z = tile.pathing_centre.z
 	_health_bar.global_position.y = 3.0
 	_health_bar.set_bar_size(4.0, 0.4)
+	input_ray_pickable = true
+	mouse_entered.connect(_on_hover_entered)
+	mouse_exited.connect(_on_hover_exited)
 
 func _exit_tree() -> void:
 	if _health_bar and is_instance_valid(_health_bar):
 		_health_bar.queue_free()
+	var bm = Global.BM
+	if bm and bm.hovered_building == self:
+		bm.hovered_building = null
+
+# --- Mouse hover (RTS tooltip) ---
+
+func _on_hover_entered() -> void:
+	if state != State.CONSTRUCTED:
+		return
+	var bm = Global.BM
+	if bm:
+		bm.hovered_building = self
+
+func _on_hover_exited() -> void:
+	var bm = Global.BM
+	if bm:
+		if bm.hovered_building == self:
+			bm.hovered_building = null
 
 func _process(delta: float) -> void:
 	# Do construction - consumes energy

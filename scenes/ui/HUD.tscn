@@ -105,9 +105,9 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -370.0
+offset_left = 0.0
 offset_top = -65.0
-offset_right = 370.0
+offset_right = 0.0
 offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -233,3 +233,20 @@ offset_top = 17.0
 offset_right = 23.0
 offset_bottom = 23.0
 mouse_filter = 2
+
+[node name="Tooltip" type="PanelContainer" parent="HUDRoot"]
+visible = false
+layout_mode = 1
+offset_right = 400.0
+offset_bottom = 400.0
+mouse_filter = 2
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="HUDRoot/Tooltip"]
+layout_mode = 2
+mouse_filter = 2
+stretch = true
+
+[node name="Viewport" type="SubViewport" parent="HUDRoot/Tooltip/SubViewportContainer"]
+size = Vector2i(480, 480)
+render_target_update_mode = 3
+transparent_bg = true

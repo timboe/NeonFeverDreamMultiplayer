@@ -32,3 +32,15 @@ func _empower_building(b: Building) -> void:
 	var vm = Global.VM
 	if vm:
 		vm.force_leave_fps()
+
+# --- RTS tooltip mode ---
+# When the HUD is rendered as a read-only tooltip in RTS mode, all interactive
+# controls are hidden. Subclasses extend _tooltip_hidden_controls() to hide more.
+func set_tooltip_mode(active: bool) -> void:
+	for c in _tooltip_hidden_controls():
+		if c:
+			c.visible = not active
+
+func _tooltip_hidden_controls() -> Array[Control]:
+	var btn := get_node_or_null("Window/VBox/Header/EmpowerBtn") as Button
+	return [btn]

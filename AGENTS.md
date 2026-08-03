@@ -280,6 +280,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ## Godot 4 conversion patterns
 
+- **Member variables and constants are declared at the top of each script**, grouped under `# --- ... ---` headers (Signals, Types, Constants, State, Nodes/`@onready` refs) — never inline mid-file near their only usage.
 - **Tween** is RefCounted, not a Node: `create_tween()`, chained `tween_property/tween_method/tween_callback`, auto-starts. Store in a local/plain var, kill with `tween.kill()` + guard `tween and tween.is_valid()`, never `@onready`.
 - **`setget` → set/get blocks** with underscore-backed var (`var _contains_val` backed by `contains`).
 - **`@rpc` annotations**: `@rpc("authority", "call_local")` (server call runs everywhere), `@rpc("any_peer", "call_remote")` (client→server, derive caller via `get_remote_sender_id()`), plus `"reliable"`/`"unreliable"`.

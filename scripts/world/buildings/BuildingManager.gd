@@ -24,6 +24,9 @@ var disabled_blueprints: Dictionary = {}
 
 var _empowered_by_player: Dictionary = {}  # pnum -> Building
 
+# Building the mouse is currently over in RTS mode (for the main HUD tooltip).
+var hovered_building: Building = null
+
 func set_empowered_for_player(pnum: int, building: Building) -> void:
 	var prev = _empowered_by_player.get(pnum)
 	if prev and prev != building and is_instance_valid(prev):
@@ -172,7 +175,8 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	disabled_blueprints[type].position.y = HIDE_DEPTH
 	if player_number == Global.my_player_number:
 		var hud = get_tree().get_first_node_in_group("hud")
-		hud.build_mode = HUD.Mode.NONE
+		if hud:
+			hud.clear_build_mode()
 	Global.TM.recompute_aoe()
 	if multiplayer.is_server():
 		if type in Config.CONSTRUCTION_COST:
