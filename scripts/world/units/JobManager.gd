@@ -295,7 +295,7 @@ func _notify_job_event(pnum: int, event: String, job: Dictionary) -> void:
 	var loc := _get_job_location(job)
 	var nm = get_tree().get_first_node_in_group("notification_manager")
 	if nm:
-		nm.rpc("rpc_add_job_notification", pnum, text, loc.x, loc.y, loc.z)
+		nm.rpc("rpc_add_job_notification", pnum, event, text, loc.x, loc.y, loc.z)
 
 func _format_job_notification(event: String, job: Dictionary) -> String:
 	var type_name := _job_type_name(job["type"])
