@@ -6,6 +6,30 @@ class_name TerminalHUD
 # contain a "Cursor" node (TerminalCursor scene/script) that the avatar ray drives.
 @onready var cursor: TerminalCursor = $Cursor
 
+var _crt_overlay: ColorRect
+
+# The CRT overlay is added in _enter_tree so it works for every terminal HUD
+# without each subclass having to call super._ready().
+func _enter_tree() -> void:
+	if _crt_overlay == null or not is_instance_valid(_crt_overlay):
+		_crt_overlay = _build_crt_overlay()
+		add_child(_crt_overlay)
+
+func _build_crt_overlay() -> ColorRect:
+	var overlay := ColorRect.new()
+	overlay.name = "CRTOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.offset_left = 0
+	overlay.offset_top = 0
+	overlay.offset_right = 0
+	overlay.offset_bottom = 0
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.color = Color.BLACK
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://materials/ui/terminal_crt.gdshader")
+	overlay.material = mat
+	return overlay
+
 func show_cursor_at_uv(uv: Vector2) -> void:
 	if cursor:
 		cursor.show_at_uv(uv)
