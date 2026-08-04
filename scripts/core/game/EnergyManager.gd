@@ -9,9 +9,8 @@ const HISTORY_SAMPLES: int = int(SECOND_INTERVAL / TICK_INTERVAL)
 
 var energy: Dictionary = {}
 var capacity: Dictionary = {}
-# Internal supply-scaling stats used to ration consumers when demand exceeds
-# production and reserves are too low to cover the gap (see request_energy).
-var rate_of_change: Dictionary = {}
+# Supply ratio produced/requested, used to split limited incoming production
+# fairly between consumers when rationing is active (see request_energy).
 var _ratio: Dictionary = {}
 
 # Rolling 1-second statistics (per player): energy generated, actually consumed
@@ -39,7 +38,6 @@ func _ready() -> void:
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		energy[p] = 0.0
 		capacity[p] = 0.0
-		rate_of_change[p] = 0.0
 		_ratio[p] = 1.0
 		_produced[p] = 0.0
 		_consumed[p] = 0.0
@@ -88,8 +86,7 @@ func _energy_tick() -> void:
 		_consumed_tick[p] = 0.0
 		_push_sample(_req_history[p], _requested, p, _requested_tick[p])
 		_requested_tick[p] = 0.0
-		# Refresh supply/demand from the trailing 1s of data.
-		rate_of_change[p] = _produced[p] - _requested[p]
+		# Refresh the supply ratio from the trailing 1s of data.
 		_ratio[p] = _produced[p] / _requested[p] if _requested[p] > 0.0 else 1.0
 	_broadcast_energy()
 
@@ -99,7 +96,12 @@ func request_energy(pnum: int, amount: float) -> float:
 	if not multiplayer.is_server():
 		return 0.0
 	var allocated := amount
-	if rate_of_change[pnum] < 0.0 and -rate_of_change[pnum] > energy[pnum]:
+	# Ration only when the player's reserves are already gone or will run out
+	# within the next second at the current actual consumption rate (consumed
+	# minus produced, not the full requested demand). When active, scale the
+	# request by the supply ratio so limited production is split fairly.
+	var net_drain: float = _consumed.get(pnum, 0.0) - _produced.get(pnum, 0.0)
+	if energy[pnum] <= 0.0 or (net_drain > 0.0 and energy[pnum] <= net_drain):
 		allocated *= _ratio.get(pnum, 1.0)
 	allocated = minf(allocated, energy[pnum])
 	energy[pnum] -= allocated
