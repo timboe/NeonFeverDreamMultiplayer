@@ -1,9 +1,8 @@
-[gd_resource type="Theme" format=3 uid="uid://b0rneonui1234"]
+[gd_resource type="Theme" format=3 uid="uid://c6n7hrhgc05cj"]
 
-[ext_resource type="FontFile" uid="uid://6ls46aj3yq03" path="res://fonts/UnicaOne-Regular.ttf" id="1_font_general"]
-[ext_resource type="FontFile" uid="uid://c2y0sgix2cw6q" path="res://fonts/ShareTechMono-Regular.ttf" id="2_font_mono"]
-[ext_resource type="FontVariation" path="res://fonts/NeonSans_title.tres" id="3_font_title"]
-[ext_resource type="FontVariation" path="res://fonts/NeonSans_section.tres" id="4_font_section"]
+[ext_resource type="FontFile" uid="uid://c2y0sgix2cw6q" path="res://fonts/ShareTechMono-Regular.ttf" id="1_font_mono"]
+[ext_resource type="FontVariation" path="res://fonts/NeonSans_title.tres" id="2_font_title"]
+[ext_resource type="FontVariation" path="res://fonts/NeonSans_section.tres" id="3_font_section"]
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 14.0
@@ -36,8 +35,8 @@ corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
-shadow_color = Color(0, 1, 1, 0.45)
-shadow_size = 10
+shadow_color = Color(0, 1, 1, 0.25)
+shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="btn_hover"]
 content_margin_left = 14.0
@@ -54,8 +53,8 @@ corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
-shadow_color = Color(0, 1, 1, 0.6)
-shadow_size = 12
+shadow_color = Color(0, 1, 1, 0.35)
+shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="btn_normal"]
 content_margin_left = 14.0
@@ -72,8 +71,8 @@ corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
-shadow_color = Color(0, 1, 1, 0.25)
-shadow_size = 6
+shadow_color = Color(0, 1, 1, 0.12)
+shadow_size = 3
 
 [sub_resource type="StyleBoxFlat" id="btn_pressed"]
 content_margin_left = 14.0
@@ -90,8 +89,8 @@ corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
-shadow_color = Color(0, 1, 1, 0.8)
-shadow_size = 14
+shadow_color = Color(0, 1, 1, 0.45)
+shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="empower_hover"]
 content_margin_left = 12.0
@@ -108,8 +107,8 @@ corner_radius_top_left = 32
 corner_radius_top_right = 32
 corner_radius_bottom_right = 32
 corner_radius_bottom_left = 32
-shadow_color = Color(1, 0.25, 0.85, 0.7)
-shadow_size = 14
+shadow_color = Color(1, 0.25, 0.85, 0.4)
+shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="empower_normal"]
 content_margin_left = 12.0
@@ -126,8 +125,8 @@ corner_radius_top_left = 32
 corner_radius_top_right = 32
 corner_radius_bottom_right = 32
 corner_radius_bottom_left = 32
-shadow_color = Color(1, 0.25, 0.85, 0.5)
-shadow_size = 10
+shadow_color = Color(1, 0.25, 0.85, 0.3)
+shadow_size = 4
 
 [sub_resource type="StyleBoxFlat" id="empower_pressed"]
 content_margin_left = 12.0
@@ -144,8 +143,8 @@ corner_radius_top_left = 32
 corner_radius_top_right = 32
 corner_radius_bottom_right = 32
 corner_radius_bottom_left = 32
-shadow_color = Color(1, 0.25, 0.85, 0.9)
-shadow_size = 18
+shadow_color = Color(1, 0.25, 0.85, 0.5)
+shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="sep"]
 content_margin_left = 1.0
@@ -220,58 +219,8 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
-shadow_color = Color(0.25, 1, 0.4, 0.5)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="lineedit_focus"]
-content_margin_left = 12.0
-content_margin_top = 6.0
-content_margin_right = 12.0
-content_margin_bottom = 6.0
-bg_color = Color(0.04, 0.05, 0.1, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0, 1, 1, 0.85)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-shadow_color = Color(0, 1, 1, 0.4)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="lineedit_normal"]
-content_margin_left = 12.0
-content_margin_top = 6.0
-content_margin_right = 12.0
-content_margin_bottom = 6.0
-bg_color = Color(0.03, 0.03, 0.06, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.3, 0.4, 0.55)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="lineedit_readonly"]
-content_margin_left = 12.0
-content_margin_top = 6.0
-content_margin_right = 12.0
-content_margin_bottom = 6.0
-bg_color = Color(0.03, 0.03, 0.06, 0.5)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.25, 0.25, 0.3, 0.4)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+shadow_color = Color(0.25, 1, 0.4, 0.25)
+shadow_size = 4
 
 [sub_resource type="StyleBoxFlat" id="panel"]
 content_margin_left = 12.0
@@ -363,113 +312,24 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
-shadow_color = Color(0, 1, 1, 0.5)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="spin_btn"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.15, 0.85)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.35, 0.45, 0.5)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="spin_btn_hover"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0.14, 0.18, 0.26, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 1, 1, 0.7)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="spin_btn_pressed"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0, 0.3, 0.35, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 1, 1, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="tab_panel"]
-content_margin_left = 12.0
-content_margin_top = 10.0
-content_margin_right = 12.0
-content_margin_bottom = 10.0
-bg_color = Color(0.02, 0.02, 0.05, 0.9)
-border_width_left = 2
-border_width_top = 1
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 1, 1, 0.4)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="tab_unselected_hover"]
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
-bg_color = Color(0.1, 0.1, 0.15, 0.7)
-border_width_top = 1
-border_color = Color(0, 1, 1, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="tab_selected"]
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
-bg_color = Color(0.05, 0.06, 0.11, 1)
-border_width_left = 1
-border_width_top = 2
-border_width_right = 1
-border_color = Color(0, 1, 1, 0.6)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-
-[sub_resource type="StyleBoxFlat" id="tab_unselected"]
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
-bg_color = Color(0, 0, 0, 0)
+shadow_color = Color(0, 1, 1, 0.25)
+shadow_size = 4
 
 [resource]
-default_font = ExtResource("1_font_general")
-default_font_size = 20
+default_font = ExtResource("1_font_mono")
+default_font_size = 15
 Button/colors/font_disabled_color = Color(0.5, 0.5, 0.55, 0.6)
-Button/font_sizes/font_size = 22
+Button/colors/font_hover_pressed_color = Color(0.02, 0.06, 0.1, 1)
+Button/colors/font_pressed_color = Color(0.02, 0.06, 0.1, 1)
+Button/font_sizes/font_size = 15
 Button/styles/disabled = SubResource("btn_disabled")
 Button/styles/focus = SubResource("btn_focus")
 Button/styles/hover = SubResource("btn_hover")
 Button/styles/normal = SubResource("btn_normal")
 Button/styles/pressed = SubResource("btn_pressed")
 EmpowerButton/base_type = &"Button"
+EmpowerButton/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+EmpowerButton/colors/font_pressed_color = Color(1, 1, 1, 1)
 EmpowerButton/font_sizes/font_size = 28
 EmpowerButton/styles/hover = SubResource("empower_hover")
 EmpowerButton/styles/normal = SubResource("empower_normal")
@@ -482,20 +342,10 @@ HSlider/styles/grabber_highlight = SubResource("grabber_highlight")
 HSlider/styles/slider = SubResource("slider_track")
 HealthBar/base_type = &"ProgressBar"
 HealthBar/styles/fill = SubResource("pbar_fill_health")
-ItemList/font_sizes/font_size = 22
-Label/colors/font_color = Color(1, 1, 1, 1)
-Label/font_sizes/font_size = 20
-Label/fonts/font = ExtResource("1_font_general")
-LineEdit/colors/caret_color = Color(0, 1, 1, 1)
-LineEdit/colors/font_color = Color(1, 1, 1, 1)
-LineEdit/colors/font_placeholder_color = Color(0.5, 0.55, 0.65, 1)
-LineEdit/colors/selection_color = Color(0, 0.5, 0.6, 0.6)
-LineEdit/styles/focus = SubResource("lineedit_focus")
-LineEdit/styles/normal = SubResource("lineedit_normal")
-LineEdit/styles/read_only = SubResource("lineedit_readonly")
-OptionButton/font_sizes/font_size = 22
+Label/colors/font_color = Color(0.85, 0.95, 1, 1)
+Label/font_sizes/font_size = 15
+Label/fonts/font = ExtResource("1_font_mono")
 PanelContainer/styles/panel = SubResource("panel")
-PopupMenu/font_sizes/font_size = 22
 PrimaryButton/base_type = &"Button"
 PrimaryButton/font_sizes/font_size = 20
 PrimaryButton/styles/hover = SubResource("primary_hover")
@@ -506,25 +356,12 @@ ProgressBar/styles/fill = SubResource("pbar_fill")
 SectionHeader/base_type = &"Label"
 SectionHeader/colors/font_color = Color(0.7, 0.9, 1, 1)
 SectionHeader/font_sizes/font_size = 16
-SectionHeader/fonts/font = ExtResource("4_font_section")
-SpinBox/styles/down_button = SubResource("spin_btn")
-SpinBox/styles/down_button_hover = SubResource("spin_btn_hover")
-SpinBox/styles/down_button_pressed = SubResource("spin_btn_pressed")
-SpinBox/styles/up_button = SubResource("spin_btn")
-SpinBox/styles/up_button_hover = SubResource("spin_btn_hover")
-SpinBox/styles/up_button_pressed = SubResource("spin_btn_pressed")
-TabContainer/colors/font_selected_color = Color(0.8, 1, 1, 1)
-TabContainer/colors/font_unselected_color = Color(0.55, 0.6, 0.7, 1)
-TabContainer/styles/panel = SubResource("tab_panel")
-TabContainer/styles/tab_focus = SubResource("tab_unselected_hover")
-TabContainer/styles/tab_selected = SubResource("tab_selected")
-TabContainer/styles/tab_unselected = SubResource("tab_unselected")
-TabContainer/styles/tab_unselected_hover = SubResource("tab_unselected_hover")
+SectionHeader/fonts/font = ExtResource("3_font_section")
 Title/base_type = &"Label"
 Title/colors/font_color = Color(1, 1, 1, 1)
 Title/font_sizes/font_size = 60
-Title/fonts/font = ExtResource("3_font_title")
+Title/fonts/font = ExtResource("2_font_title")
 VSeparator/styles/separator = SubResource("sep")
 ValueLabel/base_type = &"Label"
 ValueLabel/font_sizes/font_size = 16
-ValueLabel/fonts/font = ExtResource("2_font_mono")
+ValueLabel/fonts/font = ExtResource("1_font_mono")

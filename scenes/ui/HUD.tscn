@@ -34,8 +34,8 @@ theme_override_constants/separation = 8
 [node name="EnergyBar" type="ProgressBar" parent="HUDRoot/EnergyPanel/HBox" unique_id=202410909]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 20)
-size_flags_vertical = 4
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
 max_value = 6000.0
 value = 3000.0
@@ -45,7 +45,7 @@ show_percentage = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"ValueLabel"
 text = "3000"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -60,7 +60,7 @@ alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"ValueLabel"
 text = "+0/s"
 horizontal_alignment = 2
 vertical_alignment = 1
@@ -69,7 +69,7 @@ vertical_alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"ValueLabel"
 text = "-0/s"
 horizontal_alignment = 2
 vertical_alignment = 1
@@ -96,22 +96,21 @@ theme_override_constants/separation = 4
 [node name="Placeholder" type="Label" parent="HUDRoot/NotificationPanel/List" unique_id=2105337775]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.8, 0.8, 0.5)
-theme_override_font_sizes/font_size = 14
 text = "No notifications"
 autowrap_mode = 2
 
 [node name="FPSButton" type="Button" parent="HUDRoot" unique_id=1658707665]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -22.5
+offset_left = -38.0
 offset_top = 20.0
-offset_right = 22.5
-offset_bottom = 50.0
+offset_right = 38.0
+offset_bottom = 56.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 12
 text = "FPS"
 
 [node name="ModeBar" type="PanelContainer" parent="HUDRoot" unique_id=1822124006]
@@ -121,9 +120,7 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = 0.0
 offset_top = -65.0
-offset_right = 0.0
 offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -142,13 +139,13 @@ theme_override_constants/separation = 8
 
 [node name="RaiseBtn" type="Button" parent="HUDRoot/ModeBar/HBox/TileModes" unique_id=1186641303]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "RAISE"
 
 [node name="LowerBtn" type="Button" parent="HUDRoot/ModeBar/HBox/TileModes" unique_id=601798710]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "LOWER"
 
@@ -164,31 +161,31 @@ theme_override_constants/separation = 8
 
 [node name="GenBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=2058369679]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "GEN"
 
 [node name="VatBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=136259467]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "VAT"
 
 [node name="GarageBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=893132355]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "GARAGE"
 
 [node name="BeaconBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=1879615562]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "BEACON"
 
 [node name="NestBtn" type="Button" parent="HUDRoot/ModeBar/HBox/BuildModes" unique_id=761583345]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 40)
+custom_minimum_size = Vector2(112, 46)
 layout_mode = 2
 text = "NEST"
 
@@ -250,19 +247,20 @@ offset_right = 23.0
 offset_bottom = 23.0
 mouse_filter = 2
 
-[node name="Tooltip" type="PanelContainer" parent="HUDRoot"]
+[node name="Tooltip" type="PanelContainer" parent="HUDRoot" unique_id=734103159]
 visible = false
 layout_mode = 1
 offset_right = 400.0
 offset_bottom = 400.0
 mouse_filter = 2
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="HUDRoot/Tooltip"]
+[node name="SubViewportContainer" type="SubViewportContainer" parent="HUDRoot/Tooltip" unique_id=1435061745]
 layout_mode = 2
 mouse_filter = 2
 stretch = true
 
-[node name="Viewport" type="SubViewport" parent="HUDRoot/Tooltip/SubViewportContainer"]
-size = Vector2i(480, 480)
-render_target_update_mode = 3
+[node name="Viewport" type="SubViewport" parent="HUDRoot/Tooltip/SubViewportContainer" unique_id=507727407]
 transparent_bg = true
+handle_input_locally = false
+size = Vector2i(2, 2)
+render_target_update_mode = 0

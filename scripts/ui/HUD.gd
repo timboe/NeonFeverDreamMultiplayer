@@ -31,6 +31,8 @@ var build_mode: Mode = Mode.NONE
 var _drag_action: DragAction = DragAction.NONE
 var _tooltip_hud  # cached tooltip HUD Control (per building type)
 var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
+var _active_btn_style: StyleBoxFlat
+var _energy_fill_sb: StyleBoxFlat
 
 # --- Nodes ---
 
@@ -77,15 +79,16 @@ func _ready() -> void:
 	for mode in _tile_buttons:
 		var btn: Button = _tile_buttons[mode]
 		btn.pressed.connect(_on_mode_pressed.bind(mode))
-		btn.add_theme_font_size_override("font_size", 12)
 	for mode in _build_buttons:
 		var btn: Button = _build_buttons[mode]
 		btn.pressed.connect(_on_mode_pressed.bind(mode))
-		btn.add_theme_font_size_override("font_size", 12)
 	fps_button.pressed.connect(func(): toggle_camera.emit())
-	_style_all_panels()
 	_apply_player_color()
 	_update_button_styles()
+	# Dedicated fill stylebox for the energy bar so low-energy tinting doesn't
+	# mutate the shared theme fill (which other ProgressBars use).
+	_energy_fill_sb = (energy_bar.get_theme_stylebox("fill") as StyleBoxFlat).duplicate()
+	energy_bar.add_theme_stylebox_override("fill", _energy_fill_sb)
 
 func _process(_delta: float) -> void:
 	_update_camera_ui()
@@ -97,17 +100,17 @@ func _process(_delta: float) -> void:
 
 	energy_prod_label.text = "+" + str(int(e.produced)) + "/s"
 	energy_cons_label.text = "-" + str(int(e.consumed)) + "/s"
-	energy_prod_label.add_theme_color_override("font_color", Color.GREEN)
-	energy_cons_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.4))
+	energy_prod_label.add_theme_color_override("font_color", Config.UI_SUCCESS)
+	energy_cons_label.add_theme_color_override("font_color", Config.UI_WARNING)
 
 	if e.capacity > 0 and e.current / e.capacity < 0.2:
-		var fill_sb := _root.get_theme_stylebox("fill", "ProgressBar") as StyleBoxFlat
-		if fill_sb:
-			fill_sb.bg_color = Color.RED
+		if _energy_fill_sb:
+			_energy_fill_sb.bg_color = Config.UI_DANGER
+			_energy_fill_sb.shadow_color = Color(1, 0.25, 0.25, 0.4)
 	else:
-		var fill_sb := _root.get_theme_stylebox("fill", "ProgressBar") as StyleBoxFlat
-		if fill_sb:
-			fill_sb.bg_color = Color.CYAN
+		if _energy_fill_sb:
+			_energy_fill_sb.bg_color = Config.UI_ACCENT
+			_energy_fill_sb.shadow_color = Color(0, 1, 1, 0.4)
 
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
@@ -238,53 +241,28 @@ func _update_button_styles() -> void:
 			btn.remove_theme_color_override("font_color")
 
 func _active_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0.3, 0.35, 0.7)
-	sb.set_border_width_all(1)
-	sb.border_color = Color(0, 1, 1, 1)
-	sb.shadow_color = Color(0, 1, 1, 0.5)
-	sb.shadow_size = 12
-	sb.set_corner_radius_all(20)
-	sb.content_margin_left = 12.0
-	sb.content_margin_top = 4.0
-	sb.content_margin_right = 12.0
-	sb.content_margin_bottom = 4.0
-	return sb
+	return _active_btn_style
 
 # --- Styling ---
 
-func _style_all_panels() -> void:
-	for node in _root.get_children():
-		if node is PanelContainer:
-			_style_panel(node)
-
-func _style_panel(panel: PanelContainer) -> void:
-	var sb := StyleBoxFlat.new()
-	# The RTS tooltip shows a building HUD (which has its own black background),
-	# so keep its fill black for a uniform backdrop.
-	sb.bg_color = Color(0, 0, 0, 1) if panel == tooltip else Color(0.02, 0.02, 0.05, 0.88)
-	sb.set_border_width_all(2)
-	sb.border_color = Color(0, 1, 1, 0.7)
-	sb.shadow_color = Color(0, 1, 1, 0.3)
-	sb.shadow_size = 8
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = 10.0
-	sb.content_margin_top = 8.0
-	sb.content_margin_right = 10.0
-	sb.content_margin_bottom = 8.0
-	panel.add_theme_stylebox_override("panel", sb)
-
+# Panels and buttons are styled by the theme; here we re-tint them with the
+# local player's accent colour. The active-mode buttons reuse the theme's
+# pressed stylebox, tinted with the player accent.
 func _apply_player_color() -> void:
-	var pnum: int = Global.my_player_number
-	if pnum < 1 or pnum > Config.PLAYER_COLORS.size():
-		return
-	var c: Color = Config.PLAYER_COLORS[pnum - 1]
+	var c := Config.player_accent(Global.my_player_number)
+	var lit := Color(c.r, c.g, c.b, 0.85)
+	var dim := Color(c.r, c.g, c.b, 0.35)
 	for node in _root.get_children():
 		if node is PanelContainer:
-			var sb := node.get_theme_stylebox("panel") as StyleBoxFlat
-			if sb:
-				sb.border_color = Color(c.r, c.g, c.b, 0.7)
-				sb.shadow_color = Color(c.r, c.g, c.b, 0.3)
+			var sb := (node.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+			sb.border_color = lit
+			sb.shadow_color = dim
+			node.add_theme_stylebox_override("panel", sb)
+	var pressed := _root.get_theme_stylebox("pressed", "Button") as StyleBoxFlat
+	_active_btn_style = pressed.duplicate()
+	_active_btn_style.bg_color = Color(c.r * 0.12, c.g * 0.12, c.b * 0.12, 0.85)
+	_active_btn_style.border_color = lit
+	_active_btn_style.shadow_color = Color(c.r, c.g, c.b, 0.6)
 
 # --- Drag ---
 

@@ -1,12 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c8n2gbn7ni2fx"]
 
-[ext_resource type="Script" path="res://scripts/ui/BeaconHUD.gd" id="1_beacon"]
-[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
-[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
-[ext_resource type="Texture2D" path="res://images/cursor.png" id="cursor_png"]
-[ext_resource type="Script" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
+[ext_resource type="Script" uid="uid://w7quckno03mg" path="res://scripts/ui/BeaconHUD.gd" id="1_beacon"]
+[ext_resource type="Theme" uid="uid://c6n7hrhgc05cj" path="res://themes/terminal_ui.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://cj8417d0etwfo" path="res://images/cursor.png" id="cursor_png"]
+[ext_resource type="Script" uid="uid://bdc7sk5hb4we7" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
 
-[node name="Root" type="Control"]
+[node name="Root" type="Control" unique_id=151490043]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -16,7 +15,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_beacon")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1361373007]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +25,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="Window" type="PanelContainer" parent="."]
+[node name="Window" type="PanelContainer" parent="." unique_id=143293076]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -40,48 +39,48 @@ offset_bottom = 228.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Window"]
+[node name="VBox" type="VBoxContainer" parent="Window" unique_id=640411459]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+[node name="Header" type="HBoxContainer" parent="Window/VBox" unique_id=805974797]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Window/VBox/Header"]
+[node name="Title" type="Label" parent="Window/VBox/Header" unique_id=966680903]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"Title"
 text = "BEACON"
 
-[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header" unique_id=1389454845]
 custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
-theme = ExtResource("3_empower")
+theme_type_variation = &"EmpowerButton"
 text = "⚡"
 
-[node name="Sep" type="HSeparator" parent="Window/VBox"]
+[node name="Sep" type="HSeparator" parent="Window/VBox" unique_id=1100947799]
 layout_mode = 2
 
-[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox" unique_id=676366653]
 layout_mode = 2
 
-[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=203128044]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
 text = "⚡ EMPOWERED: +30s AERIAL LIFETIME"
 horizontal_alignment = 1
 
-[node name="ProdRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="ProdRow" type="HBoxContainer" parent="Window/VBox" unique_id=1675325145]
 layout_mode = 2
 
-[node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow"]
+[node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow" unique_id=1593776697]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Production"
 
-[node name="ProdBtn" type="Button" parent="Window/VBox/ProdRow"]
+[node name="ProdBtn" type="Button" parent="Window/VBox/ProdRow" unique_id=801191146]
 layout_mode = 2
 size_flags_horizontal = 10
 theme_override_font_sizes/font_size = 16
@@ -89,130 +88,128 @@ toggle_mode = true
 button_pressed = true
 text = "PRODUCING"
 
-[node name="RatioRow" type="VBoxContainer" parent="Window/VBox"]
+[node name="RatioRow" type="VBoxContainer" parent="Window/VBox" unique_id=1539784658]
 layout_mode = 2
 
-[node name="RatioHeader" type="HBoxContainer" parent="Window/VBox/RatioRow"]
+[node name="RatioHeader" type="HBoxContainer" parent="Window/VBox/RatioRow" unique_id=2103549642]
 layout_mode = 2
 
-[node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+[node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader" unique_id=1172570368]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Patrol / Strike"
 
-[node name="RatioLabel" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+[node name="RatioLabel" type="Label" parent="Window/VBox/RatioRow/RatioHeader" unique_id=908313061]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "50% / 50%"
 horizontal_alignment = 2
 
-[node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow"]
+[node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow" unique_id=418025512]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
-min_value = 0
-max_value = 100
-step = 5
-value = 50
+step = 5.0
+value = 50.0
 
-[node name="Sep2" type="HSeparator" parent="Window/VBox"]
+[node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=972241211]
 layout_mode = 2
 
-[node name="EnemyLabel" type="Label" parent="Window/VBox"]
+[node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=567672676]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Enemy Targeting"
 
-[node name="EnemyGrid" type="GridContainer" parent="Window/VBox"]
+[node name="EnemyGrid" type="GridContainer" parent="Window/VBox" unique_id=233835185]
 layout_mode = 2
 columns = 4
 
-[node name="Sep3" type="HSeparator" parent="Window/VBox"]
+[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=780742525]
 layout_mode = 2
 
-[node name="StrikeLabel" type="Label" parent="Window/VBox"]
+[node name="StrikeLabel" type="Label" parent="Window/VBox" unique_id=828844922]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Strike Targeting"
 
-[node name="StrikeGrid" type="GridContainer" parent="Window/VBox"]
+[node name="StrikeGrid" type="GridContainer" parent="Window/VBox" unique_id=1549349390]
 layout_mode = 2
 columns = 3
 
-[node name="StrikePriorityLabel" type="Label" parent="Window/VBox"]
+[node name="StrikePriorityLabel" type="Label" parent="Window/VBox" unique_id=1869484567]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Strike Priority"
 
-[node name="StrikePriorityRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="StrikePriorityRow" type="HBoxContainer" parent="Window/VBox" unique_id=172940966]
 layout_mode = 2
 
-[node name="StrikeNearestBtn" type="Button" parent="Window/VBox/StrikePriorityRow"]
+[node name="StrikeNearestBtn" type="Button" parent="Window/VBox/StrikePriorityRow" unique_id=1988670529]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 text = "Nearest"
 
-[node name="StrikeLowestBtn" type="Button" parent="Window/VBox/StrikePriorityRow"]
+[node name="StrikeLowestBtn" type="Button" parent="Window/VBox/StrikePriorityRow" unique_id=1041514575]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 text = "Lowest HP"
 
-[node name="Sep4" type="HSeparator" parent="Window/VBox"]
+[node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=1925053931]
 layout_mode = 2
 
-[node name="PatrolStanceLabel" type="Label" parent="Window/VBox"]
+[node name="PatrolStanceLabel" type="Label" parent="Window/VBox" unique_id=706268320]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Patrol Stance"
 
-[node name="PatrolStanceRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="PatrolStanceRow" type="HBoxContainer" parent="Window/VBox" unique_id=1717780894]
 layout_mode = 2
 
-[node name="PatrolHoldBtn" type="Button" parent="Window/VBox/PatrolStanceRow"]
+[node name="PatrolHoldBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=2071135528]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 text = "Hold"
 
-[node name="PatrolWideBtn" type="Button" parent="Window/VBox/PatrolStanceRow"]
+[node name="PatrolWideBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=2125998713]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 text = "Wide Patrol"
 
-[node name="Sep5" type="HSeparator" parent="Window/VBox"]
+[node name="Sep5" type="HSeparator" parent="Window/VBox" unique_id=1058934033]
 layout_mode = 2
 
-[node name="AerialRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="AerialRow" type="HBoxContainer" parent="Window/VBox" unique_id=622053385]
 layout_mode = 2
 
-[node name="AerialName" type="Label" parent="Window/VBox/AerialRow"]
+[node name="AerialName" type="Label" parent="Window/VBox/AerialRow" unique_id=914583728]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Active Aerial"
 
-[node name="AerialLabel" type="Label" parent="Window/VBox/AerialRow"]
+[node name="AerialLabel" type="Label" parent="Window/VBox/AerialRow" unique_id=910309623]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
 horizontal_alignment = 2
 
-[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox"]
+[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=321794115]
 layout_mode = 2
 
-[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow"]
+[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=1418423661]
 layout_mode = 2
 text = "Next Aerial"
 
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow"]
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1442440097]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 show_percentage = false
 
-[node name="Cursor" type="TextureRect" parent="."]
+[node name="Cursor" type="TextureRect" parent="." unique_id=1657459861]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

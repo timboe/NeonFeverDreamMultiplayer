@@ -74,6 +74,10 @@ func add_job(pnum: int, type: Type, target: Variant, request_assign: Unit = null
 	for the_job in jobs_dict.values():
 		if the_job["type"] != type:
 			continue
+		# Personal jobs must not block each other — multiple units need to
+		# attack the same target independently.
+		if the_job["personal"]:
+			continue
 		if the_job["target"] != target:
 			continue
 		if the_job["pnum"] != pnum:

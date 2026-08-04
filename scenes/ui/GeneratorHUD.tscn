@@ -1,12 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://ccrs66sgm3jha"]
 
-[ext_resource type="Script" path="res://scripts/ui/GeneratorHUD.gd" id="1_gen"]
-[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
-[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
-[ext_resource type="Texture2D" path="res://images/cursor.png" id="cursor_png"]
-[ext_resource type="Script" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
+[ext_resource type="Script" uid="uid://c1fiw2lpaaulg" path="res://scripts/ui/GeneratorHUD.gd" id="1_gen"]
+[ext_resource type="Theme" uid="uid://c6n7hrhgc05cj" path="res://themes/terminal_ui.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://cj8417d0etwfo" path="res://images/cursor.png" id="cursor_png"]
+[ext_resource type="Script" uid="uid://bdc7sk5hb4we7" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
 
-[node name="Root" type="Control"]
+[node name="Root" type="Control" unique_id=162632169]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -16,7 +15,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_gen")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=899227356]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +25,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="Window" type="PanelContainer" parent="."]
+[node name="Window" type="PanelContainer" parent="." unique_id=1817976164]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -40,85 +39,85 @@ offset_bottom = 228.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Window"]
+[node name="VBox" type="VBoxContainer" parent="Window" unique_id=77197796]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+[node name="Header" type="HBoxContainer" parent="Window/VBox" unique_id=281660332]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Window/VBox/Header"]
+[node name="Title" type="Label" parent="Window/VBox/Header" unique_id=981716242]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"Title"
 text = "GENERATOR"
 
-[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header" unique_id=171973090]
 custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
-theme = ExtResource("3_empower")
+theme_type_variation = &"EmpowerButton"
 text = "⚡"
 
-[node name="Sep" type="HSeparator" parent="Window/VBox"]
+[node name="Sep" type="HSeparator" parent="Window/VBox" unique_id=993778689]
 layout_mode = 2
 
-[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox" unique_id=560471768]
 layout_mode = 2
 
-[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=659671580]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
 text = "⚡ EMPOWERED: +1 RADIUS"
 horizontal_alignment = 1
 
-[node name="PowerRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="PowerRow" type="HBoxContainer" parent="Window/VBox" unique_id=1779242796]
 layout_mode = 2
 
-[node name="PowerName" type="Label" parent="Window/VBox/PowerRow"]
+[node name="PowerName" type="Label" parent="Window/VBox/PowerRow" unique_id=2080523792]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Power Output"
 
-[node name="PowerLabel" type="Label" parent="Window/VBox/PowerRow"]
+[node name="PowerLabel" type="Label" parent="Window/VBox/PowerRow" unique_id=538298182]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0 e/s"
 horizontal_alignment = 2
 
-[node name="TilesRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="TilesRow" type="HBoxContainer" parent="Window/VBox" unique_id=739354926]
 layout_mode = 2
 
-[node name="TilesName" type="Label" parent="Window/VBox/TilesRow"]
+[node name="TilesName" type="Label" parent="Window/VBox/TilesRow" unique_id=1106858845]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "AoE Tiles"
 
-[node name="TilesLabel" type="Label" parent="Window/VBox/TilesRow"]
+[node name="TilesLabel" type="Label" parent="Window/VBox/TilesRow" unique_id=1115587871]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
 horizontal_alignment = 2
 
-[node name="PerTileRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="PerTileRow" type="HBoxContainer" parent="Window/VBox" unique_id=643084530]
 layout_mode = 2
 
-[node name="PerTileName" type="Label" parent="Window/VBox/PerTileRow"]
+[node name="PerTileName" type="Label" parent="Window/VBox/PerTileRow" unique_id=749073298]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Per Tile"
 
-[node name="PerTileLabel" type="Label" parent="Window/VBox/PerTileRow"]
+[node name="PerTileLabel" type="Label" parent="Window/VBox/PerTileRow" unique_id=1250926209]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
 horizontal_alignment = 2
 
-[node name="Cursor" type="TextureRect" parent="."]
+[node name="Cursor" type="TextureRect" parent="." unique_id=822891866]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

@@ -1,13 +1,9 @@
 [gd_scene format=3 uid="uid://ulvujuxt7pqg"]
 
 [ext_resource type="Script" uid="uid://eafli71gt5r6" path="res://scripts/ui/MCPHUD.gd" id="1_mcp"]
-[ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
-[ext_resource type="Theme" uid="uid://dvkmtb20w087f" path="res://themes/empower_button_theme.tres" id="3_empower"]
+[ext_resource type="Theme" path="res://themes/terminal_ui.tres" id="2_theme"]
 [ext_resource type="Texture2D" uid="uid://cj8417d0etwfo" path="res://images/cursor.png" id="4_h4j6h"]
 [ext_resource type="Script" uid="uid://bdc7sk5hb4we7" path="res://scripts/ui/TerminalCursor.gd" id="5_cursor"]
-
-[sub_resource type="StyleBoxFlat" id="health_fill"]
-bg_color = Color(0.2, 1, 0.3, 1)
 
 [node name="Root" type="Control" unique_id=1111829975]
 layout_mode = 3
@@ -19,7 +15,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_mcp")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=606412687]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -53,14 +49,14 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Window/VBox/Header" unique_id=1528492064]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"Title"
 text = "MCP"
 
 [node name="EmpowerBtn" type="Button" parent="Window/VBox/Header" unique_id=1403475988]
 custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
-theme = ExtResource("3_empower")
+theme_type_variation = &"EmpowerButton"
 text = "⚡"
 
 [node name="Sep" type="HSeparator" parent="Window/VBox" unique_id=486582985]
@@ -71,8 +67,8 @@ layout_mode = 2
 
 [node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=9000010]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
 text = "⚡ EMPOWERED"
 horizontal_alignment = 1
 
@@ -135,8 +131,8 @@ horizontal_alignment = 2
 [node name="HealthBar" type="ProgressBar" parent="Window/VBox" unique_id=9000008]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
+theme_type_variation = &"HealthBar"
 show_percentage = false
-theme_override_styles/fill = SubResource("health_fill")
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=2096735821]
 custom_maximum_size = Vector2(64, 64)

@@ -186,3 +186,23 @@ static var PLAYER_NAMES: Array[String] = [
 	"Yellow",
 	"Orange",
 ]
+
+# --- UI theme ---
+
+# Visual accent palette. These values are mirrored in themes/neon_ui.tres
+# (Godot themes can't read GDScript constants) — keep the two in sync.
+const UI_ACCENT := Color(0, 1, 1)            # base cyan
+const UI_ACCENT_HOT := Color(1, 0.25, 0.85)  # synthwave magenta
+const UI_BG_PANEL_TOP := Color(0.05, 0.06, 0.11)
+const UI_BG_PANEL_BOTTOM := Color(0.02, 0.02, 0.05)
+const UI_TEXT_DIM := Color(0.62, 0.68, 0.78)
+const UI_SUCCESS := Color(0.25, 1, 0.4)
+const UI_WARNING := Color(1, 0.65, 0.1)
+const UI_DANGER := Color(1, 0.25, 0.25)
+
+# Accent color for a player (falls back to the base cyan accent when the
+# player number is out of range, e.g. spectating).
+func player_accent(pnum: int) -> Color:
+	if pnum >= 1 and pnum <= PLAYER_COLORS.size():
+		return PLAYER_COLORS[pnum - 1]
+	return UI_ACCENT

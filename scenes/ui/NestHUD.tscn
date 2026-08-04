@@ -1,8 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/NestHUD.gd" id="1_nest"]
-[ext_resource type="Theme" path="res://themes/neon_ui.tres" id="2_theme"]
-[ext_resource type="Theme" path="res://themes/empower_button_theme.tres" id="3_empower"]
+[ext_resource type="Theme" path="res://themes/terminal_ui.tres" id="2_theme"]
 [ext_resource type="Texture2D" path="res://images/cursor.png" id="cursor_png"]
 [ext_resource type="Script" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
 
@@ -50,14 +49,15 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Window/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"Title"
+theme_override_font_sizes/font_size = 28
 text = "NEST"
 
 [node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
 custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
-theme = ExtResource("3_empower")
+theme_type_variation = &"EmpowerButton"
 text = "⚡"
 
 [node name="Sep" type="HSeparator" parent="Window/VBox"]

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://csovc61v6c4qk"]
 
 [ext_resource type="Script" uid="uid://oaco1ga32wpd" path="res://scripts/ui/LoadingOverlay.gd" id="1_3k5h3"]
+[ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
 
 [node name="LoadingOverlay" type="CanvasLayer" unique_id=798664433]
 layer = 100
@@ -26,18 +27,20 @@ offset_right = 160.0
 offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="Center" unique_id=760075262]
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
+theme_type_variation = &"Title"
+theme_override_colors/font_outline_color = Color(0, 1, 1, 0.35)
+theme_override_constants/outline_size = 8
 text = "Neon Fever Dream"
 horizontal_alignment = 1
 
 [node name="LoadingLabel" type="Label" parent="Center" unique_id=595847195]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 1, 1)
-theme_override_font_sizes/font_size = 22
 text = "LOADING..."
 horizontal_alignment = 1
 
