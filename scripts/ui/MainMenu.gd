@@ -16,6 +16,8 @@ var _connect_timer: Timer
 const CONNECT_TIMEOUT: float = 8.0
 
 func _ready():
+	UiFX.apply_menu_backdrop($Background)
+	UiFX.pulse_title($VBoxContainer/Title)
 	mode_tabs.tab_changed.connect(_on_tab_changed)
 	player_count_spin.value_changed.connect(_on_player_count_changed)
 	start_button.pressed.connect(_on_start_pressed)

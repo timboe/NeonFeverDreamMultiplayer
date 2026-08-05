@@ -35,3 +35,21 @@ static func _hover_exit(btn: Button) -> void:
 			tween.kill()
 		btn.remove_meta("_ui_fx_glow")
 	btn.remove_theme_stylebox_override("hover")
+
+# Apply the animated menu backdrop (grid + vignette + pulse) to a background rect.
+static func apply_menu_backdrop(rect: ColorRect) -> void:
+	if rect == null:
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://materials/ui/menu_backdrop.gdshader")
+	rect.material = mat
+
+# Breathing "glow" on a title label — gently pulses the alpha.
+static func pulse_title(title: Label, low_alpha: float = 0.65) -> void:
+	if title == null:
+		return
+	var tween := title.create_tween().set_loops()
+	tween.tween_property(title, "modulate:a", low_alpha, 1.1)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(title, "modulate:a", 1.0, 1.1)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

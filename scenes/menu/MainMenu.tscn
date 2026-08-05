@@ -92,7 +92,6 @@ text = "Start Game"
 
 [node name="AUTO_START" type="Timer" parent="VBoxContainer/StartButton" unique_id=1417484374]
 one_shot = true
-autostart = true
 
 [node name="ConnectErrorDialog" type="AcceptDialog" parent="." unique_id=578281470]
 oversampling_override = 1.0

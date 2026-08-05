@@ -9,6 +9,7 @@ var remote_needed: int = 0
 var slot_labels: Array[Label] = []
 
 func _ready():
+	UiFX.apply_menu_backdrop($Background)
 	if Global.network_manager.server:
 		_setup_host()
 	else:
