@@ -8,7 +8,7 @@ class_name MainMenu
 @onready var connect_port_line: LineEdit = $VBoxContainer/ModeTabs/ConnectSection/ConnectPortLine
 @onready var start_button: Button = $VBoxContainer/StartButton
 @onready var mode_tabs: TabContainer = $VBoxContainer/ModeTabs
-@onready var connect_error_dialog: AcceptDialog = $ConnectErrorDialog
+@onready var connect_error_overlay: ColorRect = $ConnectionErrorOverlay
 
 var slot_option_buttons: Array[OptionButton] = []
 var _connect_timer: Timer
@@ -23,6 +23,8 @@ func _ready():
 	start_button.pressed.connect(_on_start_pressed)
 	_on_player_count_changed(int(player_count_spin.value))
 	_update_start_button()
+	connect_error_overlay.get_node("DialogPanel/VBox/OKButton").pressed.connect(
+		func(): connect_error_overlay.visible = false)
 
 	if "--client" in OS.get_cmdline_args():
 		mode_tabs.current_tab = 1
@@ -151,4 +153,4 @@ func _handle_connect_failure():
 		nm.queue_free()
 	start_button.disabled = false
 	start_button.text = "Connect"
-	connect_error_dialog.popup_centered()
+	connect_error_overlay.visible = true

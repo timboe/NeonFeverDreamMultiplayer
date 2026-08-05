@@ -86,7 +86,7 @@ text = "8070"
 placeholder_text = "Port"
 
 [node name="StartButton" type="Button" parent="VBoxContainer" unique_id=1758753179]
-custom_minimum_size = Vector2(256, 0)
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"PrimaryButton"
@@ -95,11 +95,51 @@ text = "Start Game"
 [node name="AUTO_START" type="Timer" parent="VBoxContainer/StartButton" unique_id=1417484374]
 one_shot = true
 
-[node name="ConnectErrorDialog" type="AcceptDialog" parent="." unique_id=578281470]
-oversampling_override = 1.0
-title = "Connection Failed"
-size = Vector2i(653, 100)
-theme = ExtResource("2_theme")
-dialog_text = "Could not connect to the server. The host may not have started the game lobby yet."
+[node name="ConnectionErrorOverlay" type="ColorRect" parent="." unique_id=1498380162]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="DialogPanel" type="PanelContainer" parent="ConnectionErrorOverlay" unique_id=2093154874]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -110.0
+offset_right = 200.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="VBox" type="VBoxContainer" parent="ConnectionErrorOverlay/DialogPanel" unique_id=1493942905]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="ConnectionErrorOverlay/DialogPanel/VBox" unique_id=1402752716]
+layout_mode = 2
+theme_type_variation = &"Title"
+theme_override_font_sizes/font_size = 24
+text = "Connection Failed"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="ConnectionErrorOverlay/DialogPanel/VBox" unique_id=1091584780]
+layout_mode = 2
+text = "Could not connect to the server. The host may not have started the game lobby yet."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="OKButton" type="Button" parent="ConnectionErrorOverlay/DialogPanel/VBox" unique_id=1120474818]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PrimaryButton"
+text = "OK"
 
 [connection signal="timeout" from="VBoxContainer/StartButton/AUTO_START" to="." method="_on_start_pressed"]
