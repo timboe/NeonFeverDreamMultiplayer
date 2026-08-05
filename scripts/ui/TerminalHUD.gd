@@ -87,9 +87,15 @@ func _tint_window(pnum: int) -> void:
 	# Tint the terminal window border/glow with the owner's colour.
 	var window := get_node_or_null("Window") as PanelContainer
 	if window:
-		var sb := (window.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+		var sb := CutCornerBox.new()
+		sb.cut = 12.0
+		sb.fill_color = Color(0.03, 0.04, 0.08, 0.92)
 		sb.border_color = Color(accent.r, accent.g, accent.b, 0.6)
-		sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.25)
+		sb.border_width = 2.0
+		sb.content_margin_left = 12.0
+		sb.content_margin_top = 10.0
+		sb.content_margin_right = 12.0
+		sb.content_margin_bottom = 10.0
 		window.add_theme_stylebox_override("panel", sb)
 	# Tint the CRT phosphor to match.
 	if _crt_material:
@@ -175,11 +181,7 @@ func set_tooltip_mode(active: bool) -> void:
 		bg.visible = not active
 	var window := get_node_or_null("Window") as PanelContainer
 	if window and active:
-		window.set_anchors_preset(Control.PRESET_FULL_RECT)
-		window.offset_left = 0
-		window.offset_top = 0
-		window.offset_right = 0
-		window.offset_bottom = 0
+		window.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _tooltip_hidden_controls() -> Array[Control]:
 	var btn := get_node_or_null("Window/VBox/Header/EmpowerBtn") as Button

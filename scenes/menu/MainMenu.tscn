@@ -49,9 +49,10 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 0
+current_tab = 1
 
 [node name="HostSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1009015495]
+visible = false
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 0
@@ -70,7 +71,6 @@ text = "8070"
 layout_mode = 2
 
 [node name="ConnectSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1808141224]
-visible = false
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 1
@@ -86,6 +86,7 @@ text = "8070"
 placeholder_text = "Port"
 
 [node name="StartButton" type="Button" parent="VBoxContainer" unique_id=1758753179]
+custom_minimum_size = Vector2(256, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"PrimaryButton"
@@ -93,7 +94,6 @@ text = "Start Game"
 
 [node name="AUTO_START" type="Timer" parent="VBoxContainer/StartButton" unique_id=1417484374]
 one_shot = true
-autostart = true
 
 [node name="ConnectErrorDialog" type="AcceptDialog" parent="." unique_id=578281470]
 oversampling_override = 1.0

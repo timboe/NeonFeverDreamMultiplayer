@@ -270,18 +270,24 @@ func _apply_player_color() -> void:
 	var dim := Color(c.r, c.g, c.b, 0.35)
 	for node in _root.get_children():
 		if node is PanelContainer:
-			var sb := (node.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
-			sb.border_color = lit
-			sb.shadow_color = dim
+			var cut_sb := CutCornerBox.new()
+			cut_sb.cut = 12.0
+			cut_sb.border_color = lit
+			cut_sb.border_width = 2.0
+			cut_sb.fill_color = Color(0.02, 0.02, 0.05, 0.92)
 			if node == tooltip:
 				# Keep the outer tooltip panel tight around the terminal preview so
 				# its border sits right next to the terminal HUD's own border.
-				sb.content_margin_left = 2.0
-				sb.content_margin_top = 2.0
-				sb.content_margin_right = 2.0
-				sb.content_margin_bottom = 2.0
-				sb.shadow_size = 0
-			node.add_theme_stylebox_override("panel", sb)
+				cut_sb.content_margin_left = 2.0
+				cut_sb.content_margin_top = 2.0
+				cut_sb.content_margin_right = 2.0
+				cut_sb.content_margin_bottom = 2.0
+			else:
+				cut_sb.content_margin_left = 12.0
+				cut_sb.content_margin_top = 10.0
+				cut_sb.content_margin_right = 12.0
+				cut_sb.content_margin_bottom = 10.0
+			node.add_theme_stylebox_override("panel", cut_sb)
 	var pressed := _root.get_theme_stylebox("pressed", "Button") as StyleBoxFlat
 	_active_btn_style = pressed.duplicate()
 	_active_btn_style.bg_color = Color(c.r * 0.12, c.g * 0.12, c.b * 0.12, 0.85)

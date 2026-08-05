@@ -261,8 +261,8 @@ mouse_filter = 2
 [node name="Tooltip" type="PanelContainer" parent="HUDRoot" unique_id=734103159]
 visible = false
 layout_mode = 1
-offset_right = 400.0
-offset_bottom = 400.0
+offset_right = 480.0
+offset_bottom = 480.0
 mouse_filter = 2
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="HUDRoot/Tooltip" unique_id=1435061745]
