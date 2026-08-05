@@ -30,6 +30,11 @@ var _drag_action: DragAction = DragAction.NONE
 var _tooltip_hud  # cached tooltip HUD Control (per building type)
 var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
 var _active_btn_style: StyleBoxFlat
+var _btn_normal: StyleBoxFlat
+var _btn_hover: StyleBoxFlat
+var _btn_pressed: StyleBoxFlat
+var _btn_focus: StyleBoxFlat
+var _btn_disabled: StyleBoxFlat
 var _energy_fill_sb: StyleBoxFlat
 var _tooltip_tween: Tween
 
@@ -245,7 +250,7 @@ func _update_button_styles() -> void:
 			btn.add_theme_stylebox_override("normal", _active_style())
 			btn.add_theme_color_override("font_color", Color.WHITE)
 		else:
-			btn.remove_theme_stylebox_override("normal")
+			btn.add_theme_stylebox_override("normal", _btn_normal)
 			btn.remove_theme_color_override("font_color")
 	for mode in _build_buttons:
 		var btn: Button = _build_buttons[mode]
@@ -253,7 +258,7 @@ func _update_button_styles() -> void:
 			btn.add_theme_stylebox_override("normal", _active_style())
 			btn.add_theme_color_override("font_color", Color.WHITE)
 		else:
-			btn.remove_theme_stylebox_override("normal")
+			btn.add_theme_stylebox_override("normal", _btn_normal)
 			btn.remove_theme_color_override("font_color")
 
 func _active_style() -> StyleBoxFlat:
@@ -267,7 +272,6 @@ func _active_style() -> StyleBoxFlat:
 func _apply_player_color() -> void:
 	var c := Config.player_accent(Global.my_player_number)
 	var lit := Color(c.r, c.g, c.b, 0.85)
-	var dim := Color(c.r, c.g, c.b, 0.35)
 	for node in _root.get_children():
 		if node is PanelContainer:
 			var cut_sb := CutCornerBox.new()
@@ -293,6 +297,54 @@ func _apply_player_color() -> void:
 	_active_btn_style.bg_color = Color(c.r * 0.12, c.g * 0.12, c.b * 0.12, 0.85)
 	_active_btn_style.border_color = lit
 	_active_btn_style.shadow_color = Color(c.r, c.g, c.b, 0.6)
+	# Player-tinted button states so the FPS/mode buttons stay in the player's
+	# colour across normal/hover/pressed/focus/disabled instead of falling back
+	# to the default cyan theming.
+	_btn_normal = _tinted_button(&"normal", Color(c.r, c.g, c.b, 0.5), Color(c.r, c.g, c.b, 0.15))
+	_btn_hover = _tinted_button(&"hover", lit, Color(c.r, c.g, c.b, 0.45))
+	_btn_pressed = _tinted_button(&"pressed", lit, Color(c.r, c.g, c.b, 0.6))
+	if _btn_pressed:
+		# The theme's pressed fill is bright cyan — replace it with a player-tinted fill.
+		_btn_pressed.bg_color = Color(c.r * 0.45, c.g * 0.45, c.b * 0.45, 1)
+	_btn_focus = _tinted_button(&"focus", Color(c.r, c.g, c.b, 0.7), Color(c.r, c.g, c.b, 0.3))
+	_btn_disabled = _tinted_button(&"disabled", Color(c.r, c.g, c.b, 0.3), Color(c.r, c.g, c.b, 0.0))
+	for mode in _tile_buttons:
+		_apply_hud_button_theme(_tile_buttons[mode])
+	for mode in _build_buttons:
+		_apply_hud_button_theme(_build_buttons[mode])
+	_apply_hud_button_theme(fps_button)
+	# Player-colour the ModeBar separator (a thin filled bar, like the theme's sep).
+	var sep := _root.get_node_or_null("ModeBar/HBox/Sep") as VSeparator
+	if sep:
+		var sep_sb := StyleBoxFlat.new()
+		sep_sb.content_margin_left = 1.0
+		sep_sb.content_margin_top = 1.0
+		sep_sb.content_margin_right = 1.0
+		sep_sb.content_margin_bottom = 1.0
+		sep_sb.bg_color = Color(c.r, c.g, c.b, 0.45)
+		sep_sb.set_corner_radius_all(1)
+		sep.add_theme_stylebox_override("separator", sep_sb)
+
+func _tinted_button(state: StringName, border: Color, glow: Color) -> StyleBoxFlat:
+	var base := _root.get_theme_stylebox(state, "Button") as StyleBoxFlat
+	if base == null:
+		return null
+	var sb: StyleBoxFlat = base.duplicate()
+	sb.border_color = border
+	sb.shadow_color = glow
+	return sb
+
+func _apply_hud_button_theme(btn: Button) -> void:
+	if _btn_normal:
+		btn.add_theme_stylebox_override("normal", _btn_normal)
+	if _btn_hover:
+		btn.add_theme_stylebox_override("hover", _btn_hover)
+	if _btn_pressed:
+		btn.add_theme_stylebox_override("pressed", _btn_pressed)
+	if _btn_focus:
+		btn.add_theme_stylebox_override("focus", _btn_focus)
+	if _btn_disabled:
+		btn.add_theme_stylebox_override("disabled", _btn_disabled)
 
 # Tint the FPS crosshair (bars + centre dot) with the player accent, outlined in
 # white so it stays visible on vibrant backgrounds, and add a soft glow behind it.

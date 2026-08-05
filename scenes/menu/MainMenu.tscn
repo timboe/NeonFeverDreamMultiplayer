@@ -49,13 +49,15 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 1
+current_tab = 0
+tab_0/title = "Host"
+tab_1/title = "Connect"
 
 [node name="HostSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1009015495]
-visible = false
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 0
+metadata/_tab_name = "Host"
 
 [node name="PlayerCountSpin" type="SpinBox" parent="VBoxContainer/ModeTabs/HostSection" unique_id=970904275]
 layout_mode = 2
@@ -71,9 +73,11 @@ text = "8070"
 layout_mode = 2
 
 [node name="ConnectSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1808141224]
+visible = false
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 1
+metadata/_tab_name = "Connect"
 
 [node name="IPLine" type="LineEdit" parent="VBoxContainer/ModeTabs/ConnectSection" unique_id=1576719820]
 layout_mode = 2
@@ -94,6 +98,7 @@ text = "Start Game"
 
 [node name="AUTO_START" type="Timer" parent="VBoxContainer/StartButton" unique_id=1417484374]
 one_shot = true
+autostart = true
 
 [node name="ConnectionErrorOverlay" type="ColorRect" parent="." unique_id=1498380162]
 visible = false

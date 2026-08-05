@@ -129,7 +129,7 @@ mouse_filter = 2
 [node name="HBox" type="HBoxContainer" parent="HUDRoot/ModeBar" unique_id=240958952]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 18
 alignment = 1
 
 [node name="TileModes" type="HBoxContainer" parent="HUDRoot/ModeBar/HBox" unique_id=79849828]

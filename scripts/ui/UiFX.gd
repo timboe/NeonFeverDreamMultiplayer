@@ -16,6 +16,9 @@ static func _hover_enter(btn: Button, glow_color: Color) -> void:
 	if not (base is StyleBoxFlat):
 		return
 	var sb: StyleBoxFlat = (base as StyleBoxFlat).duplicate()
+	# Re-tint the border with the accent colour too, so hover never falls back
+	# to the default cyan theming.
+	sb.border_color = Color(glow_color.r, glow_color.g, glow_color.b, 0.9)
 	sb.shadow_color = glow_color
 	btn.add_theme_stylebox_override("hover", sb)
 	var base_size: float = sb.shadow_size
