@@ -77,6 +77,7 @@ layout_mode = 2
 
 [node name="ZoombaLabel" type="Label" parent="Window/VBox/ZoombaRow" unique_id=1242503485]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 text = "Zoombas"
 
 [node name="CountLabel" type="Label" parent="Window/VBox/ZoombaRow" unique_id=388807143]
@@ -90,6 +91,7 @@ layout_mode = 2
 
 [node name="AvatarLabel" type="Label" parent="Window/VBox/AvatarRow" unique_id=9000002]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 text = "Avatar"
 
 [node name="AvatarCountLabel" type="Label" parent="Window/VBox/AvatarRow" unique_id=9000003]
@@ -103,6 +105,7 @@ layout_mode = 2
 
 [node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=814343039]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 text = "Next Unit"
 
 [node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1887422881]
@@ -118,6 +121,7 @@ layout_mode = 2
 
 [node name="HealthLabel" type="Label" parent="Window/VBox/HealthRow" unique_id=9000006]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Base Integrity"
 

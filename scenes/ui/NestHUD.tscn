@@ -78,6 +78,7 @@ layout_mode = 2
 
 [node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Production"
 
@@ -97,6 +98,7 @@ layout_mode = 2
 
 [node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Tank / Building"
 
@@ -120,6 +122,7 @@ layout_mode = 2
 
 [node name="EnemyLabel" type="Label" parent="Window/VBox"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Enemy Targeting"
 
@@ -135,6 +138,7 @@ layout_mode = 2
 
 [node name="BuildingLabel" type="Label" parent="Window/VBox/BuildingTargetSection"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Building Targeting"
 
@@ -147,6 +151,7 @@ layout_mode = 2
 
 [node name="VirusPriorityLabel" type="Label" parent="Window/VBox"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Virus Priority"
 
@@ -173,6 +178,7 @@ layout_mode = 2
 
 [node name="VirusName" type="Label" parent="Window/VBox/VirusRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Active Virus"
 
@@ -188,6 +194,7 @@ layout_mode = 2
 
 [node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 text = "Next Virus"
 
 [node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow"]

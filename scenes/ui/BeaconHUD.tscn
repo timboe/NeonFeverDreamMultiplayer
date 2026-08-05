@@ -77,6 +77,7 @@ layout_mode = 2
 
 [node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow" unique_id=1593776697]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Production"
 
@@ -96,6 +97,7 @@ layout_mode = 2
 
 [node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader" unique_id=1172570368]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Patrol / Strike"
 
@@ -117,6 +119,7 @@ layout_mode = 2
 
 [node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=567672676]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Enemy Targeting"
 
@@ -129,6 +132,7 @@ layout_mode = 2
 
 [node name="StrikeLabel" type="Label" parent="Window/VBox" unique_id=828844922]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Strike Targeting"
 
@@ -138,6 +142,7 @@ columns = 3
 
 [node name="StrikePriorityLabel" type="Label" parent="Window/VBox" unique_id=1869484567]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Strike Priority"
 
@@ -161,6 +166,7 @@ layout_mode = 2
 
 [node name="PatrolStanceLabel" type="Label" parent="Window/VBox" unique_id=706268320]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Patrol Stance"
 
@@ -187,6 +193,7 @@ layout_mode = 2
 
 [node name="AerialName" type="Label" parent="Window/VBox/AerialRow" unique_id=914583728]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Active Aerial"
 
@@ -202,6 +209,7 @@ layout_mode = 2
 
 [node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=1418423661]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 text = "Next Aerial"
 
 [node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1442440097]

@@ -77,6 +77,7 @@ layout_mode = 2
 
 [node name="PowerName" type="Label" parent="Window/VBox/PowerRow" unique_id=2080523792]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Power Output"
 
@@ -92,6 +93,7 @@ layout_mode = 2
 
 [node name="TilesName" type="Label" parent="Window/VBox/TilesRow" unique_id=1106858845]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "AoE Tiles"
 
@@ -107,6 +109,7 @@ layout_mode = 2
 
 [node name="PerTileName" type="Label" parent="Window/VBox/PerTileRow" unique_id=749073298]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Per Tile"
 

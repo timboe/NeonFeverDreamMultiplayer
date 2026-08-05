@@ -19,6 +19,57 @@ func _enter_tree() -> void:
 	# glow-pulse after the ready pass.
 	call_deferred("_attach_button_pulses")
 	call_deferred("_apply_owner_color")
+	call_deferred("_add_section_strips")
+
+func _owner_accent() -> Color:
+	var b = get("building")
+	if b != null and is_instance_valid(b):
+		return Config.player_accent(b.player_owner)
+	return Color.WHITE
+
+# --- Section header accent strips ---
+
+# Every Label using the SectionHeader theme variation gets a short accent bar on
+# its left. The bar is coloured with the building owner's player colour.
+func _add_section_strips() -> void:
+	if not is_inside_tree():
+		return
+	var accent := _owner_accent()
+	for lbl in _find_section_labels(self):
+		if lbl.has_meta("_section_strip"):
+			continue
+		var container := lbl.get_parent()
+		if container is VBoxContainer:
+			# Wrap in a row so the strip sits to the left of the text.
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 6)
+			container.add_child(row)
+			container.move_child(row, lbl.get_index())
+			container.remove_child(lbl)
+			row.add_child(lbl)
+			container = row
+		if container is HBoxContainer:
+			var strip := ColorRect.new()
+			strip.custom_minimum_size = Vector2(4, 0)
+			strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			strip.color = Color(accent.r, accent.g, accent.b, 0.9)
+			container.add_child(strip)
+			container.move_child(strip, lbl.get_index())
+			lbl.set_meta("_section_strip", strip)
+
+func _tint_section_strips(accent: Color) -> void:
+	for lbl in _find_section_labels(self):
+		if lbl.has_meta("_section_strip"):
+			var strip = lbl.get_meta("_section_strip")
+			strip.color = Color(accent.r, accent.g, accent.b, 0.9)
+
+func _find_section_labels(node: Node) -> Array[Label]:
+	var out: Array[Label] = []
+	for child in node.get_children():
+		if child is Label and (child as Label).theme_type_variation == &"SectionHeader":
+			out.append(child)
+		out.append_array(_find_section_labels(child))
+	return out
 
 # Tint the terminal window border to the owning player's accent colour.
 func set_building_owner(pnum: int) -> void:
@@ -47,6 +98,8 @@ func _tint_window(pnum: int) -> void:
 	var cursor_node := get_node_or_null("Cursor") as TerminalCursor
 	if cursor_node:
 		cursor_node.set_glow_color(Color(accent.r, accent.g, accent.b, 0.55))
+	# Tint the section-header accent strips to match.
+	_tint_section_strips(accent)
 
 func _attach_button_pulses() -> void:
 	if not is_inside_tree():

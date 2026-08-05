@@ -78,6 +78,7 @@ layout_mode = 2
 
 [node name="EnergyName" type="Label" parent="Window/VBox/EnergyRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Energy"
 
@@ -98,6 +99,7 @@ layout_mode = 2
 
 [node name="CapacityName" type="Label" parent="Window/VBox/CapacityRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Capacity"
 
@@ -113,6 +115,7 @@ layout_mode = 2
 
 [node name="AdjacentName" type="Label" parent="Window/VBox/AdjacentRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Adjacent Vats"
 
@@ -131,6 +134,7 @@ layout_mode = 2
 
 [node name="HPName" type="Label" parent="Window/VBox/HPRow"]
 layout_mode = 2
+theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Shared HP"
 
