@@ -14,6 +14,23 @@ func _enter_tree() -> void:
 	if _crt_overlay == null or not is_instance_valid(_crt_overlay):
 		_crt_overlay = _build_crt_overlay()
 		add_child(_crt_overlay)
+	# Buttons are created by subclass _ready (scene + code), so attach the hover
+	# glow-pulse after the ready pass.
+	call_deferred("_attach_button_pulses")
+
+func _attach_button_pulses() -> void:
+	if not is_inside_tree():
+		return
+	for btn in _find_buttons(self):
+		UiFX.attach_glow_pulse(btn)
+
+func _find_buttons(node: Node) -> Array[Button]:
+	var out: Array[Button] = []
+	for child in node.get_children():
+		if child is Button:
+			out.append(child)
+		out.append_array(_find_buttons(child))
+	return out
 
 func _build_crt_overlay() -> ColorRect:
 	var overlay := ColorRect.new()

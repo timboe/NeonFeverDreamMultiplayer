@@ -33,6 +33,7 @@ var _tooltip_hud  # cached tooltip HUD Control (per building type)
 var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
 var _active_btn_style: StyleBoxFlat
 var _energy_fill_sb: StyleBoxFlat
+var _tooltip_tween: Tween
 
 # --- Nodes ---
 
@@ -85,6 +86,14 @@ func _ready() -> void:
 	fps_button.pressed.connect(func(): toggle_camera.emit())
 	_apply_player_color()
 	_update_button_styles()
+	# Hover glow-pulse on the mode + FPS buttons, tinted with the player accent.
+	var accent := Config.player_accent(Global.my_player_number)
+	var glow := Color(accent.r, accent.g, accent.b, 0.6)
+	for mode in _tile_buttons:
+		UiFX.attach_glow_pulse(_tile_buttons[mode], glow)
+	for mode in _build_buttons:
+		UiFX.attach_glow_pulse(_build_buttons[mode], glow)
+	UiFX.attach_glow_pulse(fps_button, glow)
 	# Dedicated fill stylebox for the energy bar so low-energy tinting doesn't
 	# mutate the shared theme fill (which other ProgressBars use).
 	_energy_fill_sb = (energy_bar.get_theme_stylebox("fill") as StyleBoxFlat).duplicate()
@@ -160,9 +169,25 @@ func _update_tooltip() -> void:
 		pos.x = clampf(pos.x, 0.0, maxf(0.0, vp_size.x - tooltip.size.x))
 		pos.y = clampf(pos.y, 0.0, maxf(0.0, vp_size.y - tooltip.size.y))
 		tooltip.position = pos
-		tooltip.visible = true
+		if not tooltip.visible:
+			tooltip.visible = true
+			_fade_tooltip(true)
 	else:
-		tooltip.visible = false
+		if tooltip.visible:
+			tooltip.visible = false
+			_fade_tooltip(false)
+
+func _fade_tooltip(fade_in: bool) -> void:
+	if _tooltip_tween and _tooltip_tween.is_valid():
+		_tooltip_tween.kill()
+	_tooltip_tween = null
+	if fade_in:
+		tooltip.modulate.a = 0.0
+		_tooltip_tween = create_tween()
+		_tooltip_tween.tween_property(tooltip, "modulate:a", 1.0, 0.15)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tooltip.modulate.a = 1.0
 
 func _set_tooltip_building(b: Building) -> void:
 	if _tooltip_hud and _tooltip_hud_type == b.type and _tooltip_hud.building == b:
