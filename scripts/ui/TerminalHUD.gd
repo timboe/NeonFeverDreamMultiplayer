@@ -112,6 +112,21 @@ func set_tooltip_mode(active: bool) -> void:
 	for c in _tooltip_hidden_controls():
 		if c:
 			c.visible = not active
+	# The tooltip preview isn't a diegetic screen — drop the CRT overlay and the
+	# black screen bezel, and let the terminal fill the tooltip so the two
+	# player-tinted borders sit close together.
+	if _crt_overlay:
+		_crt_overlay.visible = not active
+	var bg := get_node_or_null("Background") as ColorRect
+	if bg:
+		bg.visible = not active
+	var window := get_node_or_null("Window") as PanelContainer
+	if window and active:
+		window.set_anchors_preset(Control.PRESET_FULL_RECT)
+		window.offset_left = 0
+		window.offset_top = 0
+		window.offset_right = 0
+		window.offset_bottom = 0
 
 func _tooltip_hidden_controls() -> Array[Control]:
 	var btn := get_node_or_null("Window/VBox/Header/EmpowerBtn") as Button

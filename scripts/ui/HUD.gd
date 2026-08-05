@@ -21,8 +21,6 @@ const MODE_TO_BUILDING_TYPE: Dictionary = {
 	Mode.BEACON: BuildingManager.Type.BEACON,
 	Mode.NEST: BuildingManager.Type.NEST,
 }
-# Terminal HUDs are designed for this viewport size; scaled to fit the tooltip.
-const HUD_DESIGN_SIZE: float = 480.0
 
 # --- State ---
 
@@ -163,7 +161,6 @@ func _update_tooltip() -> void:
 		and hovered.state == Building.State.CONSTRUCTED \
 		and hovered.player_owner == Global.my_player_number:
 		_set_tooltip_building(hovered)
-		_scale_tooltip_hud()
 		var vp_size := Vector2(get_viewport().size)
 		var mouse := get_viewport().get_mouse_position()
 		var pos := mouse + Vector2(24, 24)
@@ -207,15 +204,6 @@ func _set_tooltip_building(b: Building) -> void:
 	_tooltip_hud.building = b
 	if _tooltip_hud.has_method("set_building_owner"):
 		_tooltip_hud.set_building_owner(b.player_owner)
-
-# The SubViewport renders at the tooltip's (smaller) size, so scale the HUD —
-# designed for HUD_DESIGN_SIZE — down around its centre to fit inside it.
-func _scale_tooltip_hud() -> void:
-	if not _tooltip_hud:
-		return
-	var k := minf(Vector2(tooltip_viewport.size).x, Vector2(tooltip_viewport.size).y) / HUD_DESIGN_SIZE
-	_tooltip_hud.pivot_offset = _tooltip_hud.size * 0.5
-	_tooltip_hud.scale = Vector2.ONE * k
 
 func _free_tooltip_hud() -> void:
 	if _tooltip_hud:
@@ -285,6 +273,14 @@ func _apply_player_color() -> void:
 			var sb := (node.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
 			sb.border_color = lit
 			sb.shadow_color = dim
+			if node == tooltip:
+				# Keep the outer tooltip panel tight around the terminal preview so
+				# its border sits right next to the terminal HUD's own border.
+				sb.content_margin_left = 2.0
+				sb.content_margin_top = 2.0
+				sb.content_margin_right = 2.0
+				sb.content_margin_bottom = 2.0
+				sb.shadow_size = 0
 			node.add_theme_stylebox_override("panel", sb)
 	var pressed := _root.get_theme_stylebox("pressed", "Button") as StyleBoxFlat
 	_active_btn_style = pressed.duplicate()
