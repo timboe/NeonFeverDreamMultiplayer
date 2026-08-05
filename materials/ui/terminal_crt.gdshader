@@ -5,7 +5,7 @@ shader_type canvas_item;
 
 uniform float viewport_height : hint_range(64.0, 1024.0) = 480.0;
 uniform float scanline_spacing : hint_range(1.0, 16.0) = 4.0;
-uniform float scanline_strength : hint_range(0.0, 1.0) = 0.355;
+uniform float scanline_strength : hint_range(0.0, 1.0) = 0.25;
 uniform vec3 phosphor_tint : source_color = vec3(0.5, 1.0, 0.8);
 uniform float phosphor_glow : hint_range(0.0, 0.5) = 0.09;
 uniform float vignette_strength : hint_range(0.0, 1.0) = 0.355;

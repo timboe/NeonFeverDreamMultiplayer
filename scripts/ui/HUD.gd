@@ -204,6 +204,8 @@ func _set_tooltip_building(b: Building) -> void:
 		if ctrl.has_method("set_tooltip_mode"):
 			ctrl.set_tooltip_mode(true)
 	_tooltip_hud.building = b
+	if _tooltip_hud.has_method("set_building_owner"):
+		_tooltip_hud.set_building_owner(b.player_owner)
 
 # The SubViewport renders at the tooltip's (smaller) size, so scale the HUD —
 # designed for HUD_DESIGN_SIZE — down around its centre to fit inside it.

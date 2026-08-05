@@ -7,6 +7,7 @@ class_name TerminalHUD
 @onready var cursor: TerminalCursor = $Cursor
 
 var _crt_overlay: ColorRect
+var _crt_material: ShaderMaterial
 
 # The CRT overlay is added in _enter_tree so it works for every terminal HUD
 # without each subclass having to call super._ready().
@@ -17,6 +18,31 @@ func _enter_tree() -> void:
 	# Buttons are created by subclass _ready (scene + code), so attach the hover
 	# glow-pulse after the ready pass.
 	call_deferred("_attach_button_pulses")
+	call_deferred("_apply_owner_color")
+
+# Tint the terminal window border to the owning player's accent colour.
+func set_building_owner(pnum: int) -> void:
+	_tint_window(pnum)
+
+func _apply_owner_color() -> void:
+	if not is_inside_tree():
+		return
+	var b = get("building")
+	if b != null and is_instance_valid(b):
+		_tint_window(b.player_owner)
+
+func _tint_window(pnum: int) -> void:
+	var accent := Config.player_accent(pnum)
+	# Tint the terminal window border/glow with the owner's colour.
+	var window := get_node_or_null("Window") as PanelContainer
+	if window:
+		var sb := (window.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
+		sb.border_color = Color(accent.r, accent.g, accent.b, 0.6)
+		sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.25)
+		window.add_theme_stylebox_override("panel", sb)
+	# Tint the CRT phosphor to match.
+	if _crt_material:
+		_crt_material.set_shader_parameter("phosphor_tint", accent)
 
 func _attach_button_pulses() -> void:
 	if not is_inside_tree():
@@ -44,6 +70,7 @@ func _build_crt_overlay() -> ColorRect:
 	overlay.color = Color.BLACK
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://materials/ui/terminal_crt.gdshader")
+	_crt_material = mat
 	overlay.material = mat
 	return overlay
 
