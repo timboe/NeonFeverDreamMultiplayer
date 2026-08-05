@@ -43,6 +43,10 @@ func _tint_window(pnum: int) -> void:
 	# Tint the CRT phosphor to match.
 	if _crt_material:
 		_crt_material.set_shader_parameter("phosphor_tint", accent)
+	# Tint the terminal cursor glow to match.
+	var cursor_node := get_node_or_null("Cursor") as TerminalCursor
+	if cursor_node:
+		cursor_node.set_glow_color(Color(accent.r, accent.g, accent.b, 0.55))
 
 func _attach_button_pulses() -> void:
 	if not is_inside_tree():

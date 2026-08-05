@@ -205,41 +205,52 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="TopBar" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=699078674]
+[node name="Glow" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=1443110589]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopBar" type="Panel" parent="HUDRoot/Crosshair" unique_id=699078674]
 layout_mode = 1
 offset_left = 17.0
 offset_right = 23.0
 offset_bottom = 12.0
 mouse_filter = 2
-color = Color(0, 1, 1, 1)
 
-[node name="BottomBar" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=1475730970]
+[node name="BottomBar" type="Panel" parent="HUDRoot/Crosshair" unique_id=1475730970]
 layout_mode = 1
 offset_left = 17.0
 offset_top = 28.0
 offset_right = 23.0
 offset_bottom = 40.0
 mouse_filter = 2
-color = Color(0, 1, 1, 1)
 
-[node name="LeftBar" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=1086449294]
+[node name="LeftBar" type="Panel" parent="HUDRoot/Crosshair" unique_id=1086449294]
 layout_mode = 1
 offset_top = 17.0
 offset_right = 12.0
 offset_bottom = 23.0
 mouse_filter = 2
-color = Color(0, 1, 1, 1)
 
-[node name="RightBar" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=1388175727]
+[node name="RightBar" type="Panel" parent="HUDRoot/Crosshair" unique_id=1388175727]
 layout_mode = 1
 offset_left = 28.0
 offset_top = 17.0
 offset_right = 40.0
 offset_bottom = 23.0
 mouse_filter = 2
-color = Color(0, 1, 1, 1)
 
-[node name="CenterDot" type="ColorRect" parent="HUDRoot/Crosshair" unique_id=1609408228]
+[node name="CenterDot" type="Panel" parent="HUDRoot/Crosshair" unique_id=1609408228]
 layout_mode = 1
 offset_left = 17.0
 offset_top = 17.0

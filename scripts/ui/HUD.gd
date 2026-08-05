@@ -86,6 +86,7 @@ func _ready() -> void:
 	fps_button.pressed.connect(func(): toggle_camera.emit())
 	_apply_player_color()
 	_update_button_styles()
+	_style_crosshair()
 	# Hover glow-pulse on the mode + FPS buttons, tinted with the player accent.
 	var accent := Config.player_accent(Global.my_player_number)
 	var glow := Color(accent.r, accent.g, accent.b, 0.6)
@@ -290,6 +291,29 @@ func _apply_player_color() -> void:
 	_active_btn_style.bg_color = Color(c.r * 0.12, c.g * 0.12, c.b * 0.12, 0.85)
 	_active_btn_style.border_color = lit
 	_active_btn_style.shadow_color = Color(c.r, c.g, c.b, 0.6)
+
+# Tint the FPS crosshair (bars + centre dot) with the player accent, outlined in
+# white so it stays visible on vibrant backgrounds, and add a soft glow behind it.
+func _style_crosshair() -> void:
+	var accent := Config.player_accent(Global.my_player_number)
+	for child in crosshair.get_children():
+		if child is Panel:
+			_set_crosshair_shape(child as Panel, accent)
+	var glow := crosshair.get_node_or_null("Glow") as ColorRect
+	if glow:
+		if glow.material == null:
+			var mat := ShaderMaterial.new()
+			mat.shader = preload("res://materials/ui/soft_glow.gdshader")
+			glow.material = mat
+		if glow.material is ShaderMaterial:
+			(glow.material as ShaderMaterial).set_shader_parameter("glow_color", Color(accent.r, accent.g, accent.b, 0.35))
+
+func _set_crosshair_shape(p: Panel, accent: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = accent
+	sb.set_border_width_all(1)
+	sb.border_color = Color.WHITE
+	p.add_theme_stylebox_override("panel", sb)
 
 # --- Drag ---
 
