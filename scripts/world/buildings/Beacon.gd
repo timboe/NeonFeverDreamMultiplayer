@@ -5,7 +5,6 @@ class_name Beacon
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/BeaconHUD.tscn")
 
 var patrol_strike_ratio: float = 0.5
-var _strike_priority: JobManager.Priority = JobManager.Priority.NEAREST
 var _patrol_stance: JobManager.Stance = JobManager.Stance.HOLD
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = []
@@ -48,11 +47,6 @@ func _update_orders() -> void:
 	orders["patrol"]["enemy"] = _enemy_targets
 	orders["strike"]["enemy"] = _enemy_targets
 	orders["strike"]["target"] = _building_targets
-	orders["strike"]["priority"] = _strike_priority
-
-func set_strike_priority(sp: JobManager.Priority) -> void:
-	_strike_priority = sp
-	_update_orders()
 
 func set_enemy_targets(et: Array[int]) -> void:
 	_enemy_targets = _clean_enemy_targets(et)

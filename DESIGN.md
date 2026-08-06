@@ -100,7 +100,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | HP | 2000 |
 | Cost | 750e |
 | Avatar buff | All AERIAL units produced by any Beacon while the Avatar is empowering that Beacon: lifetime +30s from 2m to 2m30s (to be play tested) |
-| Avatar Interaction | Avatar controls the ratio of ariel units created as Patrol units vs Strike units. The setting is applied per Beacon. Ratio is viewable from RTS mode, editable only in FPS mode at each beacon. In addition, avatar can toggle aerial production from each individual beacon. Diegetic UI at each Beacon includes STRIKE target priority and PATROL stance controls (see Diegetic Building UI section). |
+| Avatar Interaction | Avatar controls the ratio of ariel units created as Patrol units vs Strike units. The setting is applied per Beacon. Ratio is viewable from RTS mode, editable only in FPS mode at each beacon. In addition, avatar can toggle aerial production from each individual beacon. Diegetic UI at each Beacon includes PATROL stance controls (see Diegetic Building UI section). |
 | Special | None |
 
 ### Nest — Virus Factory
@@ -201,7 +201,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Lifetime | Same as Ariel Patrol |
 | Cost | 100e |
 | HP | 400 |
-| Function | Offensive against enemy base. Target selection is configured per-Beacon via diegetic UI (see UI section). Begins to path towards it with a weighted random walk and A\* waypoints. Intercepts enemies en-route. Once primary target is destroyed, targets next nearest enemy building. A building under attack will issue an order for a friendly tank to come defend it. |
+| Function | Offensive against enemy base. A target is picked at random from the valid set of targets (per-Beacon enemy and building-type filters, see UI section). Begins to path towards it with a weighted random walk and A\* waypoints. Intercepts enemies en-route. Once the target is destroyed, another target is picked at random from the valid set. A building under attack will issue an order for a friendly tank to come defend it. |
 | Interaction: Zoomba | May encounter enemy zoomba on contested and enemy tiles. Opportunistic engagement of enemy zoomba, defenseless but low priority target. |
 | Interaction Tank: | May encounter enemy tank units on contested and enemy tiles en-route to attack the enemy base. WEAK against tanks. |
 | Interaction: Aerial Patrol | Secondary role is to engage enemy patrol units. May encounter enemy Patrol units on contested and enemy tiles. Engages Patrol, STRONG against patrol due to height difference. x2 bonus. |
@@ -219,7 +219,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Lifetime | 2m (self-depletes at 1.25 HP/s, ~120s from full health). Health stops depleting while channeling an attack (uncloaked). |
 | Cost | 100e |
 | HP | 150 |
-| Function | Offensive against enemy base. Chooses one enemy tank or building to target at random and begins to path towards it with a weighted random walk and A\* waypoints. If no tanks left then chooses a random enemy building. If its target tank is destroyed it then targets the nearest enemy tank or building — whichever is closer. VIRUS remains cloaked while moving but must uncloak to attack a TANK (~10s kill) or infect a building (~10s channel). Infecting a building destroys the virus; infection duration is based on remaining health at the start of the channel: base 15s at full health (150 HP), prorated linearly (e.g. 75 HP = 7.5s infection). Multiple VIRUS infecting the same building stack durations. |
+| Function | Offensive against enemy base. Chooses one enemy tank or building to target at random and begins to path towards it with a weighted random walk and A\* waypoints. If no tanks left then chooses a random enemy building. If its target tank is destroyed it then picks another target at random from the valid set. VIRUS remains cloaked while moving but must uncloak to attack a TANK (~10s kill) or infect a building (~10s channel). Infecting a building destroys the virus; infection duration is based on remaining health at the start of the channel: base 15s at full health (150 HP), prorated linearly (e.g. 75 HP = 7.5s infection). Multiple VIRUS infecting the same building stack durations. |
 | Interaction: Zoomba | May encounter enemy zoomba on contested and enemy tiles. Does not interact with enemy zoomba. |
 | Interaction: Tank | Primary action to target enemy tanks on contested and enemy tiles. VIRUS must uncloak to attack (~10s to destroy a tank). STRONG against tanks. Tank cannot fight back but can queue a kill-VIRUS job for PATROL upon attack start. |
 | Interaction: Aerial Patrol | Detected by PATROL at 2-3 tile range while cloaked. WEAK to attack from PATROL if uncloaked. Virus unable to target aerial units. |
@@ -315,7 +315,7 @@ For toggle choice options, a new option is chosen for each unit. E.g. if a nest 
 - Production radio button (on/off)
 - Enemy player targetting toggle: Red, Blue, Green, Yellow (only hostile players are presented)
 - STRIKE targeting toggle: MCP, Vat, Generator, Garage, Beacon, Nest 
-- STRIKE targeting radio button: Nearest / Lowest HP 
+- A STRIKE unit picks its target at random from the valid set of targets.
 - PATROL stance radio button: Hold position (patrol within Beacon AoE) / Wide Patrol
 
 
@@ -324,7 +324,7 @@ For toggle choice options, a new option is chosen for each unit. E.g. if a nest 
 - Production radio button (on/off)
 - Enemy player targetting toggle: Red, Blue, Green, Yellow (only hostile players are presented)
 - Building targeting toggle: MCP, Vat, Generator, Garage, Beacon, Nest (visible when slider is not at 100% Tanks)
-- VIRUS targeting radio button: Nearest / Lowest HP 
+- A VIRUS unit picks its target at random from the valid set of targets.
 
 All settings are toggles, radio buttons or sliders — no patrol routes or waypoints.
 

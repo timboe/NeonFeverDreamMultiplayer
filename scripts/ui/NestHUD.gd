@@ -20,8 +20,6 @@ var building: Nest
 @onready var enemy_grid: GridContainer = $Window/VBox/EnemyGrid
 @onready var building_grid: GridContainer = $Window/VBox/BuildingTargetSection/BuildingGrid
 @onready var building_target_section: VBoxContainer = $Window/VBox/BuildingTargetSection
-@onready var virus_nearest_btn: Button = $Window/VBox/VirusPriorityRow/VirusNearestBtn
-@onready var virus_lowest_btn: Button = $Window/VBox/VirusPriorityRow/VirusLowestBtn
 @onready var virus_label: Label = $Window/VBox/VirusRow/VirusLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
@@ -36,8 +34,6 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
-	virus_nearest_btn.pressed.connect(_on_virus_priority.bind(JobManager.Priority.NEAREST))
-	virus_lowest_btn.pressed.connect(_on_virus_priority.bind(JobManager.Priority.LOWEST_HP))
 	_build_enemy_buttons()
 	_build_building_buttons()
 
@@ -97,10 +93,6 @@ func _on_building_toggle(t: BuildingManager.Type) -> void:
 		targets.append(t)
 	Global.send_command_me("set_building_targets", [building.id, targets])
 
-func _on_virus_priority(priority: JobManager.Priority) -> void:
-	if building:
-		Global.send_command_me("set_virus_priority", [building.id, priority])
-
 func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
@@ -116,8 +108,6 @@ func _process(_delta: float) -> void:
 	for t in _building_buttons:
 		var btn: Button = _building_buttons[t]
 		btn.set_pressed_no_signal(t in building._building_targets)
-	virus_nearest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.NEAREST)
-	virus_lowest_btn.set_pressed_no_signal(building._virus_priority == JobManager.Priority.LOWEST_HP)
 	# Show/hide building targeting section based on ratio
 	building_target_section.visible = building._virus_tank_building_ratio < 1.0
 	var um = Global.UM

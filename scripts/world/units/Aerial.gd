@@ -100,7 +100,6 @@ func _choose_strike_building() -> Building:
 	if enemies.is_empty():
 		return null
 	var target_types: Array = orders.get("target", [])
-	var priority: int = orders.get("priority", JobManager.Priority.NEAREST)
 	var bm = Global.BM
 	if not bm:
 		return null
@@ -115,21 +114,8 @@ func _choose_strike_building() -> Building:
 		candidates.append(b)
 	if candidates.is_empty():
 		return null
-	if priority == JobManager.Priority.LOWEST_HP:
-		var best: Building = candidates[0]
-		for b in candidates:
-			if b.health < best.health:
-				best = b
-		return best
-	# NEAREST
-	var best_n: Building = candidates[0]
-	var best_dist := global_position.distance_squared_to(best_n.global_position)
-	for b in candidates:
-		var d := global_position.distance_squared_to(b.global_position)
-		if d < best_dist:
-			best_dist = d
-			best_n = b
-	return best_n
+	# Random target from the valid set
+	return candidates[Global.rand.randi() % candidates.size()]
 
 func _on_fire_event() -> void:
 	_spawn_projectile()

@@ -169,16 +169,6 @@ func _cmd_set_building_targets(player_number: int, building_id: int, targets: Ar
 	if b is Nest or b is Beacon:
 		b.set_building_targets(targets as Array[BuildingManager.Type])
 
-func _cmd_set_strike_priority(player_number: int, building_id: int, priority: int) -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	var b = bm.get_building_by_id(building_id)
-	if not _can_control_building(player_number, b):
-		return
-	if b is Beacon:
-		b.set_strike_priority(priority as JobManager.Priority)
-
 func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -> void:
 	var bm = Global.BM
 	if not bm:
@@ -188,16 +178,6 @@ func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -
 		return
 	if b is Beacon:
 		b.set_patrol_stance(stance as JobManager.Stance)
-
-func _cmd_set_virus_priority(player_number: int, building_id: int, priority: int) -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	var b = bm.get_building_by_id(building_id)
-	if not _can_control_building(player_number, b):
-		return
-	if b is Nest:
-		b.set_virus_priority(priority)
 
 func _cmd_empower(player_number: int, building_id: int) -> void:
 	var bm = Global.BM

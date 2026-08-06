@@ -140,27 +140,6 @@ text = "Strike Targeting"
 layout_mode = 2
 columns = 3
 
-[node name="StrikePriorityLabel" type="Label" parent="Window/VBox" unique_id=1869484567]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-theme_override_font_sizes/font_size = 16
-text = "Strike Priority"
-
-[node name="StrikePriorityRow" type="HBoxContainer" parent="Window/VBox" unique_id=172940966]
-layout_mode = 2
-
-[node name="StrikeNearestBtn" type="Button" parent="Window/VBox/StrikePriorityRow" unique_id=1988670529]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "Nearest"
-
-[node name="StrikeLowestBtn" type="Button" parent="Window/VBox/StrikePriorityRow" unique_id=1041514575]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "Lowest HP"
-
 [node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=1925053931]
 layout_mode = 2
 

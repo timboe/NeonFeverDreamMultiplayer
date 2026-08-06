@@ -5,7 +5,6 @@ class_name JobManager
 enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT}
 enum Orders {NONE, PATROL, ATTACK}
 enum Stance {WIDE, HOLD}
-enum Priority {NEAREST, LOWEST_HP}
 
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0

@@ -5,7 +5,6 @@ class_name Nest
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/NestHUD.tscn")
 
 var _virus_tank_building_ratio: float = 0.5
-var _virus_priority: JobManager.Priority = JobManager.Priority.NEAREST
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = []
 
@@ -29,7 +28,6 @@ func _update_orders() -> void:
 	_enemy_targets = _clean_enemy_targets(_enemy_targets)
 	orders["enemy"] = _enemy_targets
 	orders["target"] = _building_targets
-	orders["priority"] = _virus_priority
 	orders["tank_ratio"] = _virus_tank_building_ratio
 
 func set_enemy_targets(et: Array[int]) -> void:
@@ -42,8 +40,4 @@ func set_building_targets(bt: Array[BuildingManager.Type]) -> void:
 
 func set_virus_tank_building_ratio(ratio: float) -> void:
 	_virus_tank_building_ratio = clampf(ratio, 0.0, 1.0)
-	_update_orders()
-
-func set_virus_priority(p: JobManager.Priority) -> void:
-	_virus_priority = p
 	_update_orders()

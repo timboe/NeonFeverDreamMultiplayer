@@ -149,27 +149,6 @@ columns = 3
 [node name="Sep4" type="HSeparator" parent="Window/VBox"]
 layout_mode = 2
 
-[node name="VirusPriorityLabel" type="Label" parent="Window/VBox"]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-theme_override_font_sizes/font_size = 16
-text = "Virus Priority"
-
-[node name="VirusPriorityRow" type="HBoxContainer" parent="Window/VBox"]
-layout_mode = 2
-
-[node name="VirusNearestBtn" type="Button" parent="Window/VBox/VirusPriorityRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "Nearest"
-
-[node name="VirusLowestBtn" type="Button" parent="Window/VBox/VirusPriorityRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "Lowest HP"
-
 [node name="Sep5" type="HSeparator" parent="Window/VBox"]
 layout_mode = 2
 

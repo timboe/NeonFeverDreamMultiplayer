@@ -19,8 +19,6 @@ var building: Beacon
 @onready var ratio_label: Label = $Window/VBox/RatioRow/RatioHeader/RatioLabel
 @onready var enemy_grid: GridContainer = $Window/VBox/EnemyGrid
 @onready var strike_grid: GridContainer = $Window/VBox/StrikeGrid
-@onready var strike_nearest_btn: Button = $Window/VBox/StrikePriorityRow/StrikeNearestBtn
-@onready var strike_lowest_btn: Button = $Window/VBox/StrikePriorityRow/StrikeLowestBtn
 @onready var patrol_hold_btn: Button = $Window/VBox/PatrolStanceRow/PatrolHoldBtn
 @onready var patrol_wide_btn: Button = $Window/VBox/PatrolStanceRow/PatrolWideBtn
 @onready var aerial_label: Label = $Window/VBox/AerialRow/AerialLabel
@@ -37,8 +35,6 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
-	strike_nearest_btn.pressed.connect(_on_strike_priority.bind(JobManager.Priority.NEAREST))
-	strike_lowest_btn.pressed.connect(_on_strike_priority.bind(JobManager.Priority.LOWEST_HP))
 	patrol_hold_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.HOLD))
 	patrol_wide_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.WIDE))
 	_build_enemy_buttons()
@@ -100,10 +96,6 @@ func _on_strike_toggle(t: BuildingManager.Type) -> void:
 		targets.append(t)
 	Global.send_command_me("set_building_targets", [building.id, targets])
 
-func _on_strike_priority(priority: JobManager.Priority) -> void:
-	if building:
-		Global.send_command_me("set_strike_priority", [building.id, priority])
-
 func _on_patrol_stance(stance: JobManager.Stance) -> void:
 	if building:
 		Global.send_command_me("set_patrol_stance", [building.id, stance])
@@ -122,8 +114,6 @@ func _process(_delta: float) -> void:
 	for t in _strike_buttons:
 		var btn: Button = _strike_buttons[t]
 		btn.set_pressed_no_signal(t in building._building_targets)
-	strike_nearest_btn.set_pressed_no_signal(building._strike_priority == JobManager.Priority.NEAREST)
-	strike_lowest_btn.set_pressed_no_signal(building._strike_priority == JobManager.Priority.LOWEST_HP)
 	patrol_hold_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.HOLD)
 	patrol_wide_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.WIDE)
 	var um = Global.UM
