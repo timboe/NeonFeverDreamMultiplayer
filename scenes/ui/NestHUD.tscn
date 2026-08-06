@@ -1,11 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bxx2ppsw07j0a"]
 
-[ext_resource type="Script" path="res://scripts/ui/NestHUD.gd" id="1_nest"]
-[ext_resource type="Theme" path="res://themes/terminal_ui.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://images/cursor.png" id="cursor_png"]
-[ext_resource type="Script" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
+[ext_resource type="Script" uid="uid://j62j4oylx43u" path="res://scripts/ui/NestHUD.gd" id="1_nest"]
+[ext_resource type="Theme" uid="uid://c6n7hrhgc05cj" path="res://themes/terminal_ui.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://cj8417d0etwfo" path="res://images/cursor.png" id="cursor_png"]
+[ext_resource type="Script" uid="uid://bdc7sk5hb4we7" path="res://scripts/ui/TerminalCursor.gd" id="cursor_script"]
 
-[node name="Root" type="Control"]
+[node name="Root" type="Control" unique_id=219682771]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,7 +15,7 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_nest")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1317717360]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,7 +25,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="Window" type="PanelContainer" parent="."]
+[node name="Window" type="PanelContainer" parent="." unique_id=852142762]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -39,50 +39,50 @@ offset_bottom = 228.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Window"]
+[node name="VBox" type="VBoxContainer" parent="Window" unique_id=1342327023]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Header" type="HBoxContainer" parent="Window/VBox"]
+[node name="Header" type="HBoxContainer" parent="Window/VBox" unique_id=94458729]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Window/VBox/Header"]
+[node name="Title" type="Label" parent="Window/VBox/Header" unique_id=1422742276]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"Title"
 theme_override_font_sizes/font_size = 28
 text = "NEST"
 
-[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header"]
+[node name="EmpowerBtn" type="Button" parent="Window/VBox/Header" unique_id=1665364421]
 custom_minimum_size = Vector2(120, 48)
 layout_mode = 2
 size_flags_horizontal = 10
 theme_type_variation = &"EmpowerButton"
 text = "⚡"
 
-[node name="Sep" type="HSeparator" parent="Window/VBox"]
+[node name="Sep" type="HSeparator" parent="Window/VBox" unique_id=1370356379]
 layout_mode = 2
 
-[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="EmpowerRow" type="HBoxContainer" parent="Window/VBox" unique_id=576935009]
 layout_mode = 2
 
-[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
+[node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=232771277]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
 text = "⚡ EMPOWERED: +30% VIRUS SPEED"
 horizontal_alignment = 1
 
-[node name="ProdRow" type="HBoxContainer" parent="Window/VBox"]
+[node name="ProdRow" type="HBoxContainer" parent="Window/VBox" unique_id=1596669898]
 layout_mode = 2
 
-[node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow"]
+[node name="ProdLabel" type="Label" parent="Window/VBox/ProdRow" unique_id=1519654311]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Production"
 
-[node name="ProdBtn" type="Button" parent="Window/VBox/ProdRow"]
+[node name="ProdBtn" type="Button" parent="Window/VBox/ProdRow" unique_id=98124195]
 layout_mode = 2
 size_flags_horizontal = 10
 theme_override_font_sizes/font_size = 16
@@ -90,98 +90,93 @@ toggle_mode = true
 button_pressed = true
 text = "PRODUCING"
 
-[node name="RatioRow" type="VBoxContainer" parent="Window/VBox"]
+[node name="RatioRow" type="VBoxContainer" parent="Window/VBox" unique_id=772001898]
 layout_mode = 2
 
-[node name="RatioHeader" type="HBoxContainer" parent="Window/VBox/RatioRow"]
+[node name="RatioHeader" type="HBoxContainer" parent="Window/VBox/RatioRow" unique_id=1748384480]
 layout_mode = 2
 
-[node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+[node name="RatioName" type="Label" parent="Window/VBox/RatioRow/RatioHeader" unique_id=1059302073]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Tank / Building"
 
-[node name="RatioLabel" type="Label" parent="Window/VBox/RatioRow/RatioHeader"]
+[node name="RatioLabel" type="Label" parent="Window/VBox/RatioRow/RatioHeader" unique_id=1727252328]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "50% / 50%"
 horizontal_alignment = 2
 
-[node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow"]
+[node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow" unique_id=343749951]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
-min_value = 0
-max_value = 100
-step = 5
-value = 50
+step = 5.0
+value = 50.0
 
-[node name="Sep2" type="HSeparator" parent="Window/VBox"]
+[node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=1854327652]
 layout_mode = 2
 
-[node name="EnemyLabel" type="Label" parent="Window/VBox"]
+[node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=1667670469]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Enemy Targeting"
 
-[node name="EnemyGrid" type="GridContainer" parent="Window/VBox"]
+[node name="EnemyGrid" type="GridContainer" parent="Window/VBox" unique_id=161146317]
 layout_mode = 2
 columns = 4
 
-[node name="Sep3" type="HSeparator" parent="Window/VBox"]
+[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=1181278680]
 layout_mode = 2
 
-[node name="BuildingTargetSection" type="VBoxContainer" parent="Window/VBox"]
+[node name="BuildingTargetSection" type="VBoxContainer" parent="Window/VBox" unique_id=1032055047]
 layout_mode = 2
 
-[node name="BuildingLabel" type="Label" parent="Window/VBox/BuildingTargetSection"]
+[node name="BuildingLabel" type="Label" parent="Window/VBox/BuildingTargetSection" unique_id=109999120]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 16
 text = "Building Targeting"
 
-[node name="BuildingGrid" type="GridContainer" parent="Window/VBox/BuildingTargetSection"]
+[node name="BuildingGrid" type="GridContainer" parent="Window/VBox/BuildingTargetSection" unique_id=682150348]
 layout_mode = 2
 columns = 3
 
-[node name="Sep4" type="HSeparator" parent="Window/VBox"]
+[node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=177655947]
 layout_mode = 2
 
-[node name="Sep5" type="HSeparator" parent="Window/VBox"]
+[node name="VirusRow" type="HBoxContainer" parent="Window/VBox" unique_id=1856040929]
 layout_mode = 2
 
-[node name="VirusRow" type="HBoxContainer" parent="Window/VBox"]
-layout_mode = 2
-
-[node name="VirusName" type="Label" parent="Window/VBox/VirusRow"]
+[node name="VirusName" type="Label" parent="Window/VBox/VirusRow" unique_id=1731283809]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
 text = "Active Virus"
 
-[node name="VirusLabel" type="Label" parent="Window/VBox/VirusRow"]
+[node name="VirusLabel" type="Label" parent="Window/VBox/VirusRow" unique_id=815819691]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
 horizontal_alignment = 2
 
-[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox"]
+[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=75249810]
 layout_mode = 2
 
-[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow"]
+[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=746908021]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 text = "Next Virus"
 
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow"]
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1780180929]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 show_percentage = false
 
-[node name="Cursor" type="TextureRect" parent="."]
+[node name="Cursor" type="TextureRect" parent="." unique_id=942477396]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

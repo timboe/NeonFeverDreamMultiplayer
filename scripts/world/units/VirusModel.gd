@@ -6,22 +6,30 @@ class_name VirusModel
 # overlapping chevron teeth interlock like a sawblade, whirring on a glowing
 # hub with a spinning top's wobble. Reads from above as a blur of spinning
 # >>>> — pointy danger you keep your distance from.
+#
+# Performance: each chevron ring is a single MultiMesh (one node / one draw
+# call / one material), and the chevron + primitive meshes are static-shared
+# across every Virus instance. Per unit this is 4 nodes / 4 draws / 4 materials.
 
 const OUTER := {"radius": 1.15, "count": 12, "span": 0.34, "depth": 0.42, "spin": 0.95}
 const INNER := {"radius": 0.62, "count": 8, "span": 0.26, "depth": 0.3, "spin": -1.2}
-const LIFT_Y := 0.8
+const LIFT_Y := 1.0
+
+static var _mesh_cache: Dictionary = {}
+static var _sphere_mesh: SphereMesh
+static var _torus_mesh: TorusMesh
 
 var _color := Color(1.0, 0.2, 0.4, 1.0)
 var _mats: Array[StandardMaterial3D] = []
 var _base_alphas: Array[float] = []
-var _outer := Node3D.new()
-var _inner := Node3D.new()
+var _outer: MultiMeshInstance3D
+var _inner: MultiMeshInstance3D
 var _t := 0.0
 var _cloaked := false
 
 func _ready() -> void:
-	_build_ring(OUTER, _outer, 0.08)
-	_build_ring(INNER, _inner, 0.15)
+	_outer = _build_ring(OUTER, 0.08)
+	_inner = _build_ring(INNER, 0.15)
 	_build_hub()
 
 func _process(delta: float) -> void:
@@ -59,39 +67,53 @@ func _mat(c: Color, alpha: float, additive: bool) -> StandardMaterial3D:
 	_base_alphas.append(alpha)
 	return m
 
-func _build_ring(spec: Dictionary, node: Node3D, y: float) -> void:
-	node.position.y = y
-	for i in int(spec["count"]):
-		var a := TAU * i / float(spec["count"])
-		var seg := MeshInstance3D.new()
-		seg.mesh = _chevron_panel(spec["span"], spec["depth"])
-		seg.position = Vector3(cos(a) * spec["radius"], 0, sin(a) * spec["radius"])
-		seg.rotation.y = -a if spec["spin"] > 0 else PI - a
-		seg.material_override = _mat(_color, 0.9, true)
-		node.add_child(seg)
-	add_child(node)
+func _build_ring(spec: Dictionary, y: float) -> MultiMeshInstance3D:
+	var count: int = int(spec["count"])
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = _cached_chevron_mesh(spec["span"], spec["depth"])
+	mm.instance_count = count
+	for i in count:
+		var a := TAU * i / float(count)
+		var yaw := -a if spec["spin"] > 0 else PI - a
+		mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, yaw),
+			Vector3(cos(a) * spec["radius"], 0, sin(a) * spec["radius"])))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.position.y = y
+	mmi.material_override = _mat(_color, 0.9, true)
+	add_child(mmi)
+	return mmi
 
 func _build_hub() -> void:
+	if _sphere_mesh == null:
+		_sphere_mesh = SphereMesh.new()
+		_sphere_mesh.radius = 0.1
+		_sphere_mesh.height = 0.2
+		_sphere_mesh.radial_segments = 24
+		_sphere_mesh.rings = 12
 	var hub := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.1
-	sm.height = 0.2
-	sm.radial_segments = 24
-	sm.rings = 12
-	hub.mesh = sm
+	hub.mesh = _sphere_mesh
 	hub.position.y = 0.16
 	hub.material_override = _mat(_color, 1.0, true)
 	add_child(hub)
+	if _torus_mesh == null:
+		_torus_mesh = TorusMesh.new()
+		_torus_mesh.inner_radius = 0.9
+		_torus_mesh.outer_radius = 0.92
+		_torus_mesh.rings = 72
+		_torus_mesh.ring_segments = 8
 	var ring := MeshInstance3D.new()
-	var tor := TorusMesh.new()
-	tor.inner_radius = 0.9
-	tor.outer_radius = 0.92
-	tor.rings = 72
-	tor.ring_segments = 8
-	ring.mesh = tor
+	ring.mesh = _torus_mesh
 	ring.position.y = 0.12
 	ring.material_override = _mat(_color, 0.7, true)
 	add_child(ring)
+
+func _cached_chevron_mesh(span: float, depth: float) -> ArrayMesh:
+	var key := str(span) + "_" + str(depth)
+	if not _mesh_cache.has(key):
+		_mesh_cache[key] = _chevron_panel(span, depth)
+	return _mesh_cache[key]
 
 func _chevron_panel(span: float, depth: float) -> ArrayMesh:
 	var st := SurfaceTool.new()

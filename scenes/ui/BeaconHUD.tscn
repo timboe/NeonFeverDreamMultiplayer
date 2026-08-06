@@ -127,9 +127,6 @@ text = "Enemy Targeting"
 layout_mode = 2
 columns = 4
 
-[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=780742525]
-layout_mode = 2
-
 [node name="StrikeLabel" type="Label" parent="Window/VBox" unique_id=828844922]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
@@ -138,7 +135,7 @@ text = "Strike Targeting"
 
 [node name="StrikeGrid" type="GridContainer" parent="Window/VBox" unique_id=1549349390]
 layout_mode = 2
-columns = 3
+columns = 6
 
 [node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=1925053931]
 layout_mode = 2
@@ -164,9 +161,6 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 text = "Wide Patrol"
 
-[node name="Sep5" type="HSeparator" parent="Window/VBox" unique_id=1058934033]
-layout_mode = 2
-
 [node name="AerialRow" type="HBoxContainer" parent="Window/VBox" unique_id=622053385]
 layout_mode = 2
 
@@ -178,22 +172,13 @@ text = "Active Aerial"
 
 [node name="AerialLabel" type="Label" parent="Window/VBox/AerialRow" unique_id=910309623]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
-horizontal_alignment = 2
 
-[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=321794115]
-layout_mode = 2
-
-[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=1418423661]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-text = "Next Aerial"
-
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1442440097]
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/AerialRow" unique_id=1442440097]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
+size_flags_horizontal = 3
 show_percentage = false
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=1657459861]

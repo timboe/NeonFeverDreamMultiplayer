@@ -4,10 +4,10 @@ class_name BeaconHUD
 
 const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.MCP_1: "MCP",
-	BuildingManager.Type.GEN: "Generator",
+	BuildingManager.Type.GEN: "Gen",
 	BuildingManager.Type.VAT: "Vat",
-	BuildingManager.Type.GARAGE: "Garage",
-	BuildingManager.Type.BEACON: "Beacon",
+	BuildingManager.Type.GARAGE: "Gar",
+	BuildingManager.Type.BEACON: "Bcn",
 	BuildingManager.Type.NEST: "Nest",
 }
 
@@ -22,7 +22,7 @@ var building: Beacon
 @onready var patrol_hold_btn: Button = $Window/VBox/PatrolStanceRow/PatrolHoldBtn
 @onready var patrol_wide_btn: Button = $Window/VBox/PatrolStanceRow/PatrolWideBtn
 @onready var aerial_label: Label = $Window/VBox/AerialRow/AerialLabel
-@onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
+@onready var spawn_bar: ProgressBar = $Window/VBox/AerialRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
 var _enemy_buttons: Dictionary = {}
