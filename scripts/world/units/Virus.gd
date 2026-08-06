@@ -6,6 +6,12 @@ var cloaked: bool = true
 var _health_decay_rate: float = 1.25
 var _decay_timer: float = 0.0
 const DECAY_INTERVAL: float = 0.1
+var _last_cloak_state: bool = false
+var _cloak_applied: bool = false
+
+# TEMP (tuning): always render the model fully uncloaked so the whole
+# electric-cloud model is visible. Gameplay cloak state is unchanged.
+const VISUALIZE_DISABLE_CLOAK := true
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -24,23 +30,27 @@ func _process(delta: float) -> void:
 func initialise(b: Building) -> void:
 	super.initialise(b)
 	type = UnitManager.Type.VIRUS
-	_health_bar.position.y = 2.0
+	_health_bar.position.y = 3.2
 	health = Config.UNIT_MAX_HP.get(type, 100.0)
 	add_to_group("virus")
 	add_to_group("virus_player" + str(player_owner))
-	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
-	$Body/CSG.set_surface_override_material(0, updated_mat)
+	var model = _model()
+	if model and model.has_method("set_player_color"):
+		model.set_player_color(Config.player_accent(player_owner))
 	_update_cloak_visual()
 
+func _model() -> Node:
+	return get_node_or_null("Body")
+
 func _update_cloak_visual() -> void:
-	var csg = get_node_or_null("Body/CSG") as MeshInstance3D
-	if not csg:
+	var visual_cloak: bool = false if VISUALIZE_DISABLE_CLOAK else cloaked
+	if _cloak_applied and _last_cloak_state == visual_cloak:
 		return
-	var mat = csg.get_surface_override_material(0)
-	if not mat:
-		mat = csg.mesh.surface_get_material(0) if csg.mesh else null
-	if mat and mat is StandardMaterial3D:
-		mat.albedo_color.a = 0.2 if cloaked else 1.0
+	_cloak_applied = true
+	_last_cloak_state = visual_cloak
+	var model = _model()
+	if model and model.has_method("set_cloak"):
+		model.set_cloak(visual_cloak)
 
 func uncloak() -> void:
 	cloaked = false

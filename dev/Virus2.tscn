@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://dbf2kgtk4kmiw"]
+
+[ext_resource type="Script" path="res://dev/VirusModel2.gd" id="1"]
+[ext_resource type="Shader" path="res://dev/virus_core.gdshader" id="2_36wxh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0wtyi"]
+render_priority = 0
+shader = ExtResource("2_36wxh")
+shader_parameter/player_color = Color(1, 0.2, 0.4, 1)
+shader_parameter/cloak_alpha = 1.0
+shader_parameter/energy = 1.0
+shader_parameter/churn_seed = 8.107597
+
+[sub_resource type="SphereMesh" id="SphereMesh_qg6wg"]
+radius = 0.3
+height = 0.6
+radial_segments = 32
+rings = 24
+
+[node name="Virus2" type="Node3D" unique_id=741444952]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05832131, 0)
+script = ExtResource("1")
+
+[node name="CSG" type="MeshInstance3D" parent="." unique_id=1461031315]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.55, 0)
+material_override = SubResource("ShaderMaterial_0wtyi")
+mesh = SubResource("SphereMesh_qg6wg")
+
+[node name="Arcs" type="MeshInstance3D" parent="." unique_id=1072969300]
+visible = false
+
+[node name="PreviewCamera" type="Camera3D" parent="." unique_id=1488345375]
+transform = Transform3D(1, 0, 0, 0, 0.96858317, 0.24868988, 0, -0.24868988, 0.96858317, 0, 3, 7)
+
+[node name="PreviewLight" type="DirectionalLight3D" parent="." unique_id=971373413]
+transform = Transform3D(0.90630776, 0.34618863, -0.24240388, 0, 0.57357645, 0.81915206, 0.42261827, -0.74240386, 0.5198368, 0, 6, 0)

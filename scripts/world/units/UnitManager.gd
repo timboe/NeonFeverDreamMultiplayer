@@ -34,7 +34,9 @@ func spawn_unit(uid: int, type: Type, building: Building) -> void:
 		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
 		Type.TANK: u = $UnitFactory/Tank.duplicate()
 		Type.AERIAL: u = $UnitFactory/Aerial.duplicate()
-		Type.VIRUS: u = $UnitFactory/Virus.duplicate()
+		# Virus's model is procedural (@tool, builds in _ready); duplicating the
+		# pre-built factory template would leave a second static copy behind.
+		Type.VIRUS: u = preload("res://scenes/world/units/Virus.tscn").instantiate()
 		_: push_error("UnitManager.spawn_unit: unknown type ", type); return
 	add_to_dict_and_scene(uid, u)
 	u.initialise(building)
