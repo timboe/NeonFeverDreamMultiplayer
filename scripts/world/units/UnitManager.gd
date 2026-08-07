@@ -108,9 +108,13 @@ func rpc_remove_unit(unit_id: int) -> void:
 		if not u.job.is_empty():
 			u.abandon_job()
 		unit_dictionary.erase(unit_id)
-		# If the local player's avatar died while in FPS, snap back to the RTS camera.
-		if u is Avatar and u.player_owner == Global.my_player_number:
-			var vm = Global.VM
-			if vm:
-				vm.exit_fps_immediate()
+		if u is Avatar:
+			var gm = Global.GM
+			if gm:
+				gm.clear_avatar_snapshots(u.player_owner)
+			# If the local player's avatar died while in FPS, snap back to the RTS camera.
+			if u.player_owner == Global.my_player_number:
+				var vm = Global.VM
+				if vm:
+					vm.exit_fps_immediate()
 		u.queue_free()

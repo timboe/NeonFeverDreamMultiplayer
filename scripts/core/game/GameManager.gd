@@ -292,6 +292,9 @@ func receive_avatar_snapshot(data: PackedFloat64Array) -> void:
 	if snaps.size() > MAX_SNAPSHOT_BUFFER:
 		snaps.pop_front()
 
+func clear_avatar_snapshots(pnum: int) -> void:
+	_avatar_snapshots.erase(pnum)
+
 # --- Client: interpolation ---
 
 func _interpolate() -> void:
@@ -462,13 +465,27 @@ func _interpolate_avatars() -> void:
 	var render_time := Time.get_ticks_usec() / 1e6 - INTERPOLATION_DELAY
 	for pnum in _avatar_snapshots:
 		var snaps = _avatar_snapshots[pnum]
-		while snaps.size() >= 2 and snaps[1]["time"] < render_time:
-			snaps.pop_front()
 		if snaps.is_empty():
 			continue
 		var avatar = get_tree().get_first_node_in_group("avatar_player" + str(pnum))
 		if not avatar:
 			continue
+		# A player's avatar buffer isn't flushed on death, so it can still hold
+		# snapshots from the previous incarnation. Applying those to the respawned
+		# avatar would park its FPSBody at the old death spot — in range and LOS of
+		# whoever killed it — letting them re-acquire and fire at long range.
+		# Only trust snapshots captured after this avatar instance spawned.
+		var spawn_time: float = avatar.server_spawn_time if avatar is Avatar else -INF
+		var stale := 0
+		while stale < snaps.size() and snaps[stale]["time"] < spawn_time:
+			stale += 1
+		if stale > 0:
+			snaps = snaps.slice(stale)
+			_avatar_snapshots[pnum] = snaps
+		if snaps.is_empty():
+			continue
+		while snaps.size() >= 2 and snaps[1]["time"] < render_time:
+			snaps.pop_front()
 		var s0 = snaps[0]
 		if snaps.size() >= 2 and s0["time"] <= render_time:
 			var s1 = snaps[1]

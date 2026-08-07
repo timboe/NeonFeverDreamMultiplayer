@@ -25,6 +25,9 @@ var dir := Vector3()
 var jaggies: float = 0
 var mouse_initial: bool = true
 var _prev_left_mouse: bool = false
+# Server-side timestamp of this avatar instance's spawn. Used by GameManager to
+# reject buffered avatar snapshots from the previous incarnation after respawn.
+var server_spawn_time: float = 0.0
 
 # --- Lifecycle ---
 
@@ -52,6 +55,7 @@ func _input(event: InputEvent) -> void:
 func initialise(b: Building) -> void:
 	super.initialise(b)
 	type = UnitManager.Type.AVATAR
+	server_spawn_time = Time.get_ticks_usec() / 1e6
 	_health_bar.set_bar_size(3.0, 0.3)
 	_health_bar.reparent(fps_body)
 	_health_bar.position = Vector3(0, 5.0, 0)
