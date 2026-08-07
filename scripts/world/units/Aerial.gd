@@ -48,6 +48,9 @@ func initialise(b: Building) -> void:
 	orders = (b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]).duplicate()
 	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
+	# Let the model brand its accent parts to match the hull (designs that opt in)
+	if $Body.has_method("set_player_color") and updated_mat is StandardMaterial3D:
+		$Body.set_player_color((updated_mat as StandardMaterial3D).albedo_color)
 	# Override the base class spawn tween — fly from building to initial tile at constant height
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()

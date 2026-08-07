@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dbpmx4vyi52m4" path="res://scripts/world/units/Aerial.gd" id="1_game"]
+[ext_resource type="Script" path="res://dev/AerialModel2.gd" id="2_model"]
+
+[node name="Aerial2" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="Body" type="Node3D" parent="."]
+script = ExtResource("2_model")
+
+[node name="CSG" type="MeshInstance3D" parent="Body"]
+[node name="Gun" type="Node3D" parent="Body"]
+[node name="Muzzle" type="Marker3D" parent="Body/Gun"]
+
+[node name="PreviewCamera" type="Camera3D" parent="."]
+position = Vector3(0, 4, 8)
+rotation_degrees = Vector3(-24, 0, 0)
+
+[node name="PreviewLight" type="DirectionalLight3D" parent="."]
+position = Vector3(0, 8, 0)
+rotation_degrees = Vector3(-55, -25, 0)
