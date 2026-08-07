@@ -38,12 +38,10 @@ func _process(_delta: float) -> void:
 	var current: int = um.unit_count(mcp.player_owner, UnitManager.Type.ZOOMBA)
 	var cap: int = mcp.zoomba_cap()
 	count_label.text = str(current) + " / " + str(cap)
-	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(mcp.type, 10.0)
-	if mcp._production_timer > 0.0:
-		var progress := (cooldown - mcp._production_timer) / cooldown * 100.0
-		spawn_bar.value = progress
-	elif current >= cap:
+	if current >= cap:
 		spawn_bar.value = 100.0
+	elif mcp._production_cost > 0.0:
+		spawn_bar.value = clampf(mcp._production_energy / mcp._production_cost * 100.0, 0.0, 100.0)
 	else:
 		spawn_bar.value = 0.0
 	health_bar.max_value = mcp.max_health

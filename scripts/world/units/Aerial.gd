@@ -2,7 +2,17 @@ extends Unit
 
 class_name Aerial
 
+# --- Constants ---
+
+const PROJECTILE_SCENE: PackedScene = preload("res://scenes/world/effects/AerialProjectile.tscn")
+
+# --- Types ---
+
 enum Mode {PATROL, STRIKE}
+
+# Shared per-player glow materials (one per player colour, built lazily) — never
+# duplicate the projectile material per shot.
+static var _projectile_mats: Array[StandardMaterial3D] = []
 
 var mode: Mode = Mode.PATROL
 var lifetime: float = 120.0
@@ -126,15 +136,8 @@ func _on_fire_event() -> void:
 func _spawn_projectile() -> void:
 	if not combat_target or not is_instance_valid(combat_target):
 		return
-	var projectile = MeshInstance3D.new()
-	projectile.mesh = SphereMesh.new()
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.6, 1.0)
-	mat.emission_energy_multiplier = 10.0
-	projectile.material_override = mat
-	projectile.scale = Vector3(0.2, 0.2, 0.2)
+	var projectile := PROJECTILE_SCENE.instantiate() as MeshInstance3D
+	projectile.material_override = _projectile_mat(player_owner)
 	var from = _get_muzzle_global()
 	var to = combat_manager.combat_target_position(combat_target)
 	projectile.global_position = from
@@ -162,3 +165,14 @@ func _spawn_projectile() -> void:
 	# Safety — free projectile if the tween gets killed early
 	var timer = get_tree().create_timer(Config.PROJECTILE_MAX_FLIGHT_TIME * 2.0)
 	timer.timeout.connect(func(): if is_instance_valid(projectile): projectile.queue_free(), CONNECT_ONE_SHOT)
+
+static func _projectile_mat(pnum: int) -> StandardMaterial3D:
+	if _projectile_mats.is_empty():
+		for i in range(4):
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.emission_enabled = true
+			m.emission = Config.player_accent(i + 1)
+			m.emission_energy_multiplier = 10.0
+			_projectile_mats.append(m)
+	return _projectile_mats[clampi(pnum - 1, 0, _projectile_mats.size() - 1)]

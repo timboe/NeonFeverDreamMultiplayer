@@ -96,14 +96,22 @@ func request_energy(pnum: int, amount: float) -> float:
 	if not multiplayer.is_server():
 		return 0.0
 	var allocated := amount
-	# Ration only when the player's reserves are already gone or will run out
-	# within the next second at the current actual consumption rate (consumed
-	# minus produced, not the full requested demand). When active, scale the
-	# request by the supply ratio so limited production is split fairly.
-	var net_drain: float = _consumed.get(pnum, 0.0) - _produced.get(pnum, 0.0)
-	if energy[pnum] <= 0.0 or (net_drain > 0.0 and energy[pnum] <= net_drain):
-		allocated *= _ratio.get(pnum, 1.0)
-	allocated = minf(allocated, energy[pnum])
+	# Ration only once the store actually runs dry. While reserves remain,
+	# consumers draw their full request and the store absorbs the deficit (so a
+	# banked surplus is spent at full rate); when it empties, scale requests by
+	# the supply ratio so the remaining production income is split fairly instead
+	# of going first-come-first-served.
+	if energy[pnum] <= 0.0:
+		var produced: float = _produced.get(pnum, 0.0)
+		if produced > 0.0:
+			# Draw against this tick's production income (plus any residue) so an
+			# empty store doesn't zero out the proportional share. The overdraft
+			# is bounded by one tick of production and repaid next tick.
+			allocated = minf(amount * _ratio.get(pnum, 1.0), maxf(energy[pnum], 0.0) + produced * TICK_INTERVAL)
+		else:
+			allocated = 0.0
+	else:
+		allocated = minf(amount, energy[pnum])
 	energy[pnum] -= allocated
 	_requested_tick[pnum] += amount
 	_consumed_tick[pnum] += allocated
@@ -135,7 +143,7 @@ func _broadcast_energy() -> void:
 	data.append(Global.MAX_PLAYERS)
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		data.append(p)
-		data.append(energy[p])
+		data.append(maxf(energy[p], 0.0))
 		data.append(capacity[p])
 		data.append(_produced[p])
 		data.append(_consumed[p])
@@ -156,7 +164,7 @@ func apply_energy(data: PackedFloat64Array) -> void:
 
 func get_player_energy(pnum: int) -> Dictionary:
 	return {
-		"current": energy.get(pnum, 0.0),
+		"current": maxf(energy.get(pnum, 0.0), 0.0),
 		"capacity": capacity.get(pnum, 0.0),
 		# Total energy generated and actually consumed per second, integrated over
 		# the trailing 1 second of ticks.

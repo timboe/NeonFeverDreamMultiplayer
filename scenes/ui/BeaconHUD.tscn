@@ -117,6 +117,26 @@ value = 50.0
 [node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=972241211]
 layout_mode = 2
 
+[node name="AerialRow" type="HBoxContainer" parent="Window/VBox" unique_id=622053385]
+layout_mode = 2
+
+[node name="AerialName" type="Label" parent="Window/VBox/AerialRow" unique_id=914583728]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Active Aerial"
+
+[node name="AerialLabel" type="Label" parent="Window/VBox/AerialRow" unique_id=910309623]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "0"
+
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/AerialRow" unique_id=1442440097]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
 [node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=567672676]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
@@ -137,7 +157,7 @@ text = "Strike Targeting"
 layout_mode = 2
 columns = 6
 
-[node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=1925053931]
+[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=1925053931]
 layout_mode = 2
 
 [node name="PatrolStanceLabel" type="Label" parent="Window/VBox" unique_id=706268320]
@@ -149,37 +169,20 @@ text = "Patrol Stance"
 [node name="PatrolStanceRow" type="HBoxContainer" parent="Window/VBox" unique_id=1717780894]
 layout_mode = 2
 
-[node name="PatrolHoldBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=2071135528]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "Hold"
-
 [node name="PatrolWideBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=2125998713]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
+toggle_mode = true
+button_pressed = true
 text = "Wide Patrol"
 
-[node name="AerialRow" type="HBoxContainer" parent="Window/VBox" unique_id=622053385]
-layout_mode = 2
-
-[node name="AerialName" type="Label" parent="Window/VBox/AerialRow" unique_id=914583728]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-theme_override_font_sizes/font_size = 18
-text = "Active Aerial"
-
-[node name="AerialLabel" type="Label" parent="Window/VBox/AerialRow" unique_id=910309623]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "0"
-
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/AerialRow" unique_id=1442440097]
-custom_minimum_size = Vector2(0, 18)
+[node name="PatrolHoldBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=2071135528]
 layout_mode = 2
 size_flags_horizontal = 3
-show_percentage = false
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Hold"
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=1657459861]
 layout_mode = 1

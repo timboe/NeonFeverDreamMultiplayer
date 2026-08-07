@@ -21,7 +21,7 @@ var building: Nest
 @onready var building_grid: GridContainer = $Window/VBox/BuildingTargetSection/BuildingGrid
 @onready var building_target_section: VBoxContainer = $Window/VBox/BuildingTargetSection
 @onready var virus_label: Label = $Window/VBox/VirusRow/VirusLabel
-@onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
+@onready var spawn_bar: ProgressBar = $Window/VBox/VirusRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
 var _enemy_buttons: Dictionary = {}
@@ -50,15 +50,21 @@ func _build_enemy_buttons() -> void:
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)
+		_apply_enemy_button_theme(btn, i)
 		btn.pressed.connect(_on_enemy_toggle.bind(i))
 		enemy_grid.add_child(btn)
 		_enemy_buttons[i] = btn
+
+func set_building_owner(pnum: int) -> void:
+	super.set_building_owner(pnum)
+	_rebuild_enemy_buttons(enemy_grid, _enemy_buttons)
 
 func _build_building_buttons() -> void:
 	for t in BUILDING_TYPE_NAMES:
 		var btn := Button.new()
 		btn.text = BUILDING_TYPE_NAMES[t]
 		btn.toggle_mode = true
+		btn.button_pressed = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)
 		btn.pressed.connect(_on_building_toggle.bind(t))
@@ -113,10 +119,8 @@ func _process(_delta: float) -> void:
 	var um = Global.UM
 	if um:
 		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))
-	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(building.type, 5.0)
-	if building._production_timer > 0.0:
-		var progress := (cooldown - building._production_timer) / cooldown * 100.0
-		spawn_bar.value = progress
+	if building._production_cost > 0.0:
+		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
 	else:
 		spawn_bar.value = 0.0
 	empower_indicator.visible = building.is_empowered

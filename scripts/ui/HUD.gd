@@ -271,7 +271,7 @@ func _active_style() -> StyleBoxFlat:
 # pressed stylebox, tinted with the player accent.
 func _apply_player_color() -> void:
 	var c := Config.player_accent(Global.my_player_number)
-	var lit := Color(c.r, c.g, c.b, 0.85)
+	var lit := Color(c.r, c.g, c.b, Config.BUTTON_LIT_ALPHA)
 	for node in _root.get_children():
 		if node is PanelContainer:
 			var cut_sb := CutCornerBox.new()
@@ -300,14 +300,14 @@ func _apply_player_color() -> void:
 	# Player-tinted button states so the FPS/mode buttons stay in the player's
 	# colour across normal/hover/pressed/focus/disabled instead of falling back
 	# to the default cyan theming.
-	_btn_normal = _tinted_button(&"normal", Color(c.r, c.g, c.b, 0.5), Color(c.r, c.g, c.b, 0.15))
-	_btn_hover = _tinted_button(&"hover", lit, Color(c.r, c.g, c.b, 0.45))
-	_btn_pressed = _tinted_button(&"pressed", lit, Color(c.r, c.g, c.b, 0.6))
+	_btn_normal = _tinted_button(&"normal", Color(c.r, c.g, c.b, Config.BUTTON_NORMAL_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_NORMAL_GLOW_ALPHA))
+	_btn_hover = _tinted_button(&"hover", lit, Color(c.r, c.g, c.b, Config.BUTTON_HOVER_GLOW_ALPHA))
+	_btn_pressed = _tinted_button(&"pressed", lit, Color(c.r, c.g, c.b, Config.BUTTON_PRESSED_GLOW_ALPHA))
 	if _btn_pressed:
 		# The theme's pressed fill is bright cyan — replace it with a player-tinted fill.
-		_btn_pressed.bg_color = Color(c.r * 0.45, c.g * 0.45, c.b * 0.45, 1)
-	_btn_focus = _tinted_button(&"focus", Color(c.r, c.g, c.b, 0.7), Color(c.r, c.g, c.b, 0.3))
-	_btn_disabled = _tinted_button(&"disabled", Color(c.r, c.g, c.b, 0.3), Color(c.r, c.g, c.b, 0.0))
+		_btn_pressed.bg_color = Color(c.r * Config.BUTTON_PRESSED_BG_SCALE, c.g * Config.BUTTON_PRESSED_BG_SCALE, c.b * Config.BUTTON_PRESSED_BG_SCALE, 1)
+	_btn_focus = _tinted_button(&"focus", Color(c.r, c.g, c.b, Config.BUTTON_FOCUS_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_FOCUS_GLOW_ALPHA))
+	_btn_disabled = _tinted_button(&"disabled", Color(c.r, c.g, c.b, Config.BUTTON_DISABLED_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_DISABLED_GLOW_ALPHA))
 	for mode in _tile_buttons:
 		_apply_hud_button_theme(_tile_buttons[mode])
 	for mode in _build_buttons:

@@ -10,9 +10,11 @@ var building: Garage
 @onready var ratio_label: Label = $Window/VBox/RatioRow/RatioHeader/RatioLabel
 @onready var ratio_total_label: Label = $Window/VBox/RatioRow/RatioTotalLabel
 @onready var tank_label: Label = $Window/VBox/TankRow/TankLabel
-@onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
+@onready var spawn_bar: ProgressBar = $Window/VBox/TankRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 @onready var enemy_grid: GridContainer = $Window/VBox/EnemyGrid
+@onready var patrol_hold_btn: Button = $Window/VBox/PatrolStanceRow/PatrolHoldBtn
+@onready var patrol_wide_btn: Button = $Window/VBox/PatrolStanceRow/PatrolWideBtn
 
 var _enemy_buttons: Dictionary = {}
 
@@ -23,6 +25,8 @@ func _ready() -> void:
 	prod_btn.pressed.connect(_on_prod_pressed)
 	if empower_btn:
 		empower_btn.pressed.connect(_on_empower_pressed)
+	patrol_hold_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.HOLD))
+	patrol_wide_btn.pressed.connect(_on_patrol_stance.bind(JobManager.Stance.WIDE))
 	_build_enemy_buttons()
 
 func _build_enemy_buttons() -> void:
@@ -35,9 +39,14 @@ func _build_enemy_buttons() -> void:
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)
+		_apply_enemy_button_theme(btn, i)
 		btn.pressed.connect(_on_enemy_toggle.bind(i))
 		enemy_grid.add_child(btn)
 		_enemy_buttons[i] = btn
+
+func set_building_owner(pnum: int) -> void:
+	super.set_building_owner(pnum)
+	_rebuild_enemy_buttons(enemy_grid, _enemy_buttons)
 
 func _on_enemy_toggle(pnum: int) -> void:
 	if not building:
@@ -60,6 +69,19 @@ func _on_prod_pressed() -> void:
 	if building:
 		Global.send_command_me("toggle_production", [building.id])
 
+func _on_patrol_stance(stance: JobManager.Stance) -> void:
+	if building:
+		Global.send_command_me("set_patrol_stance", [building.id, stance])
+
+# Total tanks this garage requests at equilibrium: the player's zoomba cap
+# (from the MCP) times this garage's tank/zoomba ratio.
+func _requested_tanks() -> int:
+	var cap := 0
+	var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
+	if mcp and mcp.has_method("zoomba_cap"):
+		cap = int(mcp.zoomba_cap())
+	return roundi(cap * building.zoomba_tank_ratio)
+
 func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
@@ -71,8 +93,7 @@ func _process(_delta: float) -> void:
 	var um = Global.UM
 	if um:
 		var tanks: int = um.unit_count(building.player_owner, UnitManager.Type.TANK)
-		var zoombas: int = um.unit_count(building.player_owner, UnitManager.Type.ZOOMBA)
-		tank_label.text = str(tanks) + " / " + str(maxi(0, zoombas - 1))
+		tank_label.text = str(tanks) + " / " + str(_requested_tanks())
 	# Ratio total across all garages
 	var total_ratio := 0.0
 	var bm = Global.BM
@@ -96,3 +117,5 @@ func _process(_delta: float) -> void:
 	for pnum in _enemy_buttons:
 		var btn: Button = _enemy_buttons[pnum]
 		btn.set_pressed_no_signal(pnum in building._enemy_targets)
+	patrol_hold_btn.set_pressed_no_signal(building.patrol_stance == JobManager.Stance.HOLD)
+	patrol_wide_btn.set_pressed_no_signal(building.patrol_stance == JobManager.Stance.WIDE)

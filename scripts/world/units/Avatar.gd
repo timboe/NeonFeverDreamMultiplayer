@@ -154,7 +154,10 @@ func _update_screen_cursor() -> void:
 	screen_ray.force_raycast_update()
 	var left_mouse := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var just_clicked := left_mouse and not _prev_left_mouse
+	var just_released := not left_mouse and _prev_left_mouse
 	_prev_left_mouse = left_mouse
+	if just_released:
+		_release_all_hud_cursors()
 	if not screen_ray.is_colliding():
 		_hide_all_hud_cursors()
 		return
@@ -170,11 +173,15 @@ func _update_screen_cursor() -> void:
 				var hud_root := building.get_node_or_null("BuildingHUD/Root")
 				if hud_root and hud_root.has_method("uv_from_collision"):
 					var uv: Vector2 = hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())
-					hud_root.show_cursor_at_uv(uv)
-					if just_clicked:
-						hud_root.click_at_uv(uv)
+					hud_root.drive_cursor_at_uv(uv, left_mouse, just_clicked, just_released)
 					return
 	_hide_all_hud_cursors()
+
+func _release_all_hud_cursors() -> void:
+	for b in get_tree().get_nodes_in_group("building"):
+		var hud_root := b.get_node_or_null("BuildingHUD/Root")
+		if hud_root and hud_root.has_method("release_cursor"):
+			hud_root.release_cursor()
 
 func _hide_all_hud_cursors() -> void:
 	for b in get_tree().get_nodes_in_group("building"):

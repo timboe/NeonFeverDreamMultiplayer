@@ -6,7 +6,7 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/GarageHUD.tscn")
 
 var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
 var cached_tank_count: int = 0
-var patrol_stance: JobManager.Stance = JobManager.Stance.HOLD
+var patrol_stance: JobManager.Stance = JobManager.Stance.WIDE
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
 
 func _get_hud_scene() -> PackedScene:
@@ -29,6 +29,10 @@ func initialise(pnum: int, tile: TileElement) -> void:
 
 func set_enemy_targets(targets: Array[int]) -> void:
 	_enemy_targets = _clean_enemy_targets(targets)
+	_update_orders()
+
+func set_patrol_stance(ps: JobManager.Stance) -> void:
+	patrol_stance = ps
 	_update_orders()
 
 func _update_orders() -> void:

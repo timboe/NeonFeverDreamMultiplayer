@@ -187,6 +187,20 @@ static var PLAYER_NAMES: Array[String] = [
 	"Orange",
 ]
 
+# --- Building targeting ---
+
+# The building types every Beacon/Nest strike considers by default. Matches the
+# building-targeting toggle buttons in the terminal HUDs (MCP_1 stands for all
+# enemy MCPs).
+static var ALL_BUILDING_TARGETS: Array[BuildingManager.Type] = [
+	BuildingManager.Type.MCP_1,
+	BuildingManager.Type.GEN,
+	BuildingManager.Type.VAT,
+	BuildingManager.Type.GARAGE,
+	BuildingManager.Type.BEACON,
+	BuildingManager.Type.NEST,
+]
+
 # --- UI theme ---
 
 # Visual accent palette. These values are mirrored in themes/neon_ui.tres
@@ -206,3 +220,18 @@ func player_accent(pnum: int) -> Color:
 	if pnum >= 1 and pnum <= PLAYER_COLORS.size():
 		return PLAYER_COLORS[pnum - 1]
 	return UI_ACCENT
+
+# --- Button theming (per-player) ---
+
+# Multipliers used when tinting the main-HUD button states with a player colour.
+# Shared between HUD.gd and the terminal HUDs so both stay in sync.
+const BUTTON_LIT_ALPHA: float = 0.85
+const BUTTON_NORMAL_BORDER_ALPHA: float = 0.5
+const BUTTON_NORMAL_GLOW_ALPHA: float = 0.15
+const BUTTON_HOVER_GLOW_ALPHA: float = 0.45
+const BUTTON_PRESSED_GLOW_ALPHA: float = 0.6
+const BUTTON_PRESSED_BG_SCALE: float = 0.45
+const BUTTON_FOCUS_BORDER_ALPHA: float = 0.7
+const BUTTON_FOCUS_GLOW_ALPHA: float = 0.3
+const BUTTON_DISABLED_BORDER_ALPHA: float = 0.3
+const BUTTON_DISABLED_GLOW_ALPHA: float = 0.0

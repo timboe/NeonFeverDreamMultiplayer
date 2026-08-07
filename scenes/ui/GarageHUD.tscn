@@ -41,7 +41,7 @@ grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Window" unique_id=1756311619]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Header" type="HBoxContainer" parent="Window/VBox" unique_id=1264938419]
 layout_mode = 2
@@ -109,7 +109,7 @@ text = "50% / 50%"
 horizontal_alignment = 2
 
 [node name="RatioSlider" type="HSlider" parent="Window/VBox/RatioRow" unique_id=114917011]
-custom_minimum_size = Vector2(0, 28)
+custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 step = 5.0
 value = 50.0
@@ -135,22 +135,13 @@ text = "Tanks"
 
 [node name="TankLabel" type="Label" parent="Window/VBox/TankRow" unique_id=2103340964]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
-horizontal_alignment = 2
 
-[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=863610111]
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/TankRow" unique_id=843681813]
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
-
-[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=819244226]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-text = "Next Tank"
-
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=843681813]
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
+size_flags_horizontal = 3
 show_percentage = false
 
 [node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=1665265790]
@@ -162,6 +153,33 @@ text = "Enemy Targeting"
 [node name="EnemyGrid" type="GridContainer" parent="Window/VBox" unique_id=2055169333]
 layout_mode = 2
 columns = 4
+
+[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=1925053933]
+layout_mode = 2
+
+[node name="PatrolStanceLabel" type="Label" parent="Window/VBox" unique_id=1464320761]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 16
+text = "Patrol Stance"
+
+[node name="PatrolStanceRow" type="HBoxContainer" parent="Window/VBox" unique_id=1393840611]
+layout_mode = 2
+
+[node name="PatrolWideBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=1720866249]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+button_pressed = true
+text = "Wide Patrol"
+
+[node name="PatrolHoldBtn" type="Button" parent="Window/VBox/PatrolStanceRow" unique_id=1223047738]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Hold"
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=1610500478]
 layout_mode = 1

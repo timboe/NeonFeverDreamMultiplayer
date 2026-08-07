@@ -63,19 +63,54 @@ func click_at(uv: Vector2) -> void:
 	if not viewport:
 		return
 	var pos := uv * Vector2(viewport.size)
-	var down := InputEventMouseButton.new()
-	down.button_index = MOUSE_BUTTON_LEFT
-	down.pressed = true
-	down.position = pos
-	down.global_position = pos
-	viewport.push_input(down)
-	var up := InputEventMouseButton.new()
-	up.button_index = MOUSE_BUTTON_LEFT
-	up.pressed = false
-	up.position = pos
-	up.global_position = pos
-	viewport.push_input(up)
+	_push_button(true, pos)
+	_push_button(false, pos)
 	_punch()
+
+# Drive the cursor from the avatar each frame: keeps the visual + hover position,
+# presses/drags/releases the mouse so controls like HSlider can be clicked and
+# dragged rather than only receiving a single click.
+func drive_at_uv(uv: Vector2, held: bool, just_pressed: bool, just_released: bool) -> void:
+	show_at_uv(uv)
+	var viewport := get_viewport() as SubViewport
+	if not viewport:
+		return
+	var pos := uv * Vector2(viewport.size)
+	if just_pressed:
+		_push_button(true, pos)
+		_punch()
+	if held:
+		_push_drag(pos)
+	if just_released:
+		_push_button(false, pos)
+
+# Send a mouse-up so a held control (e.g. slider grab) is released even when the
+# cursor leaves the terminal before the player lets go.
+func release() -> void:
+	_push_button(false, Vector2(-100, -100))
+
+func _push_button(pressed: bool, pos: Vector2) -> void:
+	var viewport := get_viewport() as SubViewport
+	if not viewport:
+		return
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = pressed
+	ev.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	ev.position = pos
+	ev.global_position = pos
+	viewport.push_input(ev)
+
+func _push_drag(pos: Vector2) -> void:
+	var viewport := get_viewport() as SubViewport
+	if not viewport:
+		return
+	var motion := InputEventMouseMotion.new()
+	motion.position = pos
+	motion.global_position = pos
+	motion.relative = Vector2.ZERO
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	viewport.push_input(motion)
 
 func _update_hover_visual() -> void:
 	var vp := get_viewport() as SubViewport

@@ -112,7 +112,8 @@ func _process(delta: float) -> void:
 	# Do production - accumulate energy over time
 	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED and _production_type != UnitManager.Type.NONE:
 		if _production_timer > 0.0:
-			_production_timer -= delta
+			if _production_enabled:
+				_production_timer -= delta
 			if not _can_produce():
 				_production_timer = 0.0
 		elif _production_enabled and _can_produce():
@@ -150,9 +151,9 @@ func _process(delta: float) -> void:
 # --- Queries ---
 
 func find_unit_spawn_location() -> TileElement:
-	for n in location.neighbours:
-		if n.state == TileManager.State.LOWERED:
-			return n
+	var access := location.get_access_tiles()
+	if not access.is_empty():
+		return access[0]
 	return location
 
 func get_aoe_radius() -> int:

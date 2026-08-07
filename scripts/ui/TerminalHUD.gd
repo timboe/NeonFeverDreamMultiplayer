@@ -27,6 +27,47 @@ func _owner_accent() -> Color:
 		return Config.player_accent(b.player_owner)
 	return Color.WHITE
 
+# --- Targeting button theming ---
+
+# Duplicate a themed Button stylebox and tint its border/glow with a player
+# colour, mirroring the main HUD's per-player button styling.
+func _tinted_button_style(state: StringName, border: Color, glow: Color) -> StyleBoxFlat:
+	var base := get_theme_stylebox(state, &"Button") as StyleBoxFlat
+	if base == null:
+		return null
+	var sb: StyleBoxFlat = base.duplicate()
+	sb.border_color = border
+	sb.shadow_color = glow
+	return sb
+
+# Apply the same base/hover/pressed/focus/disabled colours the main HUD uses to a
+# toggle button, tinted with the colour of the player the button targets.
+func _apply_enemy_button_theme(btn: Button, pnum: int) -> void:
+	var c := Config.player_accent(pnum)
+	var lit := Color(c.r, c.g, c.b, Config.BUTTON_LIT_ALPHA)
+	btn.add_theme_stylebox_override("normal", _tinted_button_style(&"normal", Color(c.r, c.g, c.b, Config.BUTTON_NORMAL_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_NORMAL_GLOW_ALPHA)))
+	btn.add_theme_stylebox_override("hover", _tinted_button_style(&"hover", lit, Color(c.r, c.g, c.b, Config.BUTTON_HOVER_GLOW_ALPHA)))
+	var pressed := _tinted_button_style(&"pressed", lit, Color(c.r, c.g, c.b, Config.BUTTON_PRESSED_GLOW_ALPHA))
+	if pressed:
+		pressed.bg_color = Color(c.r * Config.BUTTON_PRESSED_BG_SCALE, c.g * Config.BUTTON_PRESSED_BG_SCALE, c.b * Config.BUTTON_PRESSED_BG_SCALE, 1.0)
+	btn.add_theme_stylebox_override("pressed", pressed)
+	btn.add_theme_stylebox_override("focus", _tinted_button_style(&"focus", Color(c.r, c.g, c.b, Config.BUTTON_FOCUS_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_FOCUS_GLOW_ALPHA)))
+	btn.add_theme_stylebox_override("disabled", _tinted_button_style(&"disabled", Color(c.r, c.g, c.b, Config.BUTTON_DISABLED_BORDER_ALPHA), Color(c.r, c.g, c.b, Config.BUTTON_DISABLED_GLOW_ALPHA)))
+
+# Rebuild the dynamically-created targeting buttons. Needed because the RTS
+# tooltip instantiates the HUD scene before its `building` is assigned, so the
+# owner-filter (skip self) and owner tint can't be applied in _ready.
+func _rebuild_enemy_buttons(grid: GridContainer, dict: Dictionary) -> void:
+	for c in grid.get_children():
+		grid.remove_child(c)
+		c.queue_free()
+	dict.clear()
+	_build_enemy_buttons()
+
+# Overridden by subclasses to populate their enemy-targeting grid.
+func _build_enemy_buttons() -> void:
+	pass
+
 # --- Section header accent strips ---
 
 # Every Label using the SectionHeader theme variation gets a short accent bar on
@@ -148,6 +189,14 @@ func hide_cursor() -> void:
 func click_at_uv(uv: Vector2) -> void:
 	if cursor:
 		cursor.click_at(uv)
+
+func drive_cursor_at_uv(uv: Vector2, held: bool, just_pressed: bool, just_released: bool) -> void:
+	if cursor:
+		cursor.drive_at_uv(uv, held, just_pressed, just_released)
+
+func release_cursor() -> void:
+	if cursor:
+		cursor.release()
 
 func uv_from_collision(screen_mesh: MeshInstance3D, collision_point: Vector3) -> Vector2:
 	if cursor:

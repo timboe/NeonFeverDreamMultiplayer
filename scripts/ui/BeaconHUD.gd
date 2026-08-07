@@ -53,15 +53,21 @@ func _build_enemy_buttons() -> void:
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)
+		_apply_enemy_button_theme(btn, i)
 		btn.pressed.connect(_on_enemy_toggle.bind(i))
 		enemy_grid.add_child(btn)
 		_enemy_buttons[i] = btn
+
+func set_building_owner(pnum: int) -> void:
+	super.set_building_owner(pnum)
+	_rebuild_enemy_buttons(enemy_grid, _enemy_buttons)
 
 func _build_strike_buttons() -> void:
 	for t in BUILDING_TYPE_NAMES:
 		var btn := Button.new()
 		btn.text = BUILDING_TYPE_NAMES[t]
 		btn.toggle_mode = true
+		btn.button_pressed = true
 		btn.custom_minimum_size = Vector2(60, 32)
 		btn.add_theme_font_size_override("font_size", 14)
 		btn.pressed.connect(_on_strike_toggle.bind(t))
@@ -70,7 +76,7 @@ func _build_strike_buttons() -> void:
 
 func _on_ratio_changed(value: float) -> void:
 	if building:
-		Global.send_command_me("set_beacon_ratio", [building.id, value / 100.0])
+		Global.send_command_me("set_beacon_ratio", [building.id, (100.0 - value) / 100.0])
 
 func _on_prod_pressed() -> void:
 	if building:
@@ -105,7 +111,7 @@ func _process(_delta: float) -> void:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
-	var pct := int(building.patrol_strike_ratio * 100)
+	var pct := int((1.0 - building.patrol_strike_ratio) * 100)
 	ratio_slider.set_value_no_signal(pct)
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 	for pnum in _enemy_buttons:
@@ -119,10 +125,8 @@ func _process(_delta: float) -> void:
 	var um = Global.UM
 	if um:
 		aerial_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.AERIAL))
-	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(building.type, 4.0)
-	if building._production_timer > 0.0:
-		var progress := (cooldown - building._production_timer) / cooldown * 100.0
-		spawn_bar.value = progress
+	if building._production_cost > 0.0:
+		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
 	else:
 		spawn_bar.value = 0.0
 	empower_indicator.visible = building.is_empowered

@@ -50,7 +50,6 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"Title"
-theme_override_font_sizes/font_size = 28
 text = "NEST"
 
 [node name="EmpowerBtn" type="Button" parent="Window/VBox/Header" unique_id=1665364421]
@@ -118,6 +117,26 @@ value = 50.0
 [node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=1854327652]
 layout_mode = 2
 
+[node name="VirusRow" type="HBoxContainer" parent="Window/VBox" unique_id=1856040929]
+layout_mode = 2
+
+[node name="VirusName" type="Label" parent="Window/VBox/VirusRow" unique_id=1731283809]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Active Virus"
+
+[node name="VirusLabel" type="Label" parent="Window/VBox/VirusRow" unique_id=815819691]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "0"
+
+[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/VirusRow" unique_id=1780180929]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
 [node name="EnemyLabel" type="Label" parent="Window/VBox" unique_id=1667670469]
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
@@ -127,9 +146,6 @@ text = "Enemy Targeting"
 [node name="EnemyGrid" type="GridContainer" parent="Window/VBox" unique_id=161146317]
 layout_mode = 2
 columns = 4
-
-[node name="Sep3" type="HSeparator" parent="Window/VBox" unique_id=1181278680]
-layout_mode = 2
 
 [node name="BuildingTargetSection" type="VBoxContainer" parent="Window/VBox" unique_id=1032055047]
 layout_mode = 2
@@ -142,39 +158,7 @@ text = "Building Targeting"
 
 [node name="BuildingGrid" type="GridContainer" parent="Window/VBox/BuildingTargetSection" unique_id=682150348]
 layout_mode = 2
-columns = 3
-
-[node name="Sep4" type="HSeparator" parent="Window/VBox" unique_id=177655947]
-layout_mode = 2
-
-[node name="VirusRow" type="HBoxContainer" parent="Window/VBox" unique_id=1856040929]
-layout_mode = 2
-
-[node name="VirusName" type="Label" parent="Window/VBox/VirusRow" unique_id=1731283809]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-theme_override_font_sizes/font_size = 18
-text = "Active Virus"
-
-[node name="VirusLabel" type="Label" parent="Window/VBox/VirusRow" unique_id=815819691]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 18
-text = "0"
-horizontal_alignment = 2
-
-[node name="SpawnRow" type="VBoxContainer" parent="Window/VBox" unique_id=75249810]
-layout_mode = 2
-
-[node name="SpawnLabel" type="Label" parent="Window/VBox/SpawnRow" unique_id=746908021]
-layout_mode = 2
-theme_type_variation = &"SectionHeader"
-text = "Next Virus"
-
-[node name="SpawnBar" type="ProgressBar" parent="Window/VBox/SpawnRow" unique_id=1780180929]
-custom_minimum_size = Vector2(0, 18)
-layout_mode = 2
-show_percentage = false
+columns = 6
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=942477396]
 layout_mode = 1

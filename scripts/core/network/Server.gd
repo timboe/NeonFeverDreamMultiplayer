@@ -176,7 +176,7 @@ func _cmd_set_patrol_stance(player_number: int, building_id: int, stance: int) -
 	var b = bm.get_building_by_id(building_id)
 	if not _can_control_building(player_number, b):
 		return
-	if b is Beacon:
+	if b is Beacon or b is Garage:
 		b.set_patrol_stance(stance as JobManager.Stance)
 
 func _cmd_empower(player_number: int, building_id: int) -> void:
