@@ -41,3 +41,16 @@ func set_building_targets(bt: Array[BuildingManager.Type]) -> void:
 func set_virus_tank_building_ratio(ratio: float) -> void:
 	_virus_tank_building_ratio = clampf(ratio, 0.0, 1.0)
 	_update_orders()
+
+func _copy_settings_from(sibling: Building) -> void:
+	var n := sibling as Nest
+	if not n:
+		return
+	if multiplayer.is_server():
+		Global.send_command(player_owner, "set_nest_ratio", [id, n._virus_tank_building_ratio])
+		Global.send_command(player_owner, "set_enemy_targets", [id, n._enemy_targets])
+		Global.send_command(player_owner, "set_building_targets", [id, n._building_targets])
+	else:
+		set_virus_tank_building_ratio(n._virus_tank_building_ratio)
+		set_enemy_targets(n._enemy_targets)
+		set_building_targets(n._building_targets)

@@ -31,6 +31,19 @@ func set_enemy_targets(targets: Array[int]) -> void:
 	_enemy_targets = _clean_enemy_targets(targets)
 	_update_orders()
 
+func _copy_settings_from(sibling: Building) -> void:
+	var g := sibling as Garage
+	if not g:
+		return
+	if multiplayer.is_server():
+		Global.send_command(player_owner, "set_garage_ratio", [id, g.zoomba_tank_ratio])
+		Global.send_command(player_owner, "set_enemy_targets", [id, g._enemy_targets])
+		Global.send_command(player_owner, "set_patrol_stance", [id, g.patrol_stance])
+	else:
+		zoomba_tank_ratio = g.zoomba_tank_ratio
+		set_enemy_targets(g._enemy_targets)
+		set_patrol_stance(g.patrol_stance)
+
 func set_patrol_stance(ps: JobManager.Stance) -> void:
 	patrol_stance = ps
 	_update_orders()

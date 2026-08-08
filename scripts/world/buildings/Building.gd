@@ -208,6 +208,66 @@ func rpc_set_empowered(val: bool) -> void:
 func _empower_changed(_val: bool) -> void:
 	pass
 
+# --- Settings inheritance ---
+
+# Newly constructed buildings copy the player's in-game settings (targets,
+# ratios, patrol stance) from their most recently placed sibling of the same
+# type. Runs on every peer: the server applies the authoritative copy through
+# the command relay (same handlers the terminal HUD buttons use), while clients
+# apply the values to their local instance so the owner's terminal displays
+# them without any network sync.
+func _inherit_settings_from_sibling() -> void:
+	var sibling := _find_highest_id_sibling()
+	if sibling:
+		_copy_settings_from(sibling)
+
+func _find_highest_id_sibling() -> Building:
+	var bm = Global.BM
+	if not bm:
+		return null
+	var best: Building = null
+	for b in bm.buildings():
+		if b == self or b.player_owner != player_owner or b.type != type:
+			continue
+		if best == null or b.id > best.id:
+			best = b
+	return best
+
+# Overridden by subclasses with configurable settings (Garage, Beacon, Nest).
+func _copy_settings_from(_sibling: Building) -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func rpc_inherit_settings() -> void:
+	# The server already applied the authoritative copy through the command
+	# relay inside set_constructed(); it only needs its own (host-owned)
+	# terminal refreshed, not a second copy. Clients mirror the values onto
+	# their local instance so the owning player's terminal displays them.
+	if multiplayer.is_server():
+		_refresh_owned_terminal_ui()
+		return
+	_inherit_settings_from_sibling()
+	_refresh_owned_terminal_ui()
+
+# Set the owning player's terminal controls to the current settings. Owned
+# terminals are client-set only, so this runs once when a building inherits
+# settings (and never again — the player's interactions take over).
+func _refresh_owned_terminal_ui() -> void:
+	if player_owner != Global.my_player_number:
+		return
+	refresh_terminal_ui()
+
+# Push the building's settings into its terminal controls. Used for buildings
+# the current player does not own, so the (server-synced) settings render on
+# their terminal for spying.
+func refresh_terminal_ui() -> void:
+	if not _hud or not is_instance_valid(_hud):
+		return
+	for c in _hud.get_children():
+		if c.has_method("refresh_controls_from_building"):
+			c.refresh_controls_from_building()
+			return
+
 # --- Production ---
 
 func _setup_production(unit_type: UnitManager.Type) -> void:
@@ -372,6 +432,11 @@ func set_constructed() -> void:
 		_working_unit.job_finished()
 	_working_unit = null
 	rpc("rpc_constructed", id)
+	# Inherit the player's latest settings for this building type: the server
+	# applies them authoritatively through the same command relay the terminal
+	# UI uses, then tells clients to mirror them onto their local instances.
+	_inherit_settings_from_sibling()
+	rpc("rpc_inherit_settings")
 
 # --- Damage and Repair ---
 

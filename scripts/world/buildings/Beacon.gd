@@ -59,3 +59,18 @@ func set_patrol_stance(ps: JobManager.Stance) -> void:
 func set_building_targets(bt: Array[BuildingManager.Type]) -> void:
 	_building_targets = bt
 	_update_orders()
+
+func _copy_settings_from(sibling: Building) -> void:
+	var b := sibling as Beacon
+	if not b:
+		return
+	if multiplayer.is_server():
+		Global.send_command(player_owner, "set_beacon_ratio", [id, b.patrol_strike_ratio])
+		Global.send_command(player_owner, "set_enemy_targets", [id, b._enemy_targets])
+		Global.send_command(player_owner, "set_building_targets", [id, b._building_targets])
+		Global.send_command(player_owner, "set_patrol_stance", [id, b._patrol_stance])
+	else:
+		patrol_strike_ratio = b.patrol_strike_ratio
+		set_enemy_targets(b._enemy_targets)
+		set_building_targets(b._building_targets)
+		set_patrol_stance(b._patrol_stance)

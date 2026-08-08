@@ -167,6 +167,7 @@ func _send_snapshot() -> void:
 		data.append(u.type)
 		_pack_unit(data, u)
 	rpc("apply_snapshot", data)
+	refresh_foreign_building_terminals()
 
 func _send_avatar_snapshot() -> void:
 	var avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
@@ -245,8 +246,70 @@ func _pack_building(data: PackedFloat64Array, b: Building) -> void:
 	slots[2] = b._construction_energy_spent
 	slots[3] = b.max_health
 	slots[4] = 1.0 if b._production_enabled else 0.0
+	slots[5] = b._production_energy
+	# Slots 6..9 are used per building type to carry the configurable settings
+	# (ratio, enemy/building targets, patrol stance) so every peer can render
+	# the building's terminal. Garage has no building targets; Nest no stance.
+	match b.type:
+		BuildingManager.Type.GARAGE:
+			var g := b as Garage
+			slots[6] = g.zoomba_tank_ratio
+			slots[7] = _encode_enemy_targets(g._enemy_targets)
+			slots[8] = 0.0
+			slots[9] = float(g.patrol_stance)
+		BuildingManager.Type.BEACON:
+			var bc := b as Beacon
+			slots[6] = bc.patrol_strike_ratio
+			slots[7] = _encode_enemy_targets(bc._enemy_targets)
+			slots[8] = _encode_building_targets(bc._building_targets)
+			slots[9] = float(bc._patrol_stance)
+		BuildingManager.Type.NEST:
+			var n := b as Nest
+			slots[6] = n._virus_tank_building_ratio
+			slots[7] = _encode_enemy_targets(n._enemy_targets)
+			slots[8] = _encode_building_targets(n._building_targets)
 	for s in slots:
 		data.append(s)
+
+# Enemy targets are player numbers 1..4; pack them as a 4-bit mask (bit n = player n+1).
+static func _encode_enemy_targets(targets: Array) -> float:
+	var mask := 0
+	for p in targets:
+		var idx := int(p) - 1
+		if idx >= 0 and idx < 4:
+			mask |= 1 << idx
+	return float(mask)
+
+static func _decode_enemy_targets(mask: int) -> Array[int]:
+	var out: Array[int] = []
+	for i in range(4):
+		if mask & (1 << i):
+			out.append(i + 1)
+	return out
+
+# Building targets are the 6 configurable types (see Config.ALL_BUILDING_TARGETS);
+# pack each as a bit in a fixed order.
+static func _encode_building_targets(targets: Array) -> float:
+	var mask := 0
+	for t in targets:
+		match int(t):
+			BuildingManager.Type.MCP_1: mask |= 1 << 0
+			BuildingManager.Type.GEN: mask |= 1 << 1
+			BuildingManager.Type.VAT: mask |= 1 << 2
+			BuildingManager.Type.GARAGE: mask |= 1 << 3
+			BuildingManager.Type.BEACON: mask |= 1 << 4
+			BuildingManager.Type.NEST: mask |= 1 << 5
+	return float(mask)
+
+static func _decode_building_targets(mask: int) -> Array[BuildingManager.Type]:
+	var out: Array[BuildingManager.Type] = []
+	if mask & (1 << 0): out.append(BuildingManager.Type.MCP_1)
+	if mask & (1 << 1): out.append(BuildingManager.Type.GEN)
+	if mask & (1 << 2): out.append(BuildingManager.Type.VAT)
+	if mask & (1 << 3): out.append(BuildingManager.Type.GARAGE)
+	if mask & (1 << 4): out.append(BuildingManager.Type.BEACON)
+	if mask & (1 << 5): out.append(BuildingManager.Type.NEST)
+	return out
 
 # --- Client: receive ---
 
@@ -340,6 +403,7 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 			continue
 		var e1 = s1["buildings"][id_val]
 		_apply_building(b, e1["slots"])
+	refresh_foreign_building_terminals()
 
 func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float, type_val: int) -> void:
 	var slots: Array[float] = []
@@ -403,6 +467,7 @@ func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 			continue
 		var e = snapshot["buildings"][id_val]
 		_apply_building(b, e["slots"])
+	refresh_foreign_building_terminals()
 
 func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 	if not u:
@@ -458,6 +523,39 @@ func _apply_building(b: Building, slots: Array) -> void:
 	b._construction_energy_spent = slots[2]
 	b.max_health = slots[3]
 	b._production_enabled = slots[4] > 0.5
+	b._production_energy = slots[5]
+	# Mirror the per-type settings packed by _pack_building so foreign building
+	# terminals (spying) and owned building vars stay in sync with the server.
+	match b.type:
+		BuildingManager.Type.GARAGE:
+			var g := b as Garage
+			g.zoomba_tank_ratio = clampf(slots[6], 0.0, 1.0)
+			g.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
+			g.set_patrol_stance(int(slots[9]))
+		BuildingManager.Type.BEACON:
+			var bc := b as Beacon
+			bc.patrol_strike_ratio = clampf(slots[6], 0.0, 1.0)
+			bc.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
+			bc.set_building_targets(_decode_building_targets(int(slots[8])))
+			bc.set_patrol_stance(int(slots[9]))
+		BuildingManager.Type.NEST:
+			var n := b as Nest
+			n.set_virus_tank_building_ratio(slots[6])
+			n.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
+			n.set_building_targets(_decode_building_targets(int(slots[8])))
+
+# Push freshly-synced building settings into the terminal controls of every
+# building the current player does NOT own, so they can spy on the settings of
+# enemy terminals. Runs after snapshot application on clients and at the same
+# cadence on the server (which can also be a local player).
+func refresh_foreign_building_terminals() -> void:
+	var bm = Global.BM
+	if not bm:
+		return
+	for b : Building in bm.buildings() :
+		if b.player_owner == Global.my_player_number:
+			continue
+		b.refresh_terminal_ui()
 
 # --- Server: avatar interpolation ---
 

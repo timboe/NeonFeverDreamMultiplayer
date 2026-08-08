@@ -8,6 +8,7 @@ class_name TerminalHUD
 
 var _crt_overlay: ColorRect
 var _crt_material: ShaderMaterial
+var _tooltip_mode := false
 
 # The CRT overlay is added in _enter_tree so it works for every terminal HUD
 # without each subclass having to call super._ready().
@@ -213,10 +214,24 @@ func _empower_building(b: Building) -> void:
 	if vm:
 		vm.force_leave_fps()
 
+# Owned terminals are client-set only: the local player's button toggles and
+# slider position are authoritative on their own machine and must not be
+# overwritten by building state every frame. Other players' terminals (FPS
+# spying) and the read-only RTS tooltip render from the (server-synced)
+# building settings instead.
+func _should_render_controls_from_vars() -> bool:
+	if _tooltip_mode:
+		return true
+	var b = get("building")
+	if b == null or not is_instance_valid(b):
+		return true
+	return b.player_owner != Global.my_player_number
+
 # --- RTS tooltip mode ---
 # When the HUD is rendered as a read-only tooltip in RTS mode, all interactive
 # controls are hidden. Subclasses extend _tooltip_hidden_controls() to hide more.
 func set_tooltip_mode(active: bool) -> void:
+	_tooltip_mode = active
 	for c in _tooltip_hidden_controls():
 		if c:
 			c.visible = not active

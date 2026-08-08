@@ -64,6 +64,8 @@ func _on_empower_pressed() -> void:
 func _on_ratio_changed(value: float) -> void:
 	if building:
 		Global.send_command_me("set_garage_ratio", [building.id, value / 100.0])
+	var pct := int(value)
+	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 
 func _on_prod_pressed() -> void:
 	if building:
@@ -72,6 +74,8 @@ func _on_prod_pressed() -> void:
 func _on_patrol_stance(stance: JobManager.Stance) -> void:
 	if building:
 		Global.send_command_me("set_patrol_stance", [building.id, stance])
+	patrol_hold_btn.set_pressed_no_signal(stance == JobManager.Stance.HOLD)
+	patrol_wide_btn.set_pressed_no_signal(stance == JobManager.Stance.WIDE)
 
 # Total tanks this garage requests at equilibrium: the player's zoomba cap
 # (from the MCP) times this garage's tank/zoomba ratio.
@@ -87,9 +91,6 @@ func _process(_delta: float) -> void:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
-	var pct := int(building.zoomba_tank_ratio * 100)
-	ratio_slider.set_value_no_signal(pct)
-	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 	var um = Global.UM
 	if um:
 		var tanks: int = um.unit_count(building.player_owner, UnitManager.Type.TANK)
@@ -114,8 +115,23 @@ func _process(_delta: float) -> void:
 	else:
 		spawn_bar.value = 0.0
 	empower_indicator.visible = building.is_empowered
+	if _should_render_controls_from_vars():
+		_update_controls_from_vars()
+
+# Set the config controls (ratio slider, enemy targets, patrol stance) from the
+# building's settings. Runs for other players' terminals (spying) and the RTS
+# tooltip; owned terminals are client-set only.
+func _update_controls_from_vars() -> void:
+	if not building:
+		return
+	var pct := int(building.zoomba_tank_ratio * 100)
+	ratio_slider.set_value_no_signal(pct)
+	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 	for pnum in _enemy_buttons:
 		var btn: Button = _enemy_buttons[pnum]
 		btn.set_pressed_no_signal(pnum in building._enemy_targets)
 	patrol_hold_btn.set_pressed_no_signal(building.patrol_stance == JobManager.Stance.HOLD)
 	patrol_wide_btn.set_pressed_no_signal(building.patrol_stance == JobManager.Stance.WIDE)
+
+func refresh_controls_from_building() -> void:
+	_update_controls_from_vars()

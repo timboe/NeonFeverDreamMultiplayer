@@ -74,6 +74,9 @@ func _build_building_buttons() -> void:
 func _on_ratio_changed(value: float) -> void:
 	if building:
 		Global.send_command_me("set_nest_ratio", [building.id, value / 100.0])
+	var pct := int(value)
+	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
+	building_target_section.visible = value < 100.0
 
 func _on_prod_pressed() -> void:
 	if building:
@@ -104,6 +107,23 @@ func _process(_delta: float) -> void:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
+	var um = Global.UM
+	if um:
+		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))
+	if building._production_cost > 0.0:
+		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
+	else:
+		spawn_bar.value = 0.0
+	empower_indicator.visible = building.is_empowered
+	if _should_render_controls_from_vars():
+		_update_controls_from_vars()
+
+# Set the config controls (ratio slider, enemy targets, building targets) from
+# the building's settings. Runs for other players' terminals (spying) and the
+# RTS tooltip; owned terminals are client-set only.
+func _update_controls_from_vars() -> void:
+	if not building:
+		return
 	var pct := int(building._virus_tank_building_ratio * 100)
 	ratio_slider.set_value_no_signal(pct)
 	# Label is "Tank / Building"; pct is building ratio, so tank = 100 - pct
@@ -116,11 +136,6 @@ func _process(_delta: float) -> void:
 		btn.set_pressed_no_signal(t in building._building_targets)
 	# Show/hide building targeting section based on ratio
 	building_target_section.visible = building._virus_tank_building_ratio < 1.0
-	var um = Global.UM
-	if um:
-		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))
-	if building._production_cost > 0.0:
-		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
-	else:
-		spawn_bar.value = 0.0
-	empower_indicator.visible = building.is_empowered
+
+func refresh_controls_from_building() -> void:
+	_update_controls_from_vars()

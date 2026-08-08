@@ -77,6 +77,8 @@ func _build_strike_buttons() -> void:
 func _on_ratio_changed(value: float) -> void:
 	if building:
 		Global.send_command_me("set_beacon_ratio", [building.id, (100.0 - value) / 100.0])
+	var pct := int(value)
+	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
 
 func _on_prod_pressed() -> void:
 	if building:
@@ -105,12 +107,31 @@ func _on_strike_toggle(t: BuildingManager.Type) -> void:
 func _on_patrol_stance(stance: JobManager.Stance) -> void:
 	if building:
 		Global.send_command_me("set_patrol_stance", [building.id, stance])
+	patrol_hold_btn.set_pressed_no_signal(stance == JobManager.Stance.HOLD)
+	patrol_wide_btn.set_pressed_no_signal(stance == JobManager.Stance.WIDE)
 
 func _process(_delta: float) -> void:
 	if not building or not prod_btn:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
+	var um = Global.UM
+	if um:
+		aerial_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.AERIAL))
+	if building._production_cost > 0.0:
+		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
+	else:
+		spawn_bar.value = 0.0
+	empower_indicator.visible = building.is_empowered
+	if _should_render_controls_from_vars():
+		_update_controls_from_vars()
+
+# Set the config controls (ratio slider, enemy targets, strike targets, patrol
+# stance) from the building's settings. Runs for other players' terminals
+# (spying) and the RTS tooltip; owned terminals are client-set only.
+func _update_controls_from_vars() -> void:
+	if not building:
+		return
 	var pct := int((1.0 - building.patrol_strike_ratio) * 100)
 	ratio_slider.set_value_no_signal(pct)
 	ratio_label.text = str(100 - pct) + "% / " + str(pct) + "%"
@@ -122,11 +143,6 @@ func _process(_delta: float) -> void:
 		btn.set_pressed_no_signal(t in building._building_targets)
 	patrol_hold_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.HOLD)
 	patrol_wide_btn.set_pressed_no_signal(building._patrol_stance == JobManager.Stance.WIDE)
-	var um = Global.UM
-	if um:
-		aerial_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.AERIAL))
-	if building._production_cost > 0.0:
-		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
-	else:
-		spawn_bar.value = 0.0
-	empower_indicator.visible = building.is_empowered
+
+func refresh_controls_from_building() -> void:
+	_update_controls_from_vars()
