@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_g53pr"]
 [ext_resource type="ArrayMesh" uid="uid://cj24q7um5cchq" path="res://meshes/plinth.tres" id="4"]
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="5"]
-[ext_resource type="Material" uid="uid://miw2glylbyrm" path="res://materials/player/player1_material.tres" id="6"]
 [ext_resource type="Script" uid="uid://2dkarbo5rdnm" path="res://scripts/world/buildings/Vat.gd" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/ui/VatHUD.tscn" id="8_vat"]
 
@@ -87,4 +86,4 @@ shape = SubResource("7")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.4, -7.5, 6.4)
 mesh = SubResource("8")
 
-[node name="BuildingHUD" parent="." instance=ExtResource("8_vat")]
+[node name="BuildingHUD" parent="." unique_id=1723307433 instance=ExtResource("8_vat")]

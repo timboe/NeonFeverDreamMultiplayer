@@ -5,10 +5,10 @@
 [ext_resource type="PackedScene" uid="uid://bvx22s4o5m7v8" path="res://scenes/world/buildings/BuildingConstructedParticles.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://c7m8bvk4dwlfk" path="res://scenes/world/buildings/Terminal.tscn" id="3_7dib3"]
 [ext_resource type="Script" uid="uid://buc7ujhfm7ta1" path="res://scripts/world/buildings/Plinth.gd" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/ui/NestHUD.tscn" id="5_nest"]
+[ext_resource type="PackedScene" uid="uid://bxx2ppsw07j0a" path="res://scenes/ui/NestHUD.tscn" id="5_nest"]
 
-[sub_resource type="BoxShape3D" id="1"]
-size = Vector3(15, 1, 15)
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_1vyxh"]
+data = PackedVector3Array(0, 0, 0, 2, 1, 2, 1.7321, 1, 9, 0, 0, 0, 1.7321, 1, 9, 0, 0, 10, 0, 0, 10, 1.7321, 1, 9, 6.3396997, 1, 11.660299, 0, 0, 10, 6.3396997, 1, 11.660299, 6.3396997, 0, 13.660299, 6.3396997, 0, 13.660299, 6.3396997, 1, 11.660299, 13, 1, 8.1603, 6.3396997, 0, 13.660299, 13, 1, 8.1603, 15, 0, 8.6603, 15, 0, 8.6603, 13, 1, 8.1603, 9, 1, 1.7321, 15, 0, 8.6603, 9, 1, 1.7321, 10, 0, 0, 10, 0, 0, 9, 1, 1.7321, 2, 1, 2, 10, 0, 0, 2, 1, 2, 0, 0, 0, 2, 1, 2, 6.3396997, 1, 11.660299, 1.7321, 1, 9, 2, 1, 2, 13, 1, 8.1603, 6.3396997, 1, 11.660299, 2, 1, 2, 9, 1, 1.7321, 13, 1, 8.1603)
 
 [node name="Nest" type="StaticBody3D" unique_id=921205812]
 input_ray_pickable = false
@@ -22,7 +22,7 @@ script = ExtResource("1")
 mesh = ExtResource("2")
 script = ExtResource("4")
 
-[node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=1637843513]
-shape = SubResource("1")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1553136671]
+shape = SubResource("ConcavePolygonShape3D_1vyxh")
 
-[node name="BuildingHUD" parent="." instance=ExtResource("5_nest")]
+[node name="BuildingHUD" parent="." unique_id=776561024 instance=ExtResource("5_nest")]
