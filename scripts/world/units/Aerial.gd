@@ -24,6 +24,23 @@ var _idle_time := 0.0 # time spent jobless & idle (server) - prevents offense jo
 func get_mode() -> int:
 	return mode
 
+func setup_rotation(target: TileElement, _look_at_from_target: TileElement) -> void:
+	if not multiplayer.is_server():
+		return
+	quat_from = Quaternion(transform.basis)
+	var cache_rot = transform.basis
+	var target_pos := target.pathing_centre
+	if transform.origin.is_equal_approx(target_pos):
+		quat_to = quat_from
+		transform.basis = cache_rot
+		return
+	# Aerial units fly at a constant height — yaw only, no pitch toward ground.
+	var flat_target := Vector3(target_pos.x, transform.origin.y, target_pos.z)
+	look_at(flat_target, Vector3.UP)
+	rotation.y -= PI / 2.0
+	quat_to = Quaternion(transform.basis)
+	transform.basis = cache_rot
+
 func _process(delta: float) -> void:
 	super._process(delta)
 	if multiplayer.is_server():
