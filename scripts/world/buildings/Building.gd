@@ -498,3 +498,5 @@ func rpc_constructed(bid: int) -> void:
 	if bp:
 		bp.queue_free()
 	set_visible(true)
+	# Construction revealed the building — its terminal becomes interactive now.
+	Blueprints.set_terminal_collision(self, true)

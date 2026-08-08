@@ -158,6 +158,9 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	var tile = tm.get_tile_by_id(tid)
 	var new_building := new_building_instance(type)
 	new_building.visible = false
+	# Invisible until constructed — its terminal must not collide (invisible
+	# wall on an access tile). rpc_constructed re-enables it on reveal.
+	Blueprints.set_terminal_collision(new_building, false)
 	add_to_dict_and_scene(bid, new_building, type)
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0

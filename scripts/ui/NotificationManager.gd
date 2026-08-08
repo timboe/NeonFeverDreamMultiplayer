@@ -104,11 +104,7 @@ func _on_label_gui_input(event: InputEvent, id: int) -> void:
 func _on_notification_clicked(id: int) -> void:
 	if id in _notification_data:
 		var loc = _notification_data[id]["location"]
-		print("Notification clicked — jump to ", loc)
-		# STUB: future camera jump
-		# var cam = get_tree().get_first_node_in_group("camera_rts")
-		# if cam and cam.has_method("jump_to"):
-		#     cam.jump_to(loc)
+		Global.VM.jump_to(loc)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_add_job_notification(pnum: int, event: String, text: String, loc_x: float, loc_y: float, loc_z: float) -> void:

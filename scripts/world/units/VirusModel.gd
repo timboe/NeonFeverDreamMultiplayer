@@ -25,7 +25,12 @@ var _base_alphas: Array[float] = []
 var _outer: MultiMeshInstance3D
 var _inner: MultiMeshInstance3D
 var _t := 0.0
-var _cloaked := false
+var _alpha_k := 1.0
+var _target_k := 1.0
+var _alpha_tween: Tween
+
+const CLOAK_FADE_TIME := 1.0
+const BASE_EMISSION := 2.2
 
 func _ready() -> void:
 	_outer = _build_ring(OUTER, 0.08)
@@ -46,11 +51,30 @@ func set_player_color(c: Color) -> void:
 		m.albedo_color = Color(c.r, c.g, c.b, m.albedo_color.a)
 		m.emission = c
 
+# Alpha multiplier applied over each material's base alpha (1.0 = opaque,
+# 0.0 = invisible). Fades to the new value so cloak/de-cloak reads as a
+# transition rather than a snap.
+func set_cloak_alpha(k: float) -> void:
+	k = clampf(k, 0.0, 1.0)
+	if is_equal_approx(_target_k, k):
+		return
+	_target_k = k
+	if _alpha_tween and _alpha_tween.is_valid():
+		_alpha_tween.kill()
+	var from := _alpha_k
+	_alpha_tween = create_tween()
+	_alpha_tween.tween_method(_apply_alpha_k, from, k, CLOAK_FADE_TIME)
+
 func set_cloak(cloaked: bool) -> void:
-	_cloaked = cloaked
-	var k := 0.12 if cloaked else 1.0
+	set_cloak_alpha(0.12 if cloaked else 1.0)
+
+func _apply_alpha_k(k: float) -> void:
+	_alpha_k = k
 	for i in _mats.size():
-		_mats[i].albedo_color = Color(_color.r, _color.g, _color.b, _base_alphas[i] * k)
+		_mats[i].albedo_color.a = _base_alphas[i] * _alpha_k
+		# Squared scaling kills the additive glow fast — at k=0.1 the emission
+		# is only 2% of full brightness, so the ghost clearly reads as faded.
+		_mats[i].emission_energy_multiplier = BASE_EMISSION * _alpha_k * _alpha_k
 
 func _mat(c: Color, alpha: float, additive: bool) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

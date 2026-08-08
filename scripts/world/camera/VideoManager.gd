@@ -183,6 +183,22 @@ func quat_transform(amount: float) -> void:
 func _show_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
+# --- Notification jump ---
+
+# Snap the RTS camera over to a notification's location. Position only — the
+# camera keeps its current height and pitch. No-op while a camera transition
+# or FPS mode is active so the position tween can't fight _cam_tween.
+func jump_to(location: Vector3) -> void:
+	if camera_status != CameraStatus.OVERHEAD:
+		return
+	if _cam_tween and _cam_tween.is_valid():
+		_cam_tween.kill()
+		_cam_tween = null
+	var target: Vector3 = Vector3(location.x, overhead_camera.global_position.y, location.z)
+	var tw := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(overhead_camera, "global_position", target, 0.4)
+	_cam_tween = tw
+
 # --- Trauma / Shake ---
 
 func add_trauma(amount: float, from, add_linger: float = 0.0) -> void:

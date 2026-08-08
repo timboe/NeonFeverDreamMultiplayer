@@ -270,6 +270,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - Firing: when weapon aligned (`Unit.is_weapon_aligned()`, slerped in `update_weapon_aim`), bursts of `WEAPON_BURST_DURATION`(0.4) with damage ticks every 0.1s. TANK fires an instant burst; AERIAL applies a projectile delay (`update_projectile_delay`). `combat_fire_event` is bumped server-side and drives client visuals (`_update_combat_visuals`).
 - **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK) heal server-side.
 - Health bars: `HealthBar3D` for units and buildings. Debug keys in HUD: `ui_damage_building` (P), `ui_damage_unit` (L) deal 40% max health.
+- RTS cursor light (`OmniLight3D_RTS`): `ui_debug_light` (F3) toggles a wireframe gizmo (magenta sphere = `omni_range`, white axis = down direction, cyan cross = light origin) built by `OmniLight._build_debug_mesh()`. The light is omnidirectional — OmniLight3D has no cone/`omni_angle` property in this engine.
 
 ## Avatar / FPS camera
 

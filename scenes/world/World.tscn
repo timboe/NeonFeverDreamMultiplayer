@@ -77,10 +77,10 @@ script = ExtResource("2")
 
 [node name="OmniLight3D_RTS" type="OmniLight3D" parent="VideoManager" unique_id=352719806]
 unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 20)
 light_color = Color(0.7490196, 1, 1, 1)
 light_energy = 0.5
-light_specular = 0.1
-omni_range = 50.0
+omni_range = 25.0
 omni_attenuation = 0.7
 omni_shadow_mode = 0
 script = ExtResource("7_252at")

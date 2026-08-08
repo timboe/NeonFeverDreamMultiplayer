@@ -25,6 +25,19 @@ static func enable_collision_recursive(node: Node) -> void:
 			c.disabled = false
 		enable_collision_recursive(c)
 
+# Toggle every collision shape under a building's Terminal subtree. A building
+# in BLUEPRINT/UNDER_CONSTRUCTION state is invisible yet its Terminal's
+# ScreenBody collider would otherwise sit as an invisible wall on an access
+# tile; it only gains collision once constructed (rpc_constructed).
+static func set_terminal_collision(building: Node, enabled: bool) -> void:
+	var terminal := building.get_node_or_null("Terminal")
+	if not terminal:
+		return
+	if enabled:
+		enable_collision_recursive(terminal)
+	else:
+		_disable_collision_recursive(terminal)
+
 func _ready() -> void:
 	if name == "BlueprintsEnabled":
 		apply_blueprint_material(self, blueprint_enabled)
