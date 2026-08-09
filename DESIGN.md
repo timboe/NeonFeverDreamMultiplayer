@@ -353,7 +353,7 @@ The default command view. Commands are issued through the Zoomba job queue.
 ### What RTS cannot do
 
 - Change Garage/Beacon/Nest ratios.
-- Ground-level scouting (avatar can still spot nearby VIRUS in RTS mode, but at only 1 tile vs 3-4 tiles in FPS mode)
+- Ground-level spotting (avatar can still spot nearby VIRUS in RTS mode, but at only 1 tile vs 3-4 tiles in FPS mode)
 - RALLY troops (FPS-only)
 - Directly command combat unit movement via RALLY (they follow patrol/AI behavior when in RTS)
 

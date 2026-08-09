@@ -118,7 +118,7 @@ func try_generate_offense_job() -> bool:
 	if not jm:
 		return false
 	_idle_time = 0.0 # If the job is immediately abandoned, wait before re-targeting
-	jm.add_job(player_owner, JobManager.Type.COMBAT, target, self, true) # personal, auto-assigned to self
+	jm.add_job(player_owner, JobManager.Type.COMBAT_PERSUE, target, self, true) # personal, auto-assigned to self
 	return true
 
 func _choose_strike_building() -> Building:
@@ -129,23 +129,10 @@ func _choose_strike_building() -> Building:
 			enemies.append(p)
 	if enemies.is_empty():
 		return null
-	var target_types: Array = orders.get("target", [])
-	var bm = Global.BM
-	if not bm:
+	var cm = Global.CM
+	if not cm:
 		return null
-	var candidates: Array = []
-	for b in bm.buildings():
-		if b.player_owner not in enemies:
-			continue
-		if b.health <= 0:
-			continue
-		if not target_types.is_empty() and b.type not in target_types:
-			continue
-		candidates.append(b)
-	if candidates.is_empty():
-		return null
-	# Random target from the valid set
-	return candidates[Global.rand.randi() % candidates.size()]
+	return cm.choose_building_target(enemies, orders.get("target", []))
 
 func _on_fire_event() -> void:
 	_spawn_projectile()

@@ -2,7 +2,7 @@ extends Node3D
 
 class_name JobManager
 
-enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT}
+enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT_PERSUE, ATTACK}
 enum Orders {NONE, PATROL, ATTACK}
 enum Stance {WIDE, HOLD}
 
@@ -40,8 +40,10 @@ func _process(_delta: float) -> void:
 				debug_mesh.surface_set_color(Color.CYAN)
 			Type.CONSUME_ZOOMBA:
 				debug_mesh.surface_set_color(Color.MAGENTA)
-			Type.COMBAT:
+			Type.COMBAT_PERSUE:
 				debug_mesh.surface_set_color(Color.RED)
+			Type.ATTACK:
+				debug_mesh.surface_set_color(Color.ORANGE_RED)
 			_:
 				continue
 		debug_mesh.surface_add_vertex(Vector3(a.x, a.y + 5, a.z))
@@ -68,7 +70,7 @@ func target_tile(target: Variant) -> TileElement:
 		return target.location
 	return null
 
-func add_job(pnum: int, type: Type, target: Variant, request_assign: Unit = null, personal: bool = false, eligible_types: Array = [], scout_only: bool = false, territory_only: bool = false) -> int:
+func add_job(pnum: int, type: Type, target: Variant, request_assign: Unit = null, personal: bool = false, eligible_types: Array = [], patrol_only: bool = false, territory_only: bool = false) -> int:
 	assert(pnum > 0 and pnum <= Global.MAX_PLAYERS)
 	for the_job in jobs_dict.values():
 		if the_job["type"] != type:
@@ -88,7 +90,7 @@ func add_job(pnum: int, type: Type, target: Variant, request_assign: Unit = null
 	job_id += 1
 	var job := {"id": job_id, "pnum": pnum, "type": type,
 		"target": target, "assigned": null, "personal": personal,
-		"eligible_types": eligible_types, "scout_only": scout_only,
+		"eligible_types": eligible_types, "patrol_only": patrol_only,
 		"territory_only": territory_only,
 		"abandoned_by": null, "abandoned_n": 0, "abandoned_timer": 0.0}
 	jobs_dict[job_id] = job
@@ -220,7 +222,7 @@ func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
 	var etypes: Array = job.get("eligible_types", [])
 	if not etypes.is_empty() and unit.type not in etypes:
 		return false
-	if job.get("scout_only", false):
+	if job.get("patrol_only", false):
 		if unit.type != UnitManager.Type.AERIAL:
 			return false
 		if not unit.has_method(&"get_mode") or unit.get_mode() != Config.AERIAL_MODE_PATROL:
@@ -265,22 +267,33 @@ func check_job_still_valid(job: Dictionary) -> bool:
 			var b = job["target"].building
 			if not b or b.state != Building.State.CONSTRUCTED or b.type != BuildingManager.Type.GARAGE:
 				return false
-		Type.COMBAT:
+		Type.COMBAT_PERSUE:
 			var t = job["target"]
 			if t == null or not is_instance_valid(t):
 				return false
-			if t is Unit:
-				if t.health <= 0:
-					return false
-			elif t is Building:
+			if t is Unit or t is Building:
 				if t.health <= 0:
 					return false
 			else:
+				return false
+			# A cloaked VIRUS cannot be targeted — a re-cloaked target cancels
+			# any in-flight kill-VIRUS jobs (same as if it were destroyed).
+			if t is Unit and t.type == UnitManager.Type.VIRUS and t.cloaked:
 				return false
 			if job.get("territory_only", false):
 				var tile := target_tile(t)
 				if tile == null or pnum not in tile.aoe:
 					return false
+		Type.ATTACK:
+			# Personal VIRUS attack/limpet job. Valid while the target is alive.
+			var t = job["target"]
+			if t == null or not is_instance_valid(t):
+				return false
+			if t is Unit or t is Building:
+				if t.health <= 0:
+					return false
+			else:
+				return false
 	return true
 
 # --- Job notifications ---
@@ -288,7 +301,7 @@ func check_job_still_valid(job: Dictionary) -> bool:
 func _notify_job_event(pnum: int, event: String, job: Dictionary) -> void:
 	if not multiplayer.is_server():
 		return
-	if job["type"] == Type.COMBAT:
+	if job["type"] == Type.COMBAT_PERSUE or job["type"] == Type.ATTACK:
 		return
 	var text := _format_job_notification(event, job)
 	var loc := _get_job_location(job)
@@ -332,7 +345,8 @@ func _job_type_name(type: Type) -> String:
 		Type.REPAIR_BUILDING:    return "Repair"
 		Type.TOGGLE_TILE:        return "Toggle"
 		Type.CONSUME_ZOOMBA:     return "Consume"
-		Type.COMBAT:             return "Combat"
+		Type.COMBAT_PERSUE:      return "Pursue"
+		Type.ATTACK:             return "Attack"
 	return "Job"
 
 func _unit_name(unit: Unit) -> String:

@@ -42,6 +42,25 @@ func _attacker_mode(unit: Unit) -> int:
 		return unit.get_mode()
 	return Config.AERIAL_MODE_PATROL
 
+# Shared enemy-building target selection (VIRUS attack jobs + AERIAL STRIKE
+# personal jobs). Picks a random living enemy building of the allowed types.
+func choose_building_target(enemies: Array, target_types: Array) -> Building:
+	var bm = Global.BM
+	if not bm:
+		return null
+	var candidates: Array = []
+	for b in bm.buildings():
+		if b.player_owner not in enemies:
+			continue
+		if b.health <= 0:
+			continue
+		if not target_types.is_empty() and b.type not in target_types:
+			continue
+		candidates.append(b)
+	if candidates.is_empty():
+		return null
+	return candidates[Global.rand.randi() % candidates.size()]
+
 func _in_range(from: Vector3, to: Vector3) -> bool:
 	return from.distance_squared_to(to) < Config.COMBAT_RANGE * Config.COMBAT_RANGE
 
@@ -93,8 +112,8 @@ func _scan_targets() -> void:
 				_scan_tank(unit)
 			UnitManager.Type.AERIAL:
 				_scan_aerial(unit)
-			UnitManager.Type.VIRUS:
-				_scan_virus(unit)
+			UnitManager.Type.AVATAR:
+				_scan_avatar(unit)
 
 func _dist_2d(a: Node3D, b: Node3D) -> float:
 	var p := a.global_position
@@ -128,7 +147,7 @@ func _scan_tank(tank: Unit) -> void:
 					continue
 				var seen := _can_see(tank, c)
 				if seen:
-					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT, c, tank, false, [UnitManager.Type.TANK], false, true)
+					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
 					var dmg := Config.get_damage(tank.type, c)
 					var score := _score_for_damage(dmg, c.health)
 					if score > best_score:
@@ -139,7 +158,7 @@ func _scan_tank(tank: Unit) -> void:
 				if c.cloaked or _dist_2d(tank, c) > Config.TANK_VIRUS_DETECT_RADIUS:
 					continue
 				if _can_see(tank, c):
-					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.AERIAL], true, true)
+					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, null, false, [UnitManager.Type.AERIAL], true, true)
 	tank.combat_target = best_target
 
 func _scan_aerial(aerial: Unit) -> void:
@@ -165,24 +184,30 @@ func _scan_aerial(aerial: Unit) -> void:
 		var dmg := Config.get_damage(aerial.type, c, mode)
 		match c.type:
 			UnitManager.Type.TANK:
-				# Spot an enemy tank and queue a kill-TANK job for a VIRUS
+				# Spot an enemy tank and queue a VIRUS ATTACK job — a freshly
+				# spawned virus can be assigned it before it derives its own
+				# personal ATTACK job (the 1s _idle_time guard).
 				var seen := _can_see(aerial, c)
 				if seen:
-					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, null, false, [UnitManager.Type.VIRUS])
+					Global.JM.add_job(aerial.player_owner, JobManager.Type.ATTACK, c, null, false, [UnitManager.Type.VIRUS])
 					if dmg > 0:
 						var score := _score_for_damage(dmg, c.health)
 						if score > best_score:
 							best_score = score
 							best_target = c
 			UnitManager.Type.VIRUS:
-				# Kill-VIRUS job is omnidirectional (2-3 tile spot / 1 tile overfly)
+				# Detection (radius + LoS) uncloaks a cloaked virus — a cloaked
+				# virus is never a fire target. Kill-VIRUS jobs are patrol-only:
+				# PATROL executes them; STRIKE only queues.
 				var radius := Config.PATROL_VIRUS_DETECT_RADIUS if is_patrol else Config.STRIKE_VIRUS_DETECT_RADIUS
-				if _dist_2d(aerial, c) <= radius:
-					var scout := aerial if is_patrol else null
-					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT, c, scout, false, [UnitManager.Type.AERIAL], true, true)
-				if dmg > 0:
+				if _dist_2d(aerial, c) <= radius and _can_see(aerial, c):
+					if c.cloaked:
+						c.uncloak()
+					var patrol_aerial := aerial if is_patrol else null
+					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT_PERSUE, c, patrol_aerial, false, [UnitManager.Type.AERIAL], true, true)
+				if dmg > 0 and not c.cloaked and _can_see(aerial, c):
 					var score := _score_for_damage(dmg, c.health)
-					if score > best_score and _can_see(aerial, c):
+					if score > best_score:
 						best_score = score
 						best_target = c
 			_:
@@ -204,19 +229,24 @@ func _scan_aerial(aerial: Unit) -> void:
 				best_target = b
 	aerial.combat_target = best_target
 
-func _scan_virus(virus: Unit) -> void:
-	if virus.health <= 0:
-		return
-	var enemies := _enemy_list_for(virus)
+func _scan_avatar(avatar: Unit) -> void:
+	# Ground-level spotting: an enemy Avatar uncloaks cloaked VIRUS within its
+	# sight radius + LoS. FPS sees 3-4 tiles, RTS only 1 tile (DESIGN). The
+	# avatar lives in its FPSBody, so range/LoS originate from the body.
+	var radius := Config.AVATAR_VIRUS_DETECT_RADIUS_FPS
+	if Global.VM and Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD:
+		radius = Config.AVATAR_VIRUS_DETECT_RADIUS_RTS
+	var origin := avatar._get_muzzle_global()
 	for c in Global.UM.units():
-		if c == virus or c.health <= 0:
+		if c.type != UnitManager.Type.VIRUS:
 			continue
-		if c.type != UnitManager.Type.TANK:
+		if not c.cloaked or c.health <= 0 or c.player_owner == avatar.player_owner:
 			continue
-		if c.player_owner not in enemies:
+		var to := combat_target_position(c)
+		if Vector2(origin.x, origin.z).distance_to(Vector2(to.x, to.z)) > radius:
 			continue
-		if _can_see(virus, c):
-			Global.JM.add_job(virus.player_owner, JobManager.Type.COMBAT, c, virus, false, [UnitManager.Type.VIRUS])
+		if _has_los(origin, to, [avatar, c]):
+			c.uncloak()
 
 func _update_firing(delta: float) -> void:
 	for u in Global.UM.units():
@@ -234,6 +264,10 @@ func _update_firing(delta: float) -> void:
 			u.combat_target = null
 			continue
 		if target is Building and target.health <= 0:
+			u.combat_target = null
+			continue
+		if target is Unit and target.type == UnitManager.Type.VIRUS and target.cloaked:
+			# A re-cloaked virus cannot be targeted nor fired at.
 			u.combat_target = null
 			continue
 		u.combat_fire_timer -= delta

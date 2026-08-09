@@ -85,10 +85,24 @@ const WEAPON_BURST_DURATION: float = 0.4
 const DAMAGE_TICK_DURATION: float = 0.1
 const COMBAT_LOS_MASK: int = 1
 
-# Interception COMBAT job detection radii (world units).
-const PATROL_VIRUS_DETECT_RADIUS: float = 25.0 # PATROL spotting cloaked VIRUS (2-3 tiles)
-const STRIKE_VIRUS_DETECT_RADIUS: float = 10.0 # STRIKE direct-overfly detection (1 tile)
-const TANK_VIRUS_DETECT_RADIUS: float = 25.0   # TANK seeing an uncloaked VIRUS attacker
+# Interception COMBAT_PERSUE job detection radii. All are multiples of
+# Cairo.UNIT (one tile = 10 world units). PATROL detects cloaked VIRUS at
+# 3 tiles; STRIKE only on direct overfly (1 tile). Detection uncloaks a
+# cloaked VIRUS.
+const PATROL_VIRUS_DETECT_RADIUS: float = Cairo.UNIT * 3.0 # PATROL spotting cloaked VIRUS (3 tiles)
+const STRIKE_VIRUS_DETECT_RADIUS: float = Cairo.UNIT * 1.0 # STRIKE direct-overfly detection (1 tile)
+const TANK_VIRUS_DETECT_RADIUS: float = Cairo.UNIT * 2.0   # TANK seeing an uncloaked VIRUS attacker
+
+# VIRUS uncloak detection (radius + LoS) from the enemy Avatar. Ground spotting
+# is mode-dependent per DESIGN: FPS 3-4 tiles, RTS 1 tile.
+const AVATAR_VIRUS_DETECT_RADIUS_FPS: float = Cairo.UNIT * 4.0
+const AVATAR_VIRUS_DETECT_RADIUS_RTS: float = Cairo.UNIT * 1.0
+
+# VIRUS limpet / cloak behavior.
+const VIRUS_TANK_DRAIN_DPS: float = 40.0      # ~10s to kill a full 400 HP TANK
+const VIRUS_ATTACH_DELAY: float = 1.0         # delay between attach and drain/effect start
+const VIRUS_INFECTION_BASE_DURATION: float = 15.0 # building infection at full 150 HP, prorated by health
+const VIRUS_RECLOAK_COOLDOWN: float = 5.0     # re-cloak delay after being uncloaked (spawn or detection)
 
 static var TANK_AERIAL_MODE_MULTIPLIERS: Dictionary = {
 	AERIAL_MODE_PATROL: 6.0,

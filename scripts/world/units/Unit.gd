@@ -122,6 +122,12 @@ func _get_muzzle_global() -> Vector3:
 	if weapon_node:
 		weapon_node.force_update_transform()
 		return weapon_node.global_position
+	# Avatars live in their FPSBody child — the root stays at spawn, so aim/detect
+	# from the body's real position.
+	var body := get_node_or_null("FPSBody") as Node3D
+	if body:
+		body.force_update_transform()
+		return body.global_position
 	return global_position
 
 # --- Combat visuals ---
@@ -215,6 +221,16 @@ func _kill_combat_hold() -> void:
 func try_generate_offense_job() -> bool:
 	return false
 
+# Attack hook - called from start_work() for a JobManager.Type.ATTACK job.
+# Overridden by units that stop-and-attach (VIRUS limpet). Default is a no-op.
+func start_attack() -> void:
+	pass
+
+# Cleanup hook - called from _cleanup_working_state() when an ATTACK is
+# interrupted (job removed/abandoned/displaced). Overridden to cancel the attach.
+func cancel_attack() -> void:
+	pass
+
 # --- Idle state ---
 
 func idle_callback() -> void:
@@ -298,8 +314,9 @@ func pathing_callback() -> void:
 	var jm = Global.JM
 	if jm and not jm.check_job_still_valid(job):
 		return job_finished()
-	# Combat jobs never enter WORKING - chase/orbit the target instead
-	if job["type"] == JobManager.Type.COMBAT:
+	# COMBAT_PERSUE jobs never enter WORKING - chase/orbit the target instead.
+	# (ATTACK jobs are the exception: they path normally and stop-and-attach.)
+	if job["type"] == JobManager.Type.COMBAT_PERSUE:
 		return combat_pathing_callback()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
@@ -351,7 +368,7 @@ func combat_pathing_callback() -> void:
 	if combat_hold_tween and combat_hold_tween.is_valid():
 		combat_hold_tween.kill()
 		combat_hold_tween = null
-	if job.is_empty() or job["type"] != JobManager.Type.COMBAT:
+	if job.is_empty() or job["type"] != JobManager.Type.COMBAT_PERSUE:
 		return
 	# First - check we didn't scram while moving.
 	if scram_count > 0:
@@ -444,6 +461,8 @@ func start_work() -> void:
 			job["target"].building.start_repair(self)
 		JobManager.Type.CONSUME_ZOOMBA:
 			_consume_for_tank()
+		JobManager.Type.ATTACK:
+			start_attack()
 		_:
 			push_error("Unit.start_work: unknown job type ", job["type"])
 			assert(false)
@@ -488,6 +507,8 @@ func _cleanup_working_state() -> void:
 			var b = job["target"].building
 			if b and b.state == Building.State.UNDER_CONSTRUCTION:
 				b.cancel_construction()
+		JobManager.Type.ATTACK:
+			cancel_attack()
 
 func abandon_job() -> void:
 	if not multiplayer.is_server():
