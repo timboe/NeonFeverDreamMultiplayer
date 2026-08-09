@@ -3,9 +3,10 @@ extends MeshInstance3D
 class_name Cairo
 
 # Cairo pentagon tile geometry constants and mesh generation.
-# Mesh generation is DISABLED (GENERATE = false) — the pre-made grid.tres
-# mesh is used instead. The constants below are used by TileManager and
-# TileElement for positioning and layout calculations.
+# Mesh generation is DISABLED (GENERATE = false) — the pre-made meshes
+# meshes/cairo_enabled.tres / cairo_disabled.tres (referenced from
+# TileManager.tscn) are used instead. The constants below are used by
+# TileManager and TileElement for positioning and layout calculations.
 
 const GENERATE = false
 

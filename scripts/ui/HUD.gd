@@ -168,14 +168,14 @@ func _update_tooltip() -> void:
 		_set_tooltip_building(hovered)
 		var vp_size := Vector2(get_viewport().size)
 		var mouse := get_viewport().get_mouse_position()
-		var offset := Vector2(24, 24)
-		var pos := mouse + offset
+		var ui_offset := Vector2(24, 24)
+		var pos := mouse + ui_offset
 		# Flip above the cursor instead of running off the bottom of the screen.
 		if pos.y + tooltip.size.y > vp_size.y:
-			pos.y = mouse.y - offset.y - tooltip.size.y
+			pos.y = mouse.y - ui_offset.y - tooltip.size.y
 		# Flip to the left of the cursor if it won't fit on the right.
 		if pos.x + tooltip.size.x > vp_size.x:
-			pos.x = mouse.x - offset.x - tooltip.size.x
+			pos.x = mouse.x - ui_offset.x - tooltip.size.x
 		pos.x = clampf(pos.x, 0.0, maxf(0.0, vp_size.x - tooltip.size.x))
 		pos.y = clampf(pos.y, 0.0, maxf(0.0, vp_size.y - tooltip.size.y))
 		tooltip.position = pos
