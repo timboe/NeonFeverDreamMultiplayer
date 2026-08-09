@@ -450,6 +450,8 @@ func apply_damage(amount: float, delay: float = 0.0) -> void:
 	_apply_damage(amount)
 
 func _apply_damage(damage: float) -> void:
+	if Global.SM:
+		Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		# If built, specific health pool. Not energy based
 		health -= damage

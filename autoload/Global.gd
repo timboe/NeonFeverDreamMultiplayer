@@ -17,6 +17,7 @@ var UM: UnitManager = null
 var JM: JobManager = null
 var CM: CombatManager = null
 var VM: VideoManager = null
+var SM: StatisticsManager = null
 var PM: PathingManager = null
 var NM: NotificationManager = null
 

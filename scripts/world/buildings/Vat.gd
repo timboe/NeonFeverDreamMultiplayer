@@ -157,6 +157,8 @@ func _destroy_pool() -> void:
 # --- Damage / repair ---
 
 func _apply_damage(damage: float) -> void:
+	if Global.SM:
+		Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		if pool_master != null:
 			pool_master._apply_damage(damage)

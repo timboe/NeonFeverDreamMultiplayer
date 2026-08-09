@@ -617,6 +617,8 @@ func apply_damage(amount: float, delay: float = 0.0) -> void:
 	_apply_damage(amount)
 
 func _apply_damage(damage: float) -> void:
+	if Global.SM:
+		Global.SM.record_damage_received(player_owner, damage)
 	health -= damage
 	_repair_timer = -REPAIR_DELAY
 	if health <= 0:

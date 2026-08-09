@@ -22,6 +22,7 @@ World
 ├── UnitManager %       unit dict, spawn/remove, displacement
 ├── JobManager %        job pool + assignment
 ├── CombatManager %     target scanning + firing (server only)
+├── StatisticsManager % 1s stat sampling + per-player history sync (server only)
 ├── VideoManager %      RTS↔FPS camera transitions, shake
 │   ├── CameraRTS %
 │   └── OmniLight3D_RTS %
@@ -31,7 +32,7 @@ World
 
 Managers are accessed via the typed `Global` aliases above (all null until World loads). `%ManagerName` unique-name lookup still works in scene-owned scripts but is deprecated in favour of the `Global` aliases. Dynamically created nodes (TileElements) miss the owner lookup — gameplay code should use the `Global` aliases or a stored ref instead.
 
-Every manager registers itself in its `_ready()` on `Global` with a short alias: `Global.GM` (GameManager), `Global.BM` (BuildingManager), `Global.EM` (EnergyManager), `Global.TM` (TileManager), `Global.UM` (UnitManager), `Global.JM` (JobManager), `Global.CM` (CombatManager), `Global.VM` (VideoManager), `Global.PM` (PathingManager), `Global.NM` (NotificationManager). All are null until World loads. Prefer these over `get_node_or_null("/root/World/...")`.
+Every manager registers itself in its `_ready()` on `Global` with a short alias: `Global.GM` (GameManager), `Global.BM` (BuildingManager), `Global.EM` (EnergyManager), `Global.TM` (TileManager), `Global.UM` (UnitManager), `Global.JM` (JobManager), `Global.CM` (CombatManager), `Global.SM` (StatisticsManager), `Global.VM` (VideoManager), `Global.PM` (PathingManager), `Global.NM` (NotificationManager). All are null until World loads. Prefer these over `get_node_or_null("/root/World/...")`.
 
 ## Multiplayer architecture
 
@@ -68,7 +69,7 @@ send_command_me / send_command
 
 ### Server-only guard pattern
 
-All server-side simulation (`_process`/`_physics_process` in `EnergyManager`, `CombatManager`, `Building`, `Unit`, `GameManager`) guards the top:
+All server-side simulation (`_process`/`_physics_process` in `EnergyManager`, `CombatManager`, `StatisticsManager`, `Building`, `Unit`, `GameManager`) guards the top:
 
 ```gdscript
 func _process(delta):
@@ -103,6 +104,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `GameManager` | `scripts/core/game/GameManager.gd` | Snapshots/interpolation, 1s job tick (`Global.JM.assign_jobs()` + each building `check_work()`), avatar relay |
 | `EnergyManager` | `scripts/core/game/EnergyManager.gd` | Server-only energy sim (see Economy) |
 | `CombatManager` | `scripts/core/game/CombatManager.gd` | Server-only target scan + firing (see Combat) |
+| `StatisticsManager` | `scripts/core/game/StatisticsManager.gd` | Server-only 1s stats sampler; per-player history (`aoe_size`, energy, unit counts, damage done/received); `rpc_receive_stats` pushes each finalized record to the owning client (see Statistics) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random `toggle_tile` on a timer via `send_command(player_number, ...)` |
 | `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | `Type` enum (MCP_1..4, GEN, VAT, GARAGE, BEACON, NEST), blueprints, building dict, `place_blueprint`/`place_building`/`rpc_remove_building`, empower tracking, `recompute_aoe` hookups |
 | `Building` | `scripts/world/buildings/Building.gd` | Base: states BLUEPRINT→UNDER_CONSTRUCTION→CONSTRUCTED, `player_owner`, `get_aoe_radius()`, `check_work()` (adds REPAIR_BUILDING jobs), construction/production via energy, `apply_damage`, repair, terminal positioning, per-building HUD SubViewport |
@@ -271,6 +273,14 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK) heal server-side.
 - Health bars: `HealthBar3D` for units and buildings. Debug keys in HUD: `ui_damage_building` (P), `ui_damage_unit` (L) deal 40% max health.
 - RTS cursor light (`OmniLight3D_RTS`): `ui_debug_light` (F3) toggles a wireframe gizmo (magenta sphere = `omni_range`, white axis = down direction, cyan cross = light origin) built by `OmniLight._build_debug_mesh()`. The light is omnidirectional — OmniLight3D has no cone/`omni_angle` property in this engine.
+
+## Statistics
+
+- **StatisticsManager** (`Global.SM`, server-only): samples every 1s (`TICK_INTERVAL`), appends one record per player to a full history — `stats[pnum]` is an `Array` (newest last) on the server.
+- Record fields: `time` (monotonic seconds since engine start — x-axis for the graph TODO), `aoe_size` (split AoE score from `TileManager.player_aoe_totals`), `energy` {`stored`, `capacity`, `generated`, `used`} (trailing-1s rates from `EnergyManager.get_player_energy()`), `units` {`zoomba`, `tank`, `aerial_strike`, `aerial_patrol`, `virus`}, `damage` {`done`, `received`}.
+- Damage hooks: `record_damage_done` (CombatManager at fire time) / `record_damage_received` (Unit/Building/Vat `_apply_damage` at impact time). Debug-key damage (P/L, attacker-less) counts as received only.
+- **Sync**: each finalized record is pushed to the owning remote client via `rpc_id(peer, "rpc_receive_stats", p, record)` (`@rpc("authority","call_remote","reliable")`). `Server.player_to_peer` only contains remote clients (peers > 1), so the host's local slot and AI slots are skipped — the server keeps full history for everyone, while a client only gets its own player-number key populated.
+- Query: `Global.SM.get_stats(pnum)` → the player's full history `Array`.
 
 ## Avatar / FPS camera
 

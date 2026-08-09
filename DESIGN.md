@@ -486,3 +486,19 @@ You cannot run everything from one Generator. With two Generators (~80-110e/sec)
 
 **Desperation Meter:** The MCP gains a stacking energy bonus for each consecutive minute a player has fewer tiles than the leader. +5e/sec per minute behind, stacking, capped at +30e/sec. Resets when the player claims the lead or ties for the lead. Also grants +3% damage to offensive units (STRIKE, VIRUS) per stack, capped at +18%. This ensures the behind player's military can punch through a turtle.
 
+* * *
+
+## Statistics (Telemetry)
+
+A server-side aggregator (`StatisticsManager`) samples the game once per second and keeps a per-player history, so a match can be re-plotted as graphs (graph UI is a TODO).
+
+| Stat | Source |
+| --- | --- |
+| Influence AoE size | Split AoE score (contested tiles count 1/N to each claimant) |
+| Energy stored / capacity | Current Vat pool vs cap |
+| Energy generated / used | Per-second rates over the trailing 1s |
+| Unit counts | Zoomba, TANK, AERIAL-Patrol, AERIAL-Strike, VIRUS |
+| Damage done / received | Combat damage per player per second |
+
+The server keeps the full history for every player; each per-second record is pushed to the owning player's client as it is finalized, so a client only holds its own player's history. Intended for post-match analysis, balance tuning, and spectator/end-of-game graphs.
+
