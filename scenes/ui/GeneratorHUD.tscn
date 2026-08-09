@@ -95,7 +95,7 @@ layout_mode = 2
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
-text = "AoE Tiles"
+text = "Catchment Tiles"
 
 [node name="TilesLabel" type="Label" parent="Window/VBox/TilesRow" unique_id=1115587871]
 layout_mode = 2
@@ -111,7 +111,7 @@ layout_mode = 2
 layout_mode = 2
 theme_type_variation = &"SectionHeader"
 theme_override_font_sizes/font_size = 18
-text = "Per Tile"
+text = "Mean Energy per Tile"
 
 [node name="PerTileLabel" type="Label" parent="Window/VBox/PerTileRow" unique_id=1250926209]
 layout_mode = 2
@@ -119,6 +119,79 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 text = "0"
 horizontal_alignment = 2
+
+[node name="Sep2" type="HSeparator" parent="Window/VBox" unique_id=211571911]
+layout_mode = 2
+
+[node name="CatchmentRow" type="HBoxContainer" parent="Window/VBox" unique_id=433221001]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CatchmentBar" type="ColorRect" parent="Window/VBox/CatchmentRow" unique_id=433221002]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+metadata/_accent_bar = true
+
+[node name="CatchmentGrid" type="GridContainer" parent="Window/VBox/CatchmentRow" unique_id=344123376]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Bar1eLabel" type="Label" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220001]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Tiles contributing 1e/s:"
+horizontal_alignment = 2
+
+[node name="Bar1e" type="ProgressBar" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220002]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="BarHalfLabel" type="Label" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220003]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Tiles contributing 0.5e/s:"
+horizontal_alignment = 2
+
+[node name="BarHalf" type="ProgressBar" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220004]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="BarThirdLabel" type="Label" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220005]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Tiles contributing 0.33e/s:"
+horizontal_alignment = 2
+
+[node name="BarThird" type="ProgressBar" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220006]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="BarQuarterLabel" type="Label" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220007]
+layout_mode = 2
+theme_type_variation = &"SectionHeader"
+theme_override_font_sizes/font_size = 18
+text = "Tiles contributing ≤ 0.25e/s:"
+horizontal_alignment = 2
+
+[node name="BarQuarter" type="ProgressBar" parent="Window/VBox/CatchmentRow/CatchmentGrid" unique_id=1111220008]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=822891866]
 layout_mode = 1

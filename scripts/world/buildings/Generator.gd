@@ -57,13 +57,7 @@ func _on_mouse_entered() -> void:
 	if state != State.CONSTRUCTED:
 		return
 	for t in _hover_tiles():
-		var color : Color
-		match t.gen_count:
-			1: color = Color.GREEN
-			2: color = Color.YELLOW
-			3: color = Color.ORANGE_RED
-			_: color = Color.RED
-		t.request_emission(TileElement.EmissionEffect.GENERATOR_CATCHMENT, color, 0.5)
+		t.request_emission(TileElement.EmissionEffect.GENERATOR_CATCHMENT, Config.catchment_color(t.gen_count), 0.5)
 
 func _on_mouse_exited() -> void:
 	for t in _hover_tiles():
@@ -74,3 +68,16 @@ func _hover_tiles() -> Array[TileElement]:
 	if is_empowered:
 		tiles.append_array(_aoe_tiles_extra)
 	return tiles
+
+# Count catchment tiles by per-tile energy contribution. Bucket keys:
+# 1 = contributes 1e (gen_count 1), 2 = 0.5e, 3 = 0.33e, 4 = <= 0.25e
+# (gen_count 0 or >= 4). Mirrors the gen_count match in catchment_color().
+func catchment_bucket_counts() -> Dictionary:
+	var counts := {1: 0, 2: 0, 3: 0, 4: 0}
+	for t in _hover_tiles():
+		match t.gen_count:
+			1: counts[1] += 1
+			2: counts[2] += 1
+			3: counts[3] += 1
+			_: counts[4] += 1
+	return counts

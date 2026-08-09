@@ -502,3 +502,10 @@ func rpc_constructed(bid: int) -> void:
 	set_visible(true)
 	# Construction revealed the building — its terminal becomes interactive now.
 	Blueprints.set_terminal_collision(self, true)
+	state = State.CONSTRUCTED
+	# The building now claims its AoE, so recompute on every peer (this RPC is
+	# call_local and thus also runs on the server). Set state before recomputing
+	# so server and clients produce the identical grid rather than waiting for a
+	# snapshot to arrive.
+	if Global.TM:
+		Global.TM.recompute_aoe()

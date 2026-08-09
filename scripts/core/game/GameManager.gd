@@ -518,7 +518,11 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 func _apply_building(b: Building, slots: Array) -> void:
 	if not b:
 		return
-	b.state = slots[0] as Building.State
+	# State is monotonic (BLUEPRINT -> UNDER_CONSTRUCTION -> CONSTRUCTED). Never
+	# downgrade an already-constructed building: a late/unreordered unreliable
+	# snapshot must not revert it, or recompute_aoe would drop its AoE claim.
+	if b.state != Building.State.CONSTRUCTED or int(slots[0]) == Building.State.CONSTRUCTED:
+		b.state = slots[0] as Building.State
 	b.health = slots[1]
 	b._construction_energy_spent = slots[2]
 	b.max_health = slots[3]

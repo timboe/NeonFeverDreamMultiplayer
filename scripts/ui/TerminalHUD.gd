@@ -98,12 +98,18 @@ func _add_section_strips() -> void:
 			container.add_child(strip)
 			container.move_child(strip, lbl.get_index())
 			lbl.set_meta("_section_strip", strip)
+	# Whole-element accent bars (any ColorRect tagged with _accent_bar, e.g. a
+	# single tall bar beside a GridContainer treated as one section).
+	for bar in _find_accent_bars(self):
+		bar.color = Color(accent.r, accent.g, accent.b, 0.9)
 
 func _tint_section_strips(accent: Color) -> void:
 	for lbl in _find_section_labels(self):
 		if lbl.has_meta("_section_strip"):
 			var strip = lbl.get_meta("_section_strip")
 			strip.color = Color(accent.r, accent.g, accent.b, 0.9)
+	for bar in _find_accent_bars(self):
+		bar.color = Color(accent.r, accent.g, accent.b, 0.9)
 
 func _find_section_labels(node: Node) -> Array[Label]:
 	var out: Array[Label] = []
@@ -111,6 +117,14 @@ func _find_section_labels(node: Node) -> Array[Label]:
 		if child is Label and (child as Label).theme_type_variation == &"SectionHeader":
 			out.append(child)
 		out.append_array(_find_section_labels(child))
+	return out
+
+func _find_accent_bars(node: Node) -> Array[ColorRect]:
+	var out: Array[ColorRect] = []
+	for child in node.get_children():
+		if child is ColorRect and child.has_meta("_accent_bar"):
+			out.append(child)
+		out.append_array(_find_accent_bars(child))
 	return out
 
 # Tint the terminal window border to the owning player's accent colour.
@@ -134,10 +148,10 @@ func _tint_window(pnum: int) -> void:
 		sb.fill_color = Color(0.03, 0.04, 0.08, 0.92)
 		sb.border_color = Color(accent.r, accent.g, accent.b, 0.6)
 		sb.border_width = 2.0
-		sb.content_margin_left = 12.0
-		sb.content_margin_top = 10.0
-		sb.content_margin_right = 12.0
-		sb.content_margin_bottom = 10.0
+		sb.content_margin_left = 18.0
+		sb.content_margin_top = 14.0
+		sb.content_margin_right = 18.0
+		sb.content_margin_bottom = 14.0
 		window.add_theme_stylebox_override("panel", sb)
 	# Tint the CRT phosphor to match.
 	if _crt_material:

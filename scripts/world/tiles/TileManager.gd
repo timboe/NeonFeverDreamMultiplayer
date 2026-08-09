@@ -229,6 +229,11 @@ func recompute_aoe() -> void:
 		t.gen_count = 0
 	var touched := {}
 	for b in Global.BM.buildings():
+		# Only a CONSTRUCTED building claims its AoE. Blueprints and buildings
+		# under construction extend no territory — recompute_aoe is re-run on every
+		# peer at construction completion (rpc_constructed).
+		if b.state != Building.State.CONSTRUCTED:
+			continue
 		var radius : int = b.get_aoe_radius()
 		if b.type == BuildingManager.Type.GEN and b.is_empowered:
 			radius += 1

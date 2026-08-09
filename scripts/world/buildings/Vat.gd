@@ -62,8 +62,8 @@ func _process(delta: float) -> void:
 func set_constructed() -> void:
 	super.set_constructed()
 	_join_pool()
-	# A vat only contributes to capacity once CONSTRUCTED — refresh it now
-	# (construction completion isn't a recompute_aoe trigger).
+	# super.set_constructed() triggers recompute_aoe (via rpc_constructed) before
+	# _join_pool() runs, so re-refresh capacity now that pooling is final.
 	if Global.EM:
 		Global.EM.recalculate_capacity()
 

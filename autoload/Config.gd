@@ -235,6 +235,22 @@ func player_accent(pnum: int) -> Color:
 		return PLAYER_COLORS[pnum - 1]
 	return UI_ACCENT
 
+# --- Generator catchment ---
+
+# Colours by tile gen_count — used by the Generator hover emission and the
+# Generator HUD "Tiles contributing" breakdown bars.
+const CATCHMENT_SINGLE_TILE := Color.GREEN
+const CATCHMENT_TWO_TILES := Color.YELLOW
+const CATCHMENT_THREE_TILES := Color.ORANGE_RED
+const CATCHMENT_OVERLAPPED := Color.RED
+
+func catchment_color(gen_count: int) -> Color:
+	match gen_count:
+		1: return CATCHMENT_SINGLE_TILE
+		2: return CATCHMENT_TWO_TILES
+		3: return CATCHMENT_THREE_TILES
+		_: return CATCHMENT_OVERLAPPED
+
 # --- Button theming (per-player) ---
 
 # Multipliers used when tinting the main-HUD button states with a player colour.
