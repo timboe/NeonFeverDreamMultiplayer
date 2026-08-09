@@ -128,6 +128,14 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
 		return
+	var stats_window = _stats_window()
+	if event.is_action_pressed("ui_stats"):
+		if stats_window:
+			stats_window.toggle()
+		return
+	if stats_window and stats_window.visible:
+		# Statistics window is modal — swallow game input while it's open.
+		return
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		end_drag()
 	if event.is_action_pressed("ui_capture_toggle"):
@@ -222,6 +230,11 @@ func _free_tooltip_hud() -> void:
 
 func _get_player_energy() -> Dictionary:
 	return Global.EM.get_player_energy(Global.my_player_number)
+
+# --- Statistics window ---
+
+func _stats_window():
+	return get_tree().get_first_node_in_group("statistics_window")
 
 # --- Mode buttons ---
 

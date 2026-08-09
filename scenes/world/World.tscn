@@ -17,6 +17,7 @@
 [ext_resource type="Script" uid="uid://c8oef3uwcppa8" path="res://scripts/core/game/CombatManager.gd" id="9_combat"]
 [ext_resource type="Script" path="res://scripts/core/game/StatisticsManager.gd" id="11_stats"]
 [ext_resource type="PackedScene" uid="uid://csovc61v6c4qk" path="res://scenes/ui/LoadingOverlay.tscn" id="10_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/StatisticsWindow.tscn" id="12_statswin"]
 
 [node name="World" type="Node3D" unique_id=943865623]
 
@@ -94,5 +95,7 @@ script = ExtResource("7_252at")
 [node name="ProjectilesHolder" type="Node3D" parent="." unique_id=1832632869]
 
 [node name="HUD" parent="." unique_id=1691572145 instance=ExtResource("7_hud")]
+
+[node name="StatisticsWindow" parent="." unique_id=2109876543 instance=ExtResource("12_statswin")]
 
 [node name="LoadingOverlay" parent="." unique_id=1878422403 instance=ExtResource("10_overlay")]

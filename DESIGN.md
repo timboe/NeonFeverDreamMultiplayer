@@ -502,3 +502,7 @@ A server-side aggregator (`StatisticsManager`) samples the game once per second 
 
 The server keeps the full history for every player; each per-second record is pushed to the owning player's client as it is finalized, so a client only holds its own player's history. Intended for post-match analysis, balance tuning, and spectator/end-of-game graphs.
 
+### In-game Statistics Window
+
+Press **M** (RTS mode only) to open a full-screen modal showing three stacked live graphs for the current player: **AoE + Energy** (dual y-axis — energy stored/capacity/generated/used on the left, AoE tiles on the right), **Units** (Zoomba / Tank / Aerial-Patrol / Aerial-Strike / Virus), and **Damage** (done vs received). Trailing-window buttons (30s / 10m / 30m) narrow the time range; close with the X button, ESC, or M. Graphs autoscale their y-axes to the visible data and draw a legend inside each panel.
+

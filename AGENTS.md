@@ -27,7 +27,8 @@ World
 │   ├── CameraRTS %
 │   └── OmniLight3D_RTS %
 ├── ProjectilesHolder
-└── HUD                 CanvasLayer, group "hud"
+├── HUD                 CanvasLayer, group "hud"
+└── StatisticsWindow    CanvasLayer (layer 50), group "statistics_window"; modal stats graphs (M-key in RTS)
 ```
 
 Managers are accessed via the typed `Global` aliases above (all null until World loads). `%ManagerName` unique-name lookup still works in scene-owned scripts but is deprecated in favour of the `Global` aliases. Dynamically created nodes (TileElements) miss the owner lookup — gameplay code should use the `Global` aliases or a stored ref instead.
@@ -139,6 +140,8 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `VideoManager` | `scripts/world/camera/VideoManager.gd` | CameraStatus (OVERHEAD/TO_FPS/FPS/TO_OVERHEAD), 2s transition tween, mouse capture, trauma shake. **Converted — no dead Godot 3 code.** |
 | `CameraRTS` | `scripts/world/camera/CameraRTS.gd` | Overhead camera controls |
 | `HUD` | `scripts/ui/HUD.gd` | Tile/build mode buttons, drag select, energy bar, FPS toggle, debug keys |
+| `StatisticsWindow` | `scripts/ui/StatisticsWindow.gd` | Modal stats overlay (M-key in RTS): 3 stacked line graphs (AoE+Energy dual-axis, Units, Damage), trailing-window selector (30s/10m/30m), reads `Global.SM.get_stats(my_player_number)` |
+| `LineGraph` | `scripts/ui/LineGraph.gd` | Custom `Control` line graph: optional left/right autoscaled axes, grid, legend, polyline+fill via `_draw()` |
 | `NotificationManager` | `scripts/ui/NotificationManager.gd` | Job-event on-screen notifications (`rpc_add_job_notification`) |
 | `HealthBar3D` | `scripts/ui/HealthBar3D.gd` | Billboard health bars for units + buildings |
 
@@ -297,6 +300,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - Damage hooks: `record_damage_done` (CombatManager at fire time) / `record_damage_received` (Unit/Building/Vat `_apply_damage` at impact time). Debug-key damage (P/L, attacker-less) counts as received only.
 - **Sync**: each finalized record is pushed to the owning remote client via `rpc_id(peer, "rpc_receive_stats", p, record)` (`@rpc("authority","call_remote","reliable")`). `Server.player_to_peer` only contains remote clients (peers > 1), so the host's local slot and AI slots are skipped — the server keeps full history for everyone, while a client only gets its own player-number key populated.
 - Query: `Global.SM.get_stats(pnum)` → the player's full history `Array`.
+- **Statistics window** (`scenes/ui/StatisticsWindow.tscn`, `Global.VM`-gated): toggled by the `ui_stats`/M key in HUD `_input`, only while `Global.game_started` and camera is `OVERHEAD`; ESC and the X button also close it. Full-screen modal (STOP mouse filter + backdrop; HUD swallows game input while open). Reads `Global.SM.get_stats(Global.my_player_number)` (a client only ever has its own key populated) and renders three `LineGraph`s refreshed at 0.5s: AoE+Energy (dual-axis — energy on the left axis, AoE tiles on the right), Units, Damage. Trailing-window buttons select the most recent 30s/10m/30m. `LineGraph` autoscales each axis to a "nice" ceiling (1/2/5 × 10ⁿ) and draws the legend inside the graph.
 
 ## Avatar / FPS camera
 
