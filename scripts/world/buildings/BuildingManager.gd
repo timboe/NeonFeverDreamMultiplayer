@@ -221,8 +221,6 @@ func rpc_remove_building(id: int) -> void:
 		position_all_terminals()
 		# Reconnect tile to pathing (reverse of remove_tile_from_pathing)
 		if tile and tile.state == TileManager.State.LOWERED:
-			var pm = Global.PM
-			if pm:
-				for n in tile.neighbours:
-					if n.state == TileManager.State.LOWERED and n.building == null:
-						pm.connect_tiles(tile, n)
+			for n in tile.neighbours:
+				if n.state == TileManager.State.LOWERED and n.building == null:
+					Global.PM.connect_tiles(tile, n)

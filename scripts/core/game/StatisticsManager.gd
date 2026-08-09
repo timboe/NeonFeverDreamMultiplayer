@@ -67,27 +67,25 @@ func _tick() -> void:
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		var record: Dictionary = _empty_record()
 		record["time"] = Time.get_ticks_msec() / 1000.0
-		record["aoe_size"] = tm.player_aoe_totals.get(p, 0.0) if tm else 0.0
-		if em:
-			var e = em.get_player_energy(p)
-			record["energy"]["stored"] = e["current"]
-			record["energy"]["capacity"] = e["capacity"]
-			record["energy"]["generated"] = e["produced"]
-			record["energy"]["used"] = e["consumed"]
-		if um:
-			record["units"]["zoomba"] = um.unit_count(p, UnitManager.Type.ZOOMBA)
-			record["units"]["tank"] = um.unit_count(p, UnitManager.Type.TANK)
-			record["units"]["virus"] = um.unit_count(p, UnitManager.Type.VIRUS)
-			var strike := 0
-			var patrol := 0
-			for u in um.units():
-				if u.player_owner == p and u.type == UnitManager.Type.AERIAL:
-					if u.get_mode() == Config.AERIAL_MODE_STRIKE:
-						strike += 1
-					else:
-						patrol += 1
-			record["units"]["aerial_strike"] = strike
-			record["units"]["aerial_patrol"] = patrol
+		record["aoe_size"] = tm.player_aoe_totals.get(p, 0.0)
+		var e = em.get_player_energy(p)
+		record["energy"]["stored"] = e["current"]
+		record["energy"]["capacity"] = e["capacity"]
+		record["energy"]["generated"] = e["produced"]
+		record["energy"]["used"] = e["consumed"]
+		record["units"]["zoomba"] = um.unit_count(p, UnitManager.Type.ZOOMBA)
+		record["units"]["tank"] = um.unit_count(p, UnitManager.Type.TANK)
+		record["units"]["virus"] = um.unit_count(p, UnitManager.Type.VIRUS)
+		var strike := 0
+		var patrol := 0
+		for u in um.units():
+			if u.player_owner == p and u.type == UnitManager.Type.AERIAL:
+				if u.get_mode() == Config.AERIAL_MODE_STRIKE:
+					strike += 1
+				else:
+					patrol += 1
+		record["units"]["aerial_strike"] = strike
+		record["units"]["aerial_patrol"] = patrol
 		record["damage"]["done"] = _damage_done.get(p, 0.0)
 		record["damage"]["received"] = _damage_received.get(p, 0.0)
 		_damage_done[p] = 0.0

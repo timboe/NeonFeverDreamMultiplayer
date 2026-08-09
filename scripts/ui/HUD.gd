@@ -143,10 +143,7 @@ func _input(event: InputEvent) -> void:
 # --- Camera UI ---
 
 func _update_camera_ui() -> void:
-	var is_fps := false
-	var vm = Global.VM
-	if vm:
-		is_fps = vm.camera_status == vm.CameraStatus.FPS
+	var is_fps: bool = Global.VM.camera_status == Global.VM.CameraStatus.FPS
 	crosshair.visible = is_fps
 	mode_bar.visible = not is_fps
 
@@ -156,10 +153,8 @@ func _exit_tree() -> void:
 	_free_tooltip_hud()
 
 func _update_tooltip() -> void:
-	var bm = Global.BM
-	var hovered: Building = bm.hovered_building if bm else null
-	var vm = Global.VM
-	var in_rts: bool = vm != null and vm.camera_status == vm.CameraStatus.OVERHEAD
+	var hovered: Building = Global.BM.hovered_building
+	var in_rts: bool = Global.VM.camera_status == Global.VM.CameraStatus.OVERHEAD
 	# Tooltip is only for the current player's buildings — no need to build the
 	# HUD preview for other players' local instances.
 	if in_rts and hovered and is_instance_valid(hovered) \
@@ -226,10 +221,7 @@ func _free_tooltip_hud() -> void:
 # --- Energy ---
 
 func _get_player_energy() -> Dictionary:
-	var em = Global.EM
-	if em:
-		return em.get_player_energy(Global.my_player_number)
-	return {"current": 0.0, "capacity": 0.0, "produced": 0.0, "consumed": 0.0}
+	return Global.EM.get_player_energy(Global.my_player_number)
 
 # --- Mode buttons ---
 

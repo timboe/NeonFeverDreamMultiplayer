@@ -64,8 +64,7 @@ func set_constructed() -> void:
 	_join_pool()
 	# super.set_constructed() triggers recompute_aoe (via rpc_constructed) before
 	# _join_pool() runs, so re-refresh capacity now that pooling is final.
-	if Global.EM:
-		Global.EM.recalculate_capacity()
+	Global.EM.recalculate_capacity()
 
 func _adjacent_pool_vats() -> Array[Vat]:
 	var result: Array[Vat] = []
@@ -146,19 +145,15 @@ func _merge_pools(masters: Dictionary) -> void:
 	new_master._sync_pool_health()
 
 func _destroy_pool() -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	bm.rpc("rpc_remove_building", id)
+	Global.BM.rpc("rpc_remove_building", id)
 	for m in pool_members:
 		if is_instance_valid(m):
-			bm.rpc("rpc_remove_building", m.id)
+			Global.BM.rpc("rpc_remove_building", m.id)
 
 # --- Damage / repair ---
 
 func _apply_damage(damage: float) -> void:
-	if Global.SM:
-		Global.SM.record_damage_received(player_owner, damage)
+	Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		if pool_master != null:
 			pool_master._apply_damage(damage)
@@ -203,8 +198,7 @@ func _empower_changed(val: bool) -> void:
 		for m in pool_members:
 			if m.is_empowered != val:
 				m.rpc_set_empowered(val)
-	if Global.EM:
-		Global.EM.recalculate_capacity()
+	Global.EM.recalculate_capacity()
 
 # --- Capacity ---
 

@@ -79,33 +79,26 @@ func initialise(pnum: int, tile: TileElement) -> void:
 func _exit_tree() -> void:
 	if _health_bar and is_instance_valid(_health_bar):
 		_health_bar.queue_free()
-	var bm = Global.BM
-	if bm and bm.hovered_building == self:
-		bm.hovered_building = null
+	if is_instance_valid(Global.BM) and Global.BM.hovered_building == self:
+		Global.BM.hovered_building = null
 
 # --- Mouse hover (RTS tooltip) ---
 
 func _on_hover_entered() -> void:
 	if state != State.CONSTRUCTED:
 		return
-	var bm = Global.BM
-	if bm:
-		bm.hovered_building = self
+	Global.BM.hovered_building = self
 
 func _on_hover_exited() -> void:
-	var bm = Global.BM
-	if bm:
-		if bm.hovered_building == self:
-			bm.hovered_building = null
+	if Global.BM.hovered_building == self:
+		Global.BM.hovered_building = null
 
 func _process(delta: float) -> void:
 	# Do construction - consumes energy
 	if multiplayer.is_server() and Global.game_started and state == State.UNDER_CONSTRUCTION:
 		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
-		var em = Global.EM
-		if em:
-			_construction_energy_spent += em.request_energy(player_owner, energy_per_tick)
+		_construction_energy_spent += Global.EM.request_energy(player_owner, energy_per_tick)
 		if _construction_energy_spent >= cost:
 			set_constructed()
 
@@ -117,10 +110,9 @@ func _process(delta: float) -> void:
 			if not _can_produce():
 				_production_timer = 0.0
 		elif _production_enabled and _can_produce():
-			var em = Global.EM
-			if em and _production_cost > 0.0:
+			if _production_cost > 0.0:
 				var tick_amount := _production_cost * delta
-				_production_energy += em.request_energy(player_owner, tick_amount)
+				_production_energy += Global.EM.request_energy(player_owner, tick_amount)
 			if _production_energy >= _production_cost:
 				_produce_unit()
 
@@ -222,11 +214,8 @@ func _inherit_settings_from_sibling() -> void:
 		_copy_settings_from(sibling)
 
 func _find_highest_id_sibling() -> Building:
-	var bm = Global.BM
-	if not bm:
-		return null
 	var best: Building = null
-	for b in bm.buildings():
+	for b in Global.BM.buildings():
 		if b == self or b.player_owner != player_owner or b.type != type:
 			continue
 		if best == null or b.id > best.id:
@@ -287,11 +276,8 @@ func _produce_unit() -> void:
 		return
 	if _production_type == UnitManager.Type.NONE:
 		return
-	var um = Global.UM
-	if not um:
-		return
-	var uid: int = um.next_unit_id()
-	um.rpc("rpc_spawn_unit", uid, _production_type, self.id)
+	var uid: int = Global.UM.next_unit_id()
+	Global.UM.rpc("rpc_spawn_unit", uid, _production_type, self.id)
 	_production_energy = 0.0
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
@@ -450,8 +436,7 @@ func apply_damage(amount: float, delay: float = 0.0) -> void:
 	_apply_damage(amount)
 
 func _apply_damage(damage: float) -> void:
-	if Global.SM:
-		Global.SM.record_damage_received(player_owner, damage)
+	Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		# If built, specific health pool. Not energy based
 		health -= damage
@@ -493,10 +478,7 @@ func _repair_heal() -> bool:
 
 @rpc("authority", "call_local", "reliable")
 func rpc_constructed(bid: int) -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	var bp = bm.get_node_or_null("Blueprint_" + str(bid))
+	var bp = Global.BM.get_node_or_null("Blueprint_" + str(bid))
 	if bp:
 		bp.queue_free()
 	set_visible(true)
@@ -507,5 +489,4 @@ func rpc_constructed(bid: int) -> void:
 	# call_local and thus also runs on the server). Set state before recomputing
 	# so server and clients produce the identical grid rather than waiting for a
 	# snapshot to arrive.
-	if Global.TM:
-		Global.TM.recompute_aoe()
+	Global.TM.recompute_aoe()

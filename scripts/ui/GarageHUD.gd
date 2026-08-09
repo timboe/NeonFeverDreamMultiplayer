@@ -91,17 +91,13 @@ func _process(_delta: float) -> void:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
-	var um = Global.UM
-	if um:
-		var tanks: int = um.unit_count(building.player_owner, UnitManager.Type.TANK)
-		tank_label.text = str(tanks) + " / " + str(_requested_tanks())
+	var tanks: int = Global.UM.unit_count(building.player_owner, UnitManager.Type.TANK)
+	tank_label.text = str(tanks) + " / " + str(_requested_tanks())
 	# Ratio total across all garages
 	var total_ratio := 0.0
-	var bm = Global.BM
-	if bm:
-		for b in bm.buildings():
-			if b is Garage and b.player_owner == building.player_owner:
-				total_ratio += b.zoomba_tank_ratio
+	for b in Global.BM.buildings():
+		if b is Garage and b.player_owner == building.player_owner:
+			total_ratio += b.zoomba_tank_ratio
 	var total_pct := int(total_ratio * 100)
 	ratio_total_label.text = "Total requested over all Garages: " + str(total_pct) + "%"
 	if total_pct > 100:

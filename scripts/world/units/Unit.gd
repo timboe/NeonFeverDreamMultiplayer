@@ -207,10 +207,7 @@ func assign_job(new_job: Dictionary) -> void:
 func _job_target_tile() -> TileElement:
 	if job.is_empty():
 		return null
-	var jm = Global.JM
-	if jm:
-		return jm.target_tile(job["target"])
-	return null
+	return Global.JM.target_tile(job["target"])
 
 func _kill_combat_hold() -> void:
 	if combat_hold_tween and combat_hold_tween.is_valid():
@@ -311,8 +308,7 @@ func pathing_callback() -> void:
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
-	var jm = Global.JM
-	if jm and not jm.check_job_still_valid(job):
+	if not Global.JM.check_job_still_valid(job):
 		return job_finished()
 	# COMBAT_PERSUE jobs never enter WORKING - chase/orbit the target instead.
 	# (ATTACK jobs are the exception: they path normally and stop-and-attach.)
@@ -377,8 +373,7 @@ func combat_pathing_callback() -> void:
 		return idle_callback()
 	assert(state == State.PATHING)
 	# Second - check our job is still valid
-	var jm = Global.JM
-	if jm and not jm.check_job_still_valid(job):
+	if not Global.JM.check_job_still_valid(job):
 		return job_finished()
 	# Third - pick the next tile: orbit when adjacent, chase otherwise
 	var dest: TileElement = combat_next_tile()
@@ -396,10 +391,7 @@ func combat_pathing_callback() -> void:
 func combat_next_tile() -> TileElement:
 	if not multiplayer.is_server():
 		return null
-	var jm = Global.JM
-	if not jm:
-		return null
-	var target_tile: TileElement = jm.target_tile(job["target"])
+	var target_tile: TileElement = Global.JM.target_tile(job["target"])
 	if target_tile == null or not is_instance_valid(target_tile):
 		return null
 	var access: Array = target_tile.get_access_tiles()
@@ -477,8 +469,7 @@ func job_finished() -> void:
 	if has_node("Zapper"):
 		$Zapper.visible = false
 	state = State.IDLE
-	var jm = Global.JM
-	jm.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
+	Global.JM.remove_job(job["id"]) # This then calls our remove_job() which handles idle_callback
 
 # Job was removed - we could be in any state
 func remove_job() -> void:
@@ -524,9 +515,7 @@ func abandon_job() -> void:
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = null
-	var jm = Global.JM
-	if jm:
-		jm.abandon_job(j_id)
+	Global.JM.abandon_job(j_id)
 	idle_callback()
 
 func scram() -> void:
@@ -541,18 +530,14 @@ func _consume_for_tank() -> void:
 	if not garage or not is_instance_valid(garage):
 		job_finished()
 		return
-	var um = Global.UM
-	if not um:
-		job_finished()
-		return
 	# Spawn TANK at the garage
-	var uid: int = um.next_unit_id()
-	um.rpc("rpc_spawn_unit", uid, UnitManager.Type.TANK, garage.id)
+	var uid: int = Global.UM.next_unit_id()
+	Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.TANK, garage.id)
 	# Mark the consume job as completed before the zoomba is removed,
 	# otherwise rpc_remove_unit will see the active job and abandon it.
 	job_finished()
 	# Remove this zoomba
-	um.rpc("rpc_remove_unit", id)
+	Global.UM.rpc("rpc_remove_unit", id)
 
 # --- Movement ---
 
@@ -638,8 +623,7 @@ func apply_damage(amount: float, delay: float = 0.0) -> void:
 	_apply_damage(amount)
 
 func _apply_damage(damage: float) -> void:
-	if Global.SM:
-		Global.SM.record_damage_received(player_owner, damage)
+	Global.SM.record_damage_received(player_owner, damage)
 	health -= damage
 	_repair_timer = -REPAIR_DELAY
 	if health <= 0:

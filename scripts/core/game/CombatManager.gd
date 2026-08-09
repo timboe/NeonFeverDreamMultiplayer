@@ -45,11 +45,8 @@ func _attacker_mode(unit: Unit) -> int:
 # Shared enemy-building target selection (VIRUS attack jobs + AERIAL STRIKE
 # personal jobs). Picks a random living enemy building of the allowed types.
 func choose_building_target(enemies: Array, target_types: Array) -> Building:
-	var bm = Global.BM
-	if not bm:
-		return null
 	var candidates: Array = []
-	for b in bm.buildings():
+	for b in Global.BM.buildings():
 		if b.player_owner not in enemies:
 			continue
 		if b.health <= 0:
@@ -104,8 +101,6 @@ func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health
 
 func _scan_targets() -> void:
-	if Global.JM == null:
-		return
 	for unit in Global.UM.units():
 		match unit.type:
 			UnitManager.Type.TANK:
@@ -216,17 +211,16 @@ func _scan_aerial(aerial: Unit) -> void:
 					if score > best_score and _can_see(aerial, c):
 						best_score = score
 						best_target = c
-	if Global.BM:
-		for b in Global.BM.buildings():
-			if b.player_owner not in enemies or b.health <= 0:
-				continue
-			var dmg = Config.get_damage(aerial.type, b, mode)
-			if dmg <= 0:
-				continue
-			var score := _score_for_damage(dmg, b.health)
-			if score > best_score and _can_see(aerial, b):
-				best_score = score
-				best_target = b
+	for b in Global.BM.buildings():
+		if b.player_owner not in enemies or b.health <= 0:
+			continue
+		var dmg = Config.get_damage(aerial.type, b, mode)
+		if dmg <= 0:
+			continue
+		var score := _score_for_damage(dmg, b.health)
+		if score > best_score and _can_see(aerial, b):
+			best_score = score
+			best_target = b
 	aerial.combat_target = best_target
 
 func _scan_avatar(avatar: Unit) -> void:
@@ -234,7 +228,7 @@ func _scan_avatar(avatar: Unit) -> void:
 	# sight radius + LoS. FPS sees 3-4 tiles, RTS only 1 tile (DESIGN). The
 	# avatar lives in its FPSBody, so range/LoS originate from the body.
 	var radius := Config.AVATAR_VIRUS_DETECT_RADIUS_FPS
-	if Global.VM and Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD:
+	if Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD:
 		radius = Config.AVATAR_VIRUS_DETECT_RADIUS_RTS
 	var origin := avatar._get_muzzle_global()
 	for c in Global.UM.units():
@@ -294,8 +288,7 @@ func _update_firing(delta: float) -> void:
 					if u.type == UnitManager.Type.AERIAL:
 						delay = u.update_projectile_delay()
 					u.combat_target.apply_damage(dmg, delay)
-					if Global.SM:
-						Global.SM.record_damage_done(u.player_owner, dmg)
+					Global.SM.record_damage_done(u.player_owner, dmg)
 					if u.type == UnitManager.Type.AERIAL:
 						u.combat_fire_event += 1
 			if u.combat_burst_timer <= 0.0:

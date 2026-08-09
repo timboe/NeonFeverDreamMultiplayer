@@ -53,10 +53,7 @@ func add_to_dict_and_scene(uid: int, u: Unit) -> void:
 
 @rpc("authority", "call_local")
 func rpc_spawn_unit(uid: int, type: int, building_id: int) -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	var building = bm.get_building_by_id(building_id)
+	var building = Global.BM.get_building_by_id(building_id)
 	if building:
 		spawn_unit(uid, type as Type, building)
 
@@ -82,9 +79,7 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 		if unit.move_tween and unit.move_tween.is_valid():
 			unit.move_tween.kill()
 		unit.move_tween = null
-		var jm = Global.JM
-		if jm:
-			jm.abandon_job(j_id)
+		Global.JM.abandon_job(j_id)
 	else:
 		if unit.move_tween and unit.move_tween.is_valid():
 			unit.move_tween.kill()
@@ -109,12 +104,8 @@ func rpc_remove_unit(unit_id: int) -> void:
 			u.abandon_job()
 		unit_dictionary.erase(unit_id)
 		if u is Avatar:
-			var gm = Global.GM
-			if gm:
-				gm.clear_avatar_snapshots(u.player_owner)
+			Global.GM.clear_avatar_snapshots(u.player_owner)
 			# If the local player's avatar died while in FPS, snap back to the RTS camera.
 			if u.player_owner == Global.my_player_number:
-				var vm = Global.VM
-				if vm:
-					vm.exit_fps_immediate()
+				Global.VM.exit_fps_immediate()
 		u.queue_free()

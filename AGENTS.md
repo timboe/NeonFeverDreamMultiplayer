@@ -34,6 +34,18 @@ Managers are accessed via the typed `Global` aliases above (all null until World
 
 Every manager registers itself in its `_ready()` on `Global` with a short alias: `Global.GM` (GameManager), `Global.BM` (BuildingManager), `Global.EM` (EnergyManager), `Global.TM` (TileManager), `Global.UM` (UnitManager), `Global.JM` (JobManager), `Global.CM` (CombatManager), `Global.SM` (StatisticsManager), `Global.VM` (VideoManager), `Global.PM` (PathingManager), `Global.NM` (NotificationManager). All are null until World loads. Prefer these over `get_node_or_null("/root/World/...")`.
 
+### Manager null-safety — when guards are allowed
+
+Once World's `_ready()` cascade has completed, every `Global.X` alias is guaranteed non-null for any `_process`/`_physics_process`/RPC/input/signal handler. Godot runs all `_ready()`s synchronously during scene-tree entry (in scene order), before the first frame of `_process`/`_physics_process`; level setup (`TileManager` first-physics-frame generation, MCP placement, `recompute_aoe`, `recalculate_capacity`) runs after all managers have registered; server-only sims additionally gate on `Global.game_started`; and the game-start gate (`GameManager`) holds RPCs until every client confirms World is ready. **Do not write `if Global.X:` / `if not <manager-var>:` null guards in gameplay code — access `Global.X` directly.**
+
+Guard only where a manager may genuinely be absent:
+
+- `Server.gd` `_cmd_*` handlers — the `Server` node exists from MainMenu, before World; commands can arrive pre-World (lobby, premature/malicious clients). Keep `var tm = Global.TM; if not tm: return`.
+- `AIController._on_timer` — runs during the lobby, before World/game exists (documented lobby-skip).
+- `_exit_tree` teardown paths touching a manager — during World unload `Global.X` may reference a freed node; use `is_instance_valid(Global.X)` rather than a truthiness guard.
+
+When code legitimately needs a manager twice or more in one function, hoist it once into a local (`var um = Global.UM`); otherwise inline `Global.X.method()`.
+
 ## Multiplayer architecture
 
 - ENet server-authoritative. `Server` node lives only on host (`scripts/core/network/Server.gd`).
@@ -170,22 +182,22 @@ Every unit has exactly one of three states. State transitions are the core of th
 ### State transitions
 
 ```
-                    ┌──────────────────────────────────────────────────┐
-                    │                                                  │
+					┌──────────────────────────────────────────────────┐
+					│                                                  │
   ┌─────────┐   assign_job()   ┌─────────┐   start_work()   ┌─────────┐
   │  IDLE   │ ───────────────→ │ PATHING │ ───────────────→ │ WORKING │
   └─────────┘                  └─────────┘                  └─────────┘
-       ↑                            │    │                        │  │
-       │                            │    │                        │  │
-       │  remove_job()              │    │  remove_job()          │  │  remove_job()
-       │  abandon_job()             │    │  abandon_job()         │  │  abandon_job()
-       │  job_finished()            │    │  job_finished()        │  │  job_finished()
-       │                            │    │                        │  │
-       └────────────────────────────┘    └────────────────────────┘  │
-                                                                     │
-       ┌─────────────────────────────────────────────────────────────┘
-       │
-       └──→ IDLE (unit resumes wandering)
+	   ↑                            │    │                        │  │
+	   │                            │    │                        │  │
+	   │  remove_job()              │    │  remove_job()          │  │  remove_job()
+	   │  abandon_job()             │    │  abandon_job()         │  │  abandon_job()
+	   │  job_finished()            │    │  job_finished()        │  │  job_finished()
+	   │                            │    │                        │  │
+	   └────────────────────────────┘    └────────────────────────┘  │
+																	 │
+	   ┌─────────────────────────────────────────────────────────────┘
+	   │
+	   └──→ IDLE (unit resumes wandering)
 ```
 
 All transitions are server-only (`if not multiplayer.is_server(): return` guard at top of every function).

@@ -25,12 +25,10 @@ func _on_empower_pressed() -> void:
 func _process(_delta: float) -> void:
 	if not building or not energy_bar:
 		return
-	var em = Global.EM
-	if em:
-		var e = em.get_player_energy(building.player_owner)
-		energy_bar.max_value = e.capacity
-		energy_bar.value = e.current
-		energy_label.text = str(int(e.current)) + " / " + str(int(e.capacity))
+	var e = Global.EM.get_player_energy(building.player_owner)
+	energy_bar.max_value = e.capacity
+	energy_bar.value = e.current
+	energy_label.text = str(int(e.current)) + " / " + str(int(e.capacity))
 	var cap := building.get_capacity()
 	capacity_label.text = str(int(cap)) + "e"
 	var adj_count := int(building.capacity_mod_vats / (Vat.CAPACITY * 0.1))

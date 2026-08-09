@@ -124,10 +124,7 @@ func recalculate_capacity() -> void:
 	# erases a vat from the dictionary before calling recompute_aoe(), while queue_free
 	# is deferred — so the group would still contain the just-destroyed vat and keep
 	# counting its capacity.
-	var bm = Global.BM
-	if not bm:
-		return
-	for b in bm.buildings():
+	for b in Global.BM.buildings():
 		# "vat" group includes both Vats and MCPs (the MCP is the baseline 1000e
 		# supplier) — both expose get_capacity().
 		if b.is_in_group("vat") and b.state == Building.State.CONSTRUCTED:

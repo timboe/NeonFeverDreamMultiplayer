@@ -54,30 +54,24 @@ func zoomba_cap() -> int:
 # --- Production ---
 
 func _can_produce() -> bool:
-	var um = Global.UM
-	if not um:
-		return false
-	if um.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
+	if Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
 		return true
-	return um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap()
+	return Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap()
 
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
-	var um = Global.UM
-	if not um:
-		return
 	# Avatar takes priority
-	if um.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
-		var uid: int = um.next_unit_id()
-		um.rpc("rpc_spawn_unit", uid, UnitManager.Type.AVATAR, self.id)
+	if Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
+		var uid: int = Global.UM.next_unit_id()
+		Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.AVATAR, self.id)
 		_production_energy = 0.0
 		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 		return
 	# Then zoombas up to cap
-	if um.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
-		var uid: int = um.next_unit_id()
-		um.rpc("rpc_spawn_unit", uid, UnitManager.Type.ZOOMBA, self.id)
+	if Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
+		var uid: int = Global.UM.next_unit_id()
+		Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.ZOOMBA, self.id)
 		_production_energy = 0.0
 		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 		return

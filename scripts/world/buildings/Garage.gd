@@ -58,9 +58,7 @@ func _process(delta: float) -> void:
 		_update_tank_count()
 
 func _update_tank_count() -> void:
-	var um = Global.UM
-	if um:
-		cached_tank_count = um.unit_count(player_owner, UnitManager.Type.TANK)
+	cached_tank_count = Global.UM.unit_count(player_owner, UnitManager.Type.TANK)
 
 func check_work() -> void:
 	super.check_work()
@@ -72,19 +70,13 @@ func check_work() -> void:
 		return
 	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job
 	if _production_energy >= _production_cost and _production_timer <= 0:
-		var um = Global.UM
-		if not um:
-			return
-		var jm = Global.JM
-		if not jm:
-			return
 		# Don't start a new cycle while the previous CONSUME_ZOOMBA job is still
 		# pending (a zoomba hasn't arrived yet) — otherwise the garage spends
 		# energy on a conversion that hasn't happened.
-		if jm.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+		if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
 			return
-		var total_zoombas : int = um.unit_count(player_owner, UnitManager.Type.ZOOMBA)
-		var claimed : int = jm.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
+		var total_zoombas : int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
+		var claimed : int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 		# Always keep at least 1 zoomba free
 		if total_zoombas - claimed < 2:
 			return
@@ -93,7 +85,7 @@ func check_work() -> void:
 		if cached_tank_count + claimed >= target_tanks:
 			return
 		# Create CONSUME_ZOOMBA job
-		jm.add_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)
+		Global.JM.add_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)
 		# Consume the production budget/cooldown for this conversion so the
 		# building issues a fresh job on its next production cycle.
 		_production_energy = 0.0
@@ -104,8 +96,7 @@ func check_work() -> void:
 func _can_produce() -> bool:
 	if not super._can_produce():
 		return false
-	var jm = Global.JM
-	if jm and jm.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+	if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
 		return false
 	return true
 

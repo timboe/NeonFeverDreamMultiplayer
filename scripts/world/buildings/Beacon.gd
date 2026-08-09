@@ -33,11 +33,8 @@ func initialise(pnum: int, tile: TileElement) -> void:
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
-	var um = Global.UM
-	if not um:
-		return
-	var uid: int = um.next_unit_id()
-	um.rpc("rpc_spawn_unit", uid, UnitManager.Type.AERIAL, self.id)
+	var uid: int = Global.UM.next_unit_id()
+	Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.AERIAL, self.id)
 	_production_energy = 0.0
 	_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 4.0)
 

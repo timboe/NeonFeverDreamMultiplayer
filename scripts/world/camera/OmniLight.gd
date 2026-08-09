@@ -33,7 +33,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("ui_debug_light"):
 		_debug_visible = not _debug_visible
-	var is_overhead: bool = Global.VM != null and Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD
+	var is_overhead: bool = Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD
 	visible = is_overhead
 	_debug_gizmo.visible = is_overhead and _debug_visible
 	if not is_overhead:

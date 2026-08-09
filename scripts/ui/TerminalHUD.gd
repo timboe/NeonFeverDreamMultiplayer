@@ -224,9 +224,7 @@ func _empower_building(b: Building) -> void:
 	if not b:
 		return
 	Global.send_command_me("empower", [b.id])
-	var vm = Global.VM
-	if vm:
-		vm.force_leave_fps()
+	Global.VM.force_leave_fps()
 
 # Owned terminals are client-set only: the local player's button toggles and
 # slider position are authoritative on their own machine and must not be

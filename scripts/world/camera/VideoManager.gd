@@ -45,8 +45,7 @@ func _ready() -> void:
 	call_deferred("_connect_hud")
 	# The player's MCP only exists once the level is loaded (first physics
 	# frame), so position the initial RTS camera over it then.
-	if Global.TM:
-		Global.TM.level_loaded.connect(_position_initial_camera)
+	Global.TM.level_loaded.connect(_position_initial_camera)
 
 func _position_initial_camera() -> void:
 	var mcp = get_tree().get_first_node_in_group("mcp_player" + str(Global.my_player_number))

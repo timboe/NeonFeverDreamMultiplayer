@@ -553,10 +553,7 @@ func _apply_building(b: Building, slots: Array) -> void:
 # enemy terminals. Runs after snapshot application on clients and at the same
 # cadence on the server (which can also be a local player).
 func refresh_foreign_building_terminals() -> void:
-	var bm = Global.BM
-	if not bm:
-		return
-	for b : Building in bm.buildings() :
+	for b : Building in Global.BM.buildings() :
 		if b.player_owner == Global.my_player_number:
 			continue
 		b.refresh_terminal_ui()

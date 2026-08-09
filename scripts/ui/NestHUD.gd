@@ -107,9 +107,7 @@ func _process(_delta: float) -> void:
 		return
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
-	var um = Global.UM
-	if um:
-		virus_label.text = str(um.unit_count(building.player_owner, UnitManager.Type.VIRUS))
+	virus_label.text = str(Global.UM.unit_count(building.player_owner, UnitManager.Type.VIRUS))
 	if building._production_cost > 0.0:
 		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
 	else:

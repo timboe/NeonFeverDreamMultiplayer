@@ -118,24 +118,16 @@ func try_generate_offense_job() -> bool:
 	if randf() < tank_ratio:
 		target = _pick_enemy_tank(enemies)
 	if target == null:
-		var cm = Global.CM
-		if cm:
-			target = cm.choose_building_target(enemies, orders.get("target", []))
+		target = Global.CM.choose_building_target(enemies, orders.get("target", []))
 	if target == null:
 		return false
-	var jm = Global.JM
-	if not jm:
-		return false
 	_idle_time = 0.0 # If the job is immediately abandoned, wait before re-targeting
-	jm.add_job(player_owner, JobManager.Type.ATTACK, target, self, true) # personal, auto-assigned to self
+	Global.JM.add_job(player_owner, JobManager.Type.ATTACK, target, self, true) # personal, auto-assigned to self
 	return true
 
 func _pick_enemy_tank(enemies: Array) -> Unit:
-	var um = Global.UM
-	if not um:
-		return null
 	var candidates: Array = []
-	for u in um.units():
+	for u in Global.UM.units():
 		if u.type != UnitManager.Type.TANK:
 			continue
 		if u.player_owner not in enemies:
@@ -192,8 +184,7 @@ func _tick_limpet(delta: float) -> void:
 			global_position = tank.global_position
 		var amount: float = Config.VIRUS_TANK_DRAIN_DPS * delta
 		target.apply_damage(amount)
-		if Global.SM:
-			Global.SM.record_damage_done(player_owner, amount)
+		Global.SM.record_damage_done(player_owner, amount)
 
 func _tick_building_infection(delta: float) -> void:
 	if _infection_duration <= 0.0:
