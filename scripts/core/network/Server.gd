@@ -15,6 +15,11 @@ var enet_peer: ENetMultiplayerPeer
 var peer_to_player: Dictionary = {}
 var player_to_peer: Dictionary = {}
 var next_player_num: int = 1
+# Per-player camera mode (VideoManager.CameraStatus) reported by each client
+# via _cmd_camera_mode. Used by server sims that depend on the *owner's* camera
+# state (e.g. avatar VIRUS-detect radius). Defaults to OVERHEAD until a client
+# reports FPS.
+var camera_mode: Dictionary = {}
 # False until the host has set up and entered the lobby; clients connecting
 # before that are rejected so they get a connection failure instead of joining.
 var accepting_clients: bool = false
@@ -192,6 +197,14 @@ func _cmd_clear_empower(player_number: int) -> void:
 	var bm = Global.BM
 	if bm:
 		bm.clear_empowered_for_player(player_number)
+
+# --- Client camera state (used by server sims, not a game action) ---
+
+func _cmd_camera_mode(player_number: int, mode: int) -> void:
+	camera_mode[player_number] = mode
+
+func get_camera_mode(player_number: int) -> int:
+	return camera_mode.get(player_number, VideoManager.CameraStatus.OVERHEAD)
 
 # --- Debug helpers (server-authoritative so they work from any peer) ---
 

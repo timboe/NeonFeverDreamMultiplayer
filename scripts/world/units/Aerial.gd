@@ -140,6 +140,8 @@ func _spawn_projectile() -> void:
 	var to = combat_manager.combat_target_position(combat_target)
 	projectile.global_position = from
 	var ph = get_node_or_null("/root/World/ProjectilesHolder")
+	if not ph:
+		return
 	ph.add_child(projectile)
 	# On the server, CombatManager primes _projectile_delay right before incrementing
 	# combat_fire_event, so the cache is fresh here. Remote clients don't run

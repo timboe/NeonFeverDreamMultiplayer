@@ -175,18 +175,19 @@ func initialise(b: Building) -> void:
 	move_tween.tween_callback(idle_callback)
 
 func _process(delta: float) -> void:
+	var max_hp: float = Config.UNIT_MAX_HP.get(type, 100.0)
 	if _health_bar:
-		_health_bar.set_health(health, Config.UNIT_MAX_HP.get(type, 100.0))
+		_health_bar.set_health(health, max_hp)
 
 	update_weapon_aim(delta)
 	_update_combat_visuals(delta)
 
 	# If under repair (on server)
-	if multiplayer.is_server() and health < Config.UNIT_MAX_HP.get(type, 100.0) and type in Config.SELF_HEALING_UNITS:
+	if multiplayer.is_server() and health < max_hp and type in Config.SELF_HEALING_UNITS:
 		_repair_timer += delta
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL
-			health += REPAIR_AMOUNT
+			health = minf(health + REPAIR_AMOUNT, max_hp)
 
 # --- Job assignment ---
 

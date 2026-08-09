@@ -254,8 +254,10 @@ func _scan_avatar(avatar: Unit) -> void:
 	# Ground-level spotting: an enemy Avatar uncloaks cloaked VIRUS within its
 	# sight radius + LoS. FPS sees 3-4 tiles, RTS only 1 tile (DESIGN). The
 	# avatar lives in its FPSBody, so range/LoS originate from the body.
+	# Camera mode is per-player: the local avatar uses the host's own camera,
+	# remote avatars use the mode each client reports via _cmd_camera_mode.
 	var radius := Config.AVATAR_VIRUS_DETECT_RADIUS_FPS
-	if Global.VM.camera_status == VideoManager.CameraStatus.OVERHEAD:
+	if _avatar_camera_mode(avatar.player_owner) == VideoManager.CameraStatus.OVERHEAD:
 		radius = Config.AVATAR_VIRUS_DETECT_RADIUS_RTS
 	var origin := avatar._get_muzzle_global()
 	for c in Global.UM.units():
@@ -268,6 +270,14 @@ func _scan_avatar(avatar: Unit) -> void:
 			continue
 		if _has_los(origin, to, [avatar, c]):
 			c.uncloak()
+
+func _avatar_camera_mode(pnum: int) -> int:
+	if pnum == Global.my_player_number:
+		return Global.VM.camera_status
+	var nm = Global.network_manager
+	if nm and nm.server:
+		return nm.server.get_camera_mode(pnum)
+	return VideoManager.CameraStatus.OVERHEAD
 
 func _update_firing(delta: float) -> void:
 	for u in Global.UM.units():

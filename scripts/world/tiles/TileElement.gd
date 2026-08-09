@@ -237,7 +237,7 @@ func do_toggle_countdown(z: Unit) -> void:
 	var pnum = z.player_owner
 	assert(pnum not in _working_unit_dict)
 	var t = create_tween()
-	t.tween_callback(begin_toggle).set_delay(TOGGLE_COUNTDOWN_TIME)
+	t.tween_callback(begin_toggle.bind(pnum)).set_delay(TOGGLE_COUNTDOWN_TIME)
 	_working_unit_dict[pnum] = {"unit": z, "job_id": z.job["id"], "countdown_tween": t}
 	Global.TM.rpc("rpc_toggle_animation", id, 0, pnum) # MODE 0
 
@@ -270,17 +270,12 @@ func _cancel_other_workers(except_pnum: int) -> void:
 		Global.TM.rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
 
 # Point of no return - raising or lowering if this gets called.
-func begin_toggle() -> void:
+# The firing player is bound into the countdown tween callback (do_toggle_countdown),
+# never inferred from dict order.
+func begin_toggle(active_pnum: int) -> void:
 	if not multiplayer.is_server():
 		return
-	# Find which player's countdown fired
-	var active_pnum := -1
-	for pnum in _working_unit_dict:
-		var entry = _working_unit_dict[pnum]
-		if entry["countdown_tween"] != null:
-			active_pnum = pnum
-			break
-	if active_pnum == -1:
+	if not _working_unit_dict.has(active_pnum):
 		return
 	_working_unit_dict[active_pnum]["countdown_tween"] = null
 

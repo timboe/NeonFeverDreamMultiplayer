@@ -30,6 +30,9 @@ func initialise(b: Building) -> void:
 	_beam_node.material_override = mat
 	_beam_node.visible = false
 	var ph = get_node_or_null("/root/World/ProjectilesHolder")
+	if not ph:
+		push_warning("Tank.initialise: ProjectilesHolder not found, beam disabled")
+		return
 	ph.add_child(_beam_node)
 	tree_exiting.connect(_beam_node.queue_free)
 

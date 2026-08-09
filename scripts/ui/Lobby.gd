@@ -7,6 +7,7 @@ class_name Lobby
 
 var remote_needed: int = 0
 var slot_labels: Array[Label] = []
+var _started: bool = false
 
 func _ready():
 	UiFX.apply_menu_backdrop($Background)
@@ -105,6 +106,11 @@ func rpc_receive_lobby_state(slots: Array, connected_remote: int) -> void:
 func _start_game():
 	# Called on the host when all remote slots are filled.
 	# Broadcasts the transition RPC, then transitions locally.
+	# Guarded: peer connect/disconnect events can both land in the same frame
+	# window, which would otherwise double-fire the scene transition.
+	if _started:
+		return
+	_started = true
 	if Global.network_manager.server:
 		Global.network_manager.server.accepting_clients = false
 		if multiplayer.peer_connected.is_connected(_on_peer_connected):

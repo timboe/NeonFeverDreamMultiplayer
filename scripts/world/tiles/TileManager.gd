@@ -269,7 +269,12 @@ func recompute_aoe() -> void:
 	# player_aoe_rings: BFS from each player's MCP, restricted to their AoE
 	player_aoe_rings.clear()
 	for pnum in player_aoe_totals:
-		var mcp_tile_id = Global.level.MCP_ARRAY[pnum - 1]
+		# A player may have AoE (placed generators etc.) without an MCP entry in
+		# the level (e.g. MAX_PLAYERS=4 but only 3 MCPs) — skip the ring BFS.
+		var mcp_idx: int = pnum - 1
+		if mcp_idx < 0 or mcp_idx >= Global.level.MCP_ARRAY.size():
+			continue
+		var mcp_tile_id = Global.level.MCP_ARRAY[mcp_idx]
 		if not tile_dictionary.has(mcp_tile_id):
 			continue
 		var mcp_tile = tile_dictionary[mcp_tile_id]

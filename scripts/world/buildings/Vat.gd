@@ -153,11 +153,14 @@ func _destroy_pool() -> void:
 # --- Damage / repair ---
 
 func _apply_damage(damage: float) -> void:
-	Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		if pool_master != null:
+			# Member vats forward to the master — record stats only at the
+			# actual damage site (the master), so pooled damage isn't counted
+			# once per member.
 			pool_master._apply_damage(damage)
 			return
+		Global.SM.record_damage_received(player_owner, damage)
 		health -= damage
 		_sync_pool_health()
 		if health <= 0:
@@ -166,6 +169,7 @@ func _apply_damage(damage: float) -> void:
 			_destroy_pool()
 	else:
 		# Under construction — no pool involvement (base behaviour).
+		Global.SM.record_damage_received(player_owner, damage)
 		_construction_energy_spent -= damage
 		if _construction_energy_spent <= 0:
 			_construction_energy_spent = 0

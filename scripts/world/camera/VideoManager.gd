@@ -94,6 +94,8 @@ func exit_fps_immediate() -> void:
 		_cam_tween = null
 	camera_status = CameraStatus.OVERHEAD
 	overhead_camera.current = true
+	# Keep the server's per-player camera state in sync (avatar VIRUS-detect radius).
+	Global.send_command_me("camera_mode", [int(camera_status)])
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera") if avatar else null
 	if fps_camera:
 		fps_camera.current = false
@@ -138,6 +140,8 @@ func to_fps_cam_end() -> void:
 	_cam_tween = null
 	# Re-entering FPS clears the player's empowered building (see empower flow).
 	Global.send_command_me("clear_empower", [])
+	# Keep the server's per-player camera state in sync (avatar VIRUS-detect radius).
+	Global.send_command_me("camera_mode", [int(camera_status)])
 
 func to_overhead_cam_start() -> void:
 	camera_status = CameraStatus.TO_OVERHEAD
@@ -172,6 +176,8 @@ func to_overhead_cam_end() -> void:
 	camera_status = CameraStatus.OVERHEAD
 	_cam_tween = null
 	call_deferred("_show_mouse")
+	# Keep the server's per-player camera state in sync (avatar VIRUS-detect radius).
+	Global.send_command_me("camera_mode", [int(camera_status)])
 
 func quat_transform(amount: float) -> void:
 	var mid = quat_from.slerp(quat_to, amount)

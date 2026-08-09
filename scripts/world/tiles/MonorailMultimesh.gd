@@ -237,6 +237,7 @@ func _tween_edge(mm_id: int, collision: CollisionShape3D, target_y: float, durat
 	var start_y := multimesh.get_instance_transform(mm_id).origin.y
 	var tween := create_tween()
 	_active_tweens[mm_id] = tween
+	tween.finished.connect(func() -> void: _active_tweens.erase(mm_id))
 	tween.tween_method(func(y: float):
 		_set_instance_y(mm_id, collision, y)
 	, start_y, target_y, duration)
@@ -256,6 +257,7 @@ func _tween_cap(mm_id: int, target_y: float, duration: float) -> void:
 	var start_y := _cap_mm.multimesh.get_instance_transform(mm_id).origin.y
 	var tween := create_tween()
 	_cap_active_tweens[mm_id] = tween
+	tween.finished.connect(func() -> void: _cap_active_tweens.erase(mm_id))
 	tween.tween_method(func(y: float):
 		_set_cap_y(mm_id, y)
 	, start_y, target_y, duration)
