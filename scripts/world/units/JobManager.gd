@@ -222,6 +222,10 @@ func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
 	var etypes: Array = job.get("eligible_types", [])
 	if not etypes.is_empty() and unit.type not in etypes:
 		return false
+	match job["type"]:
+		JobManager.Type.TOGGLE_TILE, JobManager.Type.CONSTRUCT_BUILDING, JobManager.Type.REPAIR_BUILDING, JobManager.Type.CONSUME_ZOOMBA:
+			if unit.type != UnitManager.Type.ZOOMBA:
+				return false
 	if job.get("patrol_only", false):
 		if unit.type != UnitManager.Type.AERIAL:
 			return false
