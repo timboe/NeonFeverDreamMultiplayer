@@ -79,10 +79,14 @@ func check_work() -> void:
 		var claimed : int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 		# Always keep at least 1 zoomba free
 		if total_zoombas - claimed < 2:
+			_production_energy = 0.0
+			_production_timer = 0.0
 			return
 		# Tank cap based on ratio, minus already claimed zoombas
 		var target_tanks : int = roundi(total_zoombas * zoomba_tank_ratio)
 		if cached_tank_count + claimed >= target_tanks:
+			_production_energy = 0.0
+			_production_timer = 0.0
 			return
 		# Create CONSUME_ZOOMBA job
 		Global.JM.add_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)
@@ -97,6 +101,13 @@ func _can_produce() -> bool:
 	if not super._can_produce():
 		return false
 	if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+		return false
+	var total_zoombas : int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
+	var claimed : int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
+	if total_zoombas - claimed < 2:
+		return false
+	var target_tanks : int = roundi(total_zoombas * zoomba_tank_ratio)
+	if cached_tank_count + claimed >= target_tanks:
 		return false
 	return true
 
