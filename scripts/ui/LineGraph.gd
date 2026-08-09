@@ -159,8 +159,8 @@ func _axis_max(axis: String, start: int) -> float:
 func _nice_ceil(v: float) -> float:
 	if v <= 0.0:
 		return 4.0
-	var exp: float = floor(log(v) / log(10.0))
-	var base: float = pow(10.0, exp)
+	var expn: float = floor(log(v) / log(10.0))
+	var base: float = pow(10.0, expn)
 	var norm := v / base
 	var nice := 10.0
 	if norm <= 1.0:
