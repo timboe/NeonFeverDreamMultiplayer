@@ -71,16 +71,42 @@ func _has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
 		rids.append_array(_collect_collision_rids(n))
 	query.exclude = rids
 	var result = space.intersect_ray(query)
+	# Sight-line graze guard: a ray running exactly along a raised wall tile's
+	# face plane (coplanar incidence) can intermittently thread the wall due to
+	# float precision in the convex-shape test. When the main ray reads clear,
+	# re-cast two rays offset by a small epsilon perpendicular to the sight line
+	# (in XZ); if either grazes a RAISED tile, the line actually clips the wall
+	# and must be blocked.
+	var los_clear := false
 	if result.is_empty():
-		return true
-	var collider = result.collider
-	if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING]:
-		return true
-	var total_dist := from.distance_to(to)
-	var hit_dist := from.distance_to(result.position)
-	if hit_dist >= total_dist - 0.5:
-		return true
-	return false
+		los_clear = true
+	else:
+		var collider = result.collider
+		if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING]:
+			los_clear = true
+		elif collider is TileElement and collider.state == TileManager.State.RAISED:
+			return false
+		else:
+			var total_dist := from.distance_to(to)
+			var hit_dist := from.distance_to(result.position)
+			if hit_dist >= total_dist - 0.5:
+				los_clear = true
+			else:
+				return false
+	if los_clear:
+		var dir := to - from
+		var xz := Vector2(dir.x, dir.z)
+		if xz.length_squared() > 0.0001:
+			var perp := Vector2(-xz.y, xz.x).normalized() * 0.1
+			for side in [-1.0, 1.0]:
+				var off := Vector3(perp.x * side, 0.0, perp.y * side)
+				var qo := PhysicsRayQueryParameters3D.create(from + off, to + off, Config.COMBAT_LOS_MASK, rids)
+				var ro := space.intersect_ray(qo)
+				if not ro.is_empty():
+					var co = ro.collider
+					if co is TileElement and co.state == TileManager.State.RAISED:
+						return false
+	return true
 
 func _collect_collision_rids(node: Node) -> Array[RID]:
 	var rids: Array[RID] = []
@@ -95,7 +121,8 @@ func _can_see(attacker: Unit, target) -> bool:
 	var to = combat_target_position(target)
 	if not _in_range(from, to):
 		return false
-	return _has_los(from, to, [attacker, target])
+	var los := _has_los(from, to, [attacker, target])
+	return los
 
 func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health
@@ -252,6 +279,11 @@ func _update_firing(delta: float) -> void:
 		if not u.combat_target or not is_instance_valid(u.combat_target):
 			continue
 		if not u.is_weapon_aligned():
+			continue
+		# Drop targets that are no longer visible (moved behind a wall/out of
+		# range) — prevents stale-target fire between scans.
+		if not _can_see(u, u.combat_target):
+			u.combat_target = null
 			continue
 		var target = u.combat_target
 		if target is Unit and target.health <= 0:
