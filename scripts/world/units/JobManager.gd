@@ -12,6 +12,10 @@ const DELAY_MAX := 60.0
 var jobs_dict: Dictionary # int (id) -> job dict
 var job_id := -1
 
+# Memoized (from_tile, to_tile) -> path length, valid only within one
+# assign_jobs() pass (see get_pathlength).
+var _path_cache: Dictionary = {}
+
 var debug_enabled := false
 var debug_mesh: ImmediateMesh
 var debug_mesh_instance: MeshInstance3D
@@ -149,6 +153,9 @@ func abandon_job(id_to_abandon: int) -> void:
 func assign_jobs() -> void:
 	if not multiplayer.is_server():
 		return
+	# Path lengths are memoized per assign pass — many idle units share the same
+	# (from, to) tile pairs, so a single A* per pair replaces one per unit.
+	_path_cache.clear()
 	# Remove unassigned jobs that are no longer valid (e.g. destroyed targets).
 	# Assigned jobs are validated by their unit's pathing loop instead.
 	for id_to_check in jobs_dict.keys():
@@ -238,12 +245,16 @@ func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
 	return true
 
 func get_pathlength(from: TileElement, to: TileElement) -> int:
+	var key := from.id * 100000 + to.id
+	if _path_cache.has(key):
+		return _path_cache[key]
 	var shortest := 9999
 	var pm = Global.PM
 	for n in to.get_access_tiles():
 		var dist = pm.pathfind(from, n)
 		if dist.size() != 0 and dist.size() < shortest:
 			shortest = dist.size()
+	_path_cache[key] = shortest
 	return shortest
 
 func check_job_still_valid(job: Dictionary) -> bool:

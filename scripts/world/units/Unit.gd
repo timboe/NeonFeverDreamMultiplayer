@@ -68,6 +68,14 @@ var _laser_timer: float = 0.0
 
 var _health_bar: HealthBar3D
 
+# --- Snapshot caches (set in initialise; read at 20 Hz by GameManager) ---
+# Note: Avatar declares its own typed `fps_body` (CharacterBody3D) — the cache
+# lives under a distinct name to avoid member shadowing.
+
+var zapper_node: Node3D
+var fps_body_node: Node3D
+var _mcp: Building
+
 # --- Queries ---
 
 func get_mode() -> int:
@@ -166,6 +174,10 @@ func initialise(b: Building) -> void:
 	_health_bar.set_bar_size(1.6, 0.2)
 	# Cache pathing manager to avoid repeated absolute path lookups
 	_pathing_manager = Global.PM
+	# Cache node refs read per snapshot (20 Hz) and the owning MCP for scram.
+	zapper_node = get_node_or_null("Zapper")
+	fps_body_node = get_node_or_null("FPSBody") as Node3D
+	_mcp = get_tree().get_first_node_in_group("mcp_player" + str(player_owner)) as Building
 	# Following animates the unit in and starts the callback loop.
 	# This all happens only the server.
 	if not multiplayer.is_server():
@@ -255,12 +267,11 @@ func idle_callback() -> void:
 	# Special considerations if scrambling, always head towards home
 	if scram_count > 0:
 		scram_count -= 1
-		var mcp = get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
-		if mcp and _pathing_manager:
+		if _mcp and is_instance_valid(_mcp) and _pathing_manager:
 			var lowest_dist := 9999
 			var best_target = null
 			for d in possible_destinations:
-				var dist = _pathing_manager.distance(d, mcp.location)
+				var dist = _pathing_manager.distance(d, _mcp.location)
 				if dist < lowest_dist:
 					lowest_dist = dist
 					best_target = d

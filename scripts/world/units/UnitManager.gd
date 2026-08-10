@@ -7,6 +7,12 @@ enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS}
 var unit_dictionary: Dictionary # int (id) -> Unit
 var _next_unit_id: int = 1
 
+# Per-player, per-type unit counts, maintained event-driven in spawn_unit /
+# rpc_remove_unit (both call_local authority RPCs, so the cache stays
+# consistent on every peer). Replaces O(units) scans that ran every frame
+# from production buildings and terminal HUDs.
+var _player_type_counts: Dictionary = {} # pnum -> {type: int}
+
 # --- Lifecycle ---
 
 func _ready() -> void:
@@ -18,11 +24,27 @@ func units() -> Array:
 	return unit_dictionary.values()
 
 func unit_count(pnum: int, type: Type) -> int:
-	var c := 0
-	for u in units():
-		if u.player_owner == pnum and u.type == type:
-			c += 1
-	return c
+	var by_type = _player_type_counts.get(pnum)
+	if by_type == null:
+		return 0
+	return by_type.get(type, 0)
+
+func _count_add(u: Unit) -> void:
+	var by_type = _player_type_counts.get(u.player_owner)
+	if by_type == null:
+		by_type = {}
+		_player_type_counts[u.player_owner] = by_type
+	by_type[u.type] = by_type.get(u.type, 0) + 1
+
+func _count_remove(u: Unit) -> void:
+	var by_type = _player_type_counts.get(u.player_owner)
+	if by_type == null:
+		return
+	var c: int = by_type.get(u.type, 0)
+	if c <= 1:
+		by_type.erase(u.type)
+	else:
+		by_type[u.type] = c - 1
 
 # --- Spawning ---
 
@@ -40,6 +62,7 @@ func spawn_unit(uid: int, type: Type, building: Building) -> void:
 		_: push_error("UnitManager.spawn_unit: unknown type ", type); return
 	add_to_dict_and_scene(uid, u)
 	u.initialise(building)
+	_count_add(u)
 
 func next_unit_id() -> int:
 	var nuid := _next_unit_id
@@ -108,4 +131,5 @@ func rpc_remove_unit(unit_id: int) -> void:
 			# If the local player's avatar died while in FPS, snap back to the RTS camera.
 			if u.player_owner == Global.my_player_number:
 				Global.VM.exit_fps_immediate()
+		_count_remove(u)
 		u.queue_free()

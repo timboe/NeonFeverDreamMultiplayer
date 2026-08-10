@@ -12,9 +12,33 @@ const MAX_SNAPSHOT_BUFFER := 4
 var _snapshot_timer := 0.0
 var _job_timer := 0.0
 var _avatar_snapshot_timer := 0.0
+# Foreign terminal UI refresh runs at 4 Hz instead of every frame/snapshot.
+const TERMINAL_REFRESH_INTERVAL := 0.25
+var _terminal_refresh_timer := 0.0
 
 var _snapshots: Array = []
 var _avatar_snapshots: Dictionary = {}
+
+# Scratch buffer reused by _pack_unit (server, 20 Hz) instead of allocating a
+# fresh 10-float array per unit per snapshot.
+var _pack_scratch: PackedFloat64Array
+# Client-side interpolation scratch (per unit per frame).
+var _interp_scratch: Array[float] = []
+
+# Cached per-player avatar nodes: group lookups with string concat were running
+# every server frame (_interpolate_avatars) and at 20 Hz client-side
+# (_send_avatar_snapshot). Entries expire after AVATAR_CACHE_TTL seconds.
+const AVATAR_CACHE_TTL: float = 1.0
+var _avatar_cache: Dictionary = {} # pnum -> {"avatar": Node, "time": float}
+
+func _get_avatar(pnum: int) -> Unit:
+	var now := Time.get_ticks_msec() / 1000.0
+	var entry = _avatar_cache.get(pnum)
+	if entry != null and entry["time"] > now - AVATAR_CACHE_TTL and is_instance_valid(entry["avatar"]):
+		return entry["avatar"]
+	var avatar := get_tree().get_first_node_in_group("avatar_player" + str(pnum)) as Unit
+	_avatar_cache[pnum] = {"avatar": avatar, "time": now}
+	return avatar
 
 # --- Game start gate ---
 
@@ -46,6 +70,7 @@ func _process(delta: float) -> void:
 				_avatar_snapshot_timer -= AVATAR_SEND_INTERVAL
 				_send_avatar_snapshot()
 			_interpolate()
+		_throttled_terminal_refresh(delta)
 		return
 	# Server
 	if not Global.game_started:
@@ -66,6 +91,13 @@ func _process(delta: float) -> void:
 		Global.JM.assign_jobs()
 		for b in Global.BM.buildings():
 			b.check_work()
+	_throttled_terminal_refresh(delta)
+
+func _throttled_terminal_refresh(delta: float) -> void:
+	_terminal_refresh_timer += delta
+	if _terminal_refresh_timer >= TERMINAL_REFRESH_INTERVAL:
+		_terminal_refresh_timer = 0.0
+		refresh_foreign_building_terminals()
 
 # --- Game start gate ---
 
@@ -167,10 +199,9 @@ func _send_snapshot() -> void:
 		data.append(u.type)
 		_pack_unit(data, u)
 	rpc("apply_snapshot", data)
-	refresh_foreign_building_terminals()
 
 func _send_avatar_snapshot() -> void:
-	var avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
+	var avatar := _get_avatar(Global.my_player_number)
 	if not avatar:
 		return
 	var cam = Global.VM
@@ -181,7 +212,10 @@ func _send_avatar_snapshot() -> void:
 	rpc_id(1, "receive_avatar_snapshot", data)
 
 func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
-	var slots := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	if _pack_scratch.size() != SLOT_COUNT:
+		_pack_scratch.resize(SLOT_COUNT)
+	_pack_scratch.fill(0.0)
+	var slots := _pack_scratch
 	match u.type:
 		UnitManager.Type.ZOOMBA:
 			slots[0] = u.global_position.x
@@ -190,17 +224,15 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 			slots[3] = u.global_rotation.y
 			slots[4] = u.state
 			slots[5] = u.health
-			var zapper = u.get_node_or_null("Zapper")
-			if zapper:
-				slots[6] = zapper.visible
-				slots[7] = zapper.target_position.y
+			if u.zapper_node:
+				slots[6] = 1.0 if u.zapper_node.visible else 0.0
+				slots[7] = u.zapper_node.target_position.y
 		UnitManager.Type.AVATAR:
-			var body = u.get_node_or_null("FPSBody") as Node3D
-			if body:
-				slots[0] = body.global_position.x
-				slots[1] = body.global_position.y
-				slots[2] = body.global_position.z
-				slots[3] = body.global_rotation.y
+			if u.fps_body_node:
+				slots[0] = u.fps_body_node.global_position.x
+				slots[1] = u.fps_body_node.global_position.y
+				slots[2] = u.fps_body_node.global_position.z
+				slots[3] = u.fps_body_node.global_rotation.y
 			slots[4] = u.health
 		UnitManager.Type.TANK:
 			slots[0] = u.global_position.x
@@ -227,8 +259,7 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 			slots[6] = 1.0 if u.cloaked else 0.0
 	slots[8] = _encode_target(u.combat_target)
 	slots[9] = float(u.combat_fire_event)
-	for s in slots:
-		data.append(s)
+	data.append_array(_pack_scratch)
 
 static func _encode_target(target) -> float:
 	if target and is_instance_valid(target):
@@ -357,6 +388,7 @@ func receive_avatar_snapshot(data: PackedFloat64Array) -> void:
 
 func clear_avatar_snapshots(pnum: int) -> void:
 	_avatar_snapshots.erase(pnum)
+	_avatar_cache.erase(pnum)
 
 # --- Client: interpolation ---
 
@@ -403,11 +435,11 @@ func _apply_interpolated(s0: Dictionary, s1: Dictionary, t: float) -> void:
 			continue
 		var e1 = s1["buildings"][id_val]
 		_apply_building(b, e1["slots"])
-	refresh_foreign_building_terminals()
 
 func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float, type_val: int) -> void:
-	var slots: Array[float] = []
-	slots.resize(SLOT_COUNT)
+	if _interp_scratch.size() != SLOT_COUNT:
+		_interp_scratch.resize(SLOT_COUNT)
+	var slots := _interp_scratch
 	match type_val:
 		UnitManager.Type.ZOOMBA:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
@@ -467,7 +499,6 @@ func _apply_snapshot_entities(snapshot: Dictionary) -> void:
 			continue
 		var e = snapshot["buildings"][id_val]
 		_apply_building(b, e["slots"])
-	refresh_foreign_building_terminals()
 
 func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 	if not u:
@@ -479,15 +510,13 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.rotation.y = slots[3]
 			u.state = slots[4]
 			u.health = slots[5]
-			var zapper = u.get_node_or_null("Zapper")
-			if zapper:
-				zapper.visible = slots[6]
-				zapper.target_position.y = slots[7]
+			if u.zapper_node:
+				u.zapper_node.visible = slots[6] > 0.5
+				u.zapper_node.target_position.y = slots[7]
 		UnitManager.Type.AVATAR:
-			var body = u.get_node_or_null("FPSBody") as Node3D
-			if body:
-				body.global_position = Vector3(slots[0], slots[1], slots[2])
-				body.rotation.y = slots[3]
+			if u.fps_body_node:
+				u.fps_body_node.global_position = Vector3(slots[0], slots[1], slots[2])
+				u.fps_body_node.rotation.y = slots[3]
 			u.health = slots[4]
 		UnitManager.Type.TANK:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
@@ -566,7 +595,7 @@ func _interpolate_avatars() -> void:
 		var snaps = _avatar_snapshots[pnum]
 		if snaps.is_empty():
 			continue
-		var avatar = get_tree().get_first_node_in_group("avatar_player" + str(pnum))
+		var avatar = _get_avatar(pnum)
 		if not avatar:
 			continue
 		# A player's avatar buffer isn't flushed on death, so it can still hold

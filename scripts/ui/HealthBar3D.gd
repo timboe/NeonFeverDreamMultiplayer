@@ -12,6 +12,12 @@ const DEFAULT_HEIGHT: float = 0.15
 var _mesh: MeshInstance3D
 var _material: ShaderMaterial
 
+# --- Frame caches ---
+
+var _cam: Camera3D
+var _cam_refresh_timer := 0.0
+var _last_fraction := -1.0
+
 # --- Lifecycle ---
 
 func _ready() -> void:
@@ -27,12 +33,17 @@ func _ready() -> void:
 	_mesh.material_override = _material
 	add_child(_mesh)
 
-func _process(_delta: float) -> void:
-	var cam = get_viewport().get_camera_3d()
-	if cam:
-		var diff: Vector3 = cam.global_position - global_position
+func _process(delta: float) -> void:
+	# Camera lookup is expensive across 100+ bars — refresh at 4 Hz and
+	# slow-follow; the bars are small, so the lag is invisible.
+	_cam_refresh_timer -= delta
+	if _cam_refresh_timer <= 0.0:
+		_cam_refresh_timer = 0.25
+		_cam = get_viewport().get_camera_3d()
+	if _cam:
+		var diff: Vector3 = _cam.global_position - global_position
 		if absf(diff.x) > 0.001 or absf(diff.z) > 0.001:
-			look_at(cam.global_position, Vector3.UP)
+			look_at(_cam.global_position, Vector3.UP)
 
 # --- API ---
 
@@ -45,6 +56,9 @@ func set_health(current: float, maximum: float) -> void:
 		return
 	_mesh.visible = true
 	var fraction := clampf(current / maximum, 0.0, 1.0)
+	if absf(fraction - _last_fraction) < 0.005:
+		return
+	_last_fraction = fraction
 	_material.set_shader_parameter("fraction", fraction)
 
 func set_fill_color(color: Color) -> void:

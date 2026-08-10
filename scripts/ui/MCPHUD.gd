@@ -6,6 +6,11 @@ class_name MCPHUD
 
 var building: Building
 
+# Terminal HUDs refresh at 4 Hz — unit counts and spawn energy only change
+# meaningfully on production cadence, not every frame.
+const REFRESH_INTERVAL := 0.25
+var _refresh_timer := 0.0
+
 @onready var count_label: Label = $Window/VBox/ZoombaRow/CountLabel
 @onready var avatar_count_label: Label = $Window/VBox/AvatarRow/AvatarCountLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/SpawnRow/SpawnBar
@@ -24,9 +29,13 @@ func _on_empower_pressed() -> void:
 
 # --- Lifecycle ---
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not building or not count_label or not health_bar:
 		return
+	_refresh_timer += delta
+	if _refresh_timer < REFRESH_INTERVAL:
+		return
+	_refresh_timer = 0.0
 	var mcp := building as MCP
 	if not mcp:
 		return

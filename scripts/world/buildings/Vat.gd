@@ -51,10 +51,13 @@ func _process(delta: float) -> void:
 	super._process(delta)
 	if liquid == null or state != State.CONSTRUCTED:
 		return
-	var e = Global.EM.get_player_energy(player_owner)
+	# Read the synced energy dicts directly — get_player_energy() allocated a
+	# fresh Dictionary per frame per vat.
+	var stored: float = Global.EM.energy.get(player_owner, 0.0)
+	var cap: float = Global.EM.capacity.get(player_owner, 0.0)
 	var fraction := 0.0
-	if e.capacity > 0:
-		fraction = e.current / e.capacity
+	if cap > 0.0:
+		fraction = stored / cap
 	liquid.position.y = EMPTY_Y + fraction * HEIGHT
 
 # --- Shared health pool (server-side only) ---

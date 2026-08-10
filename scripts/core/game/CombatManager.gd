@@ -3,6 +3,18 @@ class_name CombatManager
 
 var _scan_timer := 0.0
 
+# LOS cache: raycasts are only run on the first query per (attacker, target)
+# pair, then reused while both endpoints stay within LOS_CACHE_TOL of their
+# cached positions. The cache is cleared (_los_dirty) on any tile-state or
+# building change that can alter sight lines, so a stale LOS can never persist
+# past a wall raise/place/remove.
+const LOS_CACHE_TOL2: float = 4.0 # 2.0 units, squared
+var _los_cache: Dictionary = {} # Unit -> {target_key: {"from", "to", "los"}}
+var _los_dirty := true
+
+func _invalidate_los() -> void:
+	_los_dirty = true
+
 func _ready() -> void:
 	Global.CM = self
 
@@ -117,12 +129,32 @@ func _collect_collision_rids(node: Node) -> Array[RID]:
 	return rids
 
 func _can_see(attacker: Unit, target) -> bool:
-	var from = attacker._get_muzzle_global()
-	var to = combat_target_position(target)
+	if _los_dirty:
+		_los_cache.clear()
+		_los_dirty = false
+	var from: Vector3 = attacker._get_muzzle_global()
+	var to: Vector3 = combat_target_position(target)
 	if not _in_range(from, to):
 		return false
+	var key := _los_target_key(target)
+	var by_attacker: Dictionary = _los_cache.get(attacker)
+	if by_attacker == null:
+		by_attacker = {}
+		_los_cache[attacker] = by_attacker
+	var entry = by_attacker.get(key)
+	if entry != null and entry["from"].distance_squared_to(from) < LOS_CACHE_TOL2 \
+		and entry["to"].distance_squared_to(to) < LOS_CACHE_TOL2:
+		return entry["los"]
 	var los := _has_los(from, to, [attacker, target])
+	by_attacker[key] = {"from": from, "to": to, "los": los}
 	return los
+
+static func _los_target_key(target) -> int:
+	if target is Unit:
+		return target.id
+	if target is Building:
+		return -target.id
+	return 0
 
 func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health

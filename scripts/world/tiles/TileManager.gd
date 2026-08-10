@@ -224,6 +224,11 @@ func apply_loaded_level() -> void:
 # --- AoE computation ---
 
 func recompute_aoe() -> void:
+	if not multiplayer.is_server():
+		return
+	# Building/AoE changes can alter sight lines — drop cached combat LOS.
+	Global.CM._invalidate_los()
+	Global.EM.invalidate_collections()
 	for t in tiles():
 		t.aoe.clear()
 		t.gen_count = 0
@@ -331,6 +336,8 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 		Global.JM.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
+	# Tile state changes alter sight lines — drop cached combat LOS.
+	Global.CM._invalidate_los()
 
 # --- RPCs ---
 

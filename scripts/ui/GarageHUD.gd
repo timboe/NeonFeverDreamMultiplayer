@@ -17,6 +17,11 @@ var building: Garage
 @onready var patrol_wide_btn: Button = $Window/VBox/PatrolStanceRow/PatrolWideBtn
 
 var _enemy_buttons: Dictionary = {}
+var _mcp: Node
+# Terminal HUDs refresh at 4 Hz — unit counts and ratios change on production
+# cadence, not every frame.
+const REFRESH_INTERVAL := 0.25
+var _refresh_timer := 0.0
 
 func _ready() -> void:
 	if not ratio_slider:
@@ -81,14 +86,20 @@ func _on_patrol_stance(stance: JobManager.Stance) -> void:
 # (from the MCP) times this garage's tank/zoomba ratio.
 func _requested_tanks() -> int:
 	var cap := 0
-	var mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
-	if mcp and mcp.has_method("zoomba_cap"):
-		cap = int(mcp.zoomba_cap())
+	# Cache the MCP ref — group lookup per frame was the hot spot.
+	if _mcp == null or not is_instance_valid(_mcp):
+		_mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
+	if _mcp and _mcp.has_method("zoomba_cap"):
+		cap = int(_mcp.zoomba_cap())
 	return roundi(cap * building.zoomba_tank_ratio)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not building or not prod_btn:
 		return
+	_refresh_timer += delta
+	if _refresh_timer < REFRESH_INTERVAL:
+		return
+	_refresh_timer = 0.0
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
 	var tanks: int = Global.UM.unit_count(building.player_owner, UnitManager.Type.TANK)

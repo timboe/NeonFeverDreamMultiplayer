@@ -18,6 +18,7 @@ const DEBUG_AXIS_COLOR := Color(1.0, 1.0, 1.0)
 
 var _debug_visible: bool = false
 var _debug_gizmo: MeshInstance3D
+var _last_mouse_pos := Vector2(-1.0, -1.0)
 
 # --- Lifecycle ---
 
@@ -39,20 +40,24 @@ func _physics_process(delta: float) -> void:
 	if not is_overhead:
 		return
 	var mouse_pos := get_viewport().get_mouse_position()
-	var from: Vector3 = %CameraRTS.project_ray_origin(mouse_pos)
-	var to: Vector3 = from + %CameraRTS.project_ray_normal(mouse_pos) * 1000.0
-	var query := PhysicsRayQueryParameters3D.create(from, to, 2147483647, [])
-	var result := get_world_3d().direct_space_state.intersect_ray(query)
-	if not result.is_empty():
-		# Horizontal tracking stays exact — snap straight to the cursor's ground hit.
-		position.x = result.position.x
-		position.z = result.position.z
-		var lowered : bool = result.position.y < LOWERED_THRESHOLD
-		desired_height = HEIGHT + (RAISED_BOOST if not lowered else 0.0)
-	else:
-		# Cursor is off the playfield (sky / decorative floor): lift the light
-		# high above the map instead of leaving it hovering over the last tile.
-		desired_height = OFF_MAP_HEIGHT
+	# Full-mask raycast only on mouse movement — the height lerp below still
+	# runs every physics frame.
+	if mouse_pos != _last_mouse_pos:
+		_last_mouse_pos = mouse_pos
+		var from: Vector3 = %CameraRTS.project_ray_origin(mouse_pos)
+		var to: Vector3 = from + %CameraRTS.project_ray_normal(mouse_pos) * 1000.0
+		var query := PhysicsRayQueryParameters3D.create(from, to, 2147483647, [])
+		var result := get_world_3d().direct_space_state.intersect_ray(query)
+		if not result.is_empty():
+			# Horizontal tracking stays exact — snap straight to the cursor's ground hit.
+			position.x = result.position.x
+			position.z = result.position.z
+			var lowered : bool = result.position.y < LOWERED_THRESHOLD
+			desired_height = HEIGHT + (RAISED_BOOST if not lowered else 0.0)
+		else:
+			# Cursor is off the playfield (sky / decorative floor): lift the light
+			# high above the map instead of leaving it hovering over the last tile.
+			desired_height = OFF_MAP_HEIGHT
 	position.y += (desired_height - position.y) * delta * 10.0
 
 # --- Debug gizmo ---

@@ -26,6 +26,10 @@ var building: Nest
 
 var _enemy_buttons: Dictionary = {}
 var _building_buttons: Dictionary = {}
+# Terminal HUDs refresh at 4 Hz — unit counts and ratios change on production
+# cadence, not every frame.
+const REFRESH_INTERVAL := 0.25
+var _refresh_timer := 0.0
 
 func _ready() -> void:
 	if not ratio_slider:
@@ -102,9 +106,13 @@ func _on_building_toggle(t: BuildingManager.Type) -> void:
 		targets.append(t)
 	Global.send_command_me("set_building_targets", [building.id, targets])
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not building or not prod_btn:
 		return
+	_refresh_timer += delta
+	if _refresh_timer < REFRESH_INTERVAL:
+		return
+	_refresh_timer = 0.0
 	prod_btn.text = "PRODUCING" if building._production_enabled else "PAUSED"
 	prod_btn.set_pressed_no_signal(building._production_enabled)
 	virus_label.text = str(Global.UM.unit_count(building.player_owner, UnitManager.Type.VIRUS))

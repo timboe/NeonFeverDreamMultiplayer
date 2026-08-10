@@ -13,6 +13,10 @@ var building: Vat
 @onready var hp_label: Label = $Window/VBox/HPRow/HPLabel
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
+# Terminal HUDs refresh at 4 Hz — energy and pool state change on tick cadence.
+const REFRESH_INTERVAL := 0.25
+var _refresh_timer := 0.0
+
 func _ready() -> void:
 	if not empower_btn:
 		return
@@ -22,9 +26,13 @@ func _ready() -> void:
 func _on_empower_pressed() -> void:
 	_empower_building(building)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not building or not energy_bar:
 		return
+	_refresh_timer += delta
+	if _refresh_timer < REFRESH_INTERVAL:
+		return
+	_refresh_timer = 0.0
 	var e = Global.EM.get_player_energy(building.player_owner)
 	energy_bar.max_value = e.capacity
 	energy_bar.value = e.current

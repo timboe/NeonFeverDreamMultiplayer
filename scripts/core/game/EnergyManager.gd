@@ -31,6 +31,14 @@ var _req_history: Dictionary = {}
 
 var _tick_timer := 0.0
 
+# Cached "generator" group membership, rebuilt on demand (see
+# invalidate_collections). Group queries at 20 Hz were the hot spot.
+var _generator_cache: Array = []
+var _collections_dirty := true
+
+func invalidate_collections() -> void:
+	_collections_dirty = true
+
 # --- Lifecycle ---
 
 func _ready() -> void:
@@ -67,9 +75,15 @@ func _push_sample(history: Array, rolling: Dictionary, key: int, sample: float) 
 		rolling[key] -= history.pop_front()
 
 func _energy_tick() -> void:
-	var generators := get_tree().get_nodes_in_group("generator")
+	if _collections_dirty:
+		_generator_cache = get_tree().get_nodes_in_group("generator")
+		_collections_dirty = false
 	var tick_rates: Dictionary = {}
-	for b in generators:
+	for b in _generator_cache:
+		# Defensive: a queued-for-deletion node can linger in the cache between
+		# invalidation and actual free (rpc_remove_building defers queue_free).
+		if not is_instance_valid(b):
+			continue
 		if b.state != Building.State.CONSTRUCTED:
 			continue
 		var gen : float = b.get_energy() * TICK_INTERVAL

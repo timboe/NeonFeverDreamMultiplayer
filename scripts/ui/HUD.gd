@@ -36,6 +36,7 @@ var _btn_pressed: StyleBoxFlat
 var _btn_focus: StyleBoxFlat
 var _btn_disabled: StyleBoxFlat
 var _energy_fill_sb: StyleBoxFlat
+var _low_energy := false
 var _tooltip_tween: Tween
 
 # --- Nodes ---
@@ -102,6 +103,9 @@ func _ready() -> void:
 	# mutate the shared theme fill (which other ProgressBars use).
 	_energy_fill_sb = (energy_bar.get_theme_stylebox("fill") as StyleBoxFlat).duplicate()
 	energy_bar.add_theme_stylebox_override("fill", _energy_fill_sb)
+	# Constant colours — applied once, not re-registered every frame.
+	energy_prod_label.add_theme_color_override("font_color", Config.UI_SUCCESS)
+	energy_cons_label.add_theme_color_override("font_color", Config.UI_WARNING)
 
 func _process(_delta: float) -> void:
 	_update_camera_ui()
@@ -113,15 +117,14 @@ func _process(_delta: float) -> void:
 
 	energy_prod_label.text = "+" + str(int(e.produced)) + "/s"
 	energy_cons_label.text = "-" + str(int(e.consumed)) + "/s"
-	energy_prod_label.add_theme_color_override("font_color", Config.UI_SUCCESS)
-	energy_cons_label.add_theme_color_override("font_color", Config.UI_WARNING)
 
-	if e.capacity > 0 and e.current / e.capacity < 0.2:
-		if _energy_fill_sb:
+	var low_energy: bool = e.capacity > 0 and e.current / e.capacity < 0.2
+	if low_energy != _low_energy and _energy_fill_sb:
+		_low_energy = low_energy
+		if low_energy:
 			_energy_fill_sb.bg_color = Config.UI_DANGER
 			_energy_fill_sb.shadow_color = Color(1, 0.25, 0.25, 0.4)
-	else:
-		if _energy_fill_sb:
+		else:
 			_energy_fill_sb.bg_color = Config.UI_ACCENT
 			_energy_fill_sb.shadow_color = Color(0, 1, 1, 0.4)
 

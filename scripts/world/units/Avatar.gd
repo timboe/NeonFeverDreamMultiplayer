@@ -25,6 +25,8 @@ var dir := Vector3()
 var jaggies: float = 0
 var mouse_initial: bool = true
 var _prev_left_mouse: bool = false
+var _cursor_shown: bool = false
+var _cursor_ray_timer := 0
 # Server-side timestamp of this avatar instance's spawn. Used by GameManager to
 # reject buffered avatar snapshots from the previous incarnation after respawn.
 var server_spawn_time: float = 0.0
@@ -151,6 +153,19 @@ func process_movement(delta: float) -> void:
 # --- Visual ---
 
 func _update_screen_cursor() -> void:
+	# While a cursor is shown, scan every physics frame (clicks need fresh
+	# sampling). Otherwise idle-scan at 10 Hz — clicks in empty space do
+	# nothing, so the reduced rate only delays the cursor's first appearance
+	# by one interval.
+	if _cursor_shown:
+		_run_cursor_scan()
+	else:
+		_cursor_ray_timer += 1
+		if _cursor_ray_timer >= 6:
+			_cursor_ray_timer = 0
+			_run_cursor_scan()
+
+func _run_cursor_scan() -> void:
 	screen_ray.force_raycast_update()
 	var left_mouse := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var just_clicked := left_mouse and not _prev_left_mouse
@@ -173,17 +188,23 @@ func _update_screen_cursor() -> void:
 				var hud_root := building.get_node_or_null("BuildingHUD/Root")
 				if hud_root and hud_root.has_method("uv_from_collision"):
 					var uv: Vector2 = hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())
+					_cursor_shown = true
 					hud_root.drive_cursor_at_uv(uv, left_mouse, just_clicked, just_released)
 					return
 	_hide_all_hud_cursors()
 
 func _release_all_hud_cursors() -> void:
+	if not _cursor_shown:
+		return
 	for b in get_tree().get_nodes_in_group("building"):
 		var hud_root := b.get_node_or_null("BuildingHUD/Root")
 		if hud_root and hud_root.has_method("release_cursor"):
 			hud_root.release_cursor()
 
 func _hide_all_hud_cursors() -> void:
+	if not _cursor_shown:
+		return
+	_cursor_shown = false
 	for b in get_tree().get_nodes_in_group("building"):
 		var hud_root := b.get_node_or_null("BuildingHUD/Root")
 		if hud_root and hud_root.has_method("hide_cursor"):

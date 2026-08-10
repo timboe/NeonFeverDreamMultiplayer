@@ -33,6 +33,10 @@ const ROTOR_POS := [
 
 var _blade_mmi: MultiMeshInstance3D
 var _blade_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
+# Rotor buffer writes at 30 Hz instead of per frame — 4 set_instance_transform
+# calls per airframe per frame were dirtying the MultiMesh buffer 60×/s.
+const ROTOR_INTERVAL := 0.033
+var _rotor_timer := 0.0
 
 @onready var _csg: MeshInstance3D = $CSG
 
@@ -58,9 +62,13 @@ func _process(delta: float) -> void:
 		_blade_mmi = get_node_or_null("Blades")
 	if _blade_mmi == null:
 		return
+	_rotor_timer += delta
+	if _rotor_timer < ROTOR_INTERVAL:
+		return
 	for i in ROTOR_POS.size():
-		_blade_angles[i] += delta * ROTOR_SPEED * ROTOR_DIRS[i]
+		_blade_angles[i] += _rotor_timer * ROTOR_SPEED * ROTOR_DIRS[i]
 		_blade_mmi.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, _blade_angles[i]), ROTOR_POS[i]))
+	_rotor_timer = 0.0
 
 # --- Player branding (called by Aerial.gd after the hull is painted) ---
 

@@ -54,8 +54,6 @@ func _update_orders() -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	if multiplayer.is_server() and state == State.CONSTRUCTED:
-		_update_tank_count()
 
 func _update_tank_count() -> void:
 	cached_tank_count = Global.UM.unit_count(player_owner, UnitManager.Type.TANK)
@@ -66,6 +64,8 @@ func check_work() -> void:
 		return
 	if state != State.CONSTRUCTED:
 		return
+	# Tank count only changes at spawn cadence — refresh on the 1 s tick, not per frame.
+	_update_tank_count()
 	if not _production_enabled:
 		return
 	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job

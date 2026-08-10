@@ -26,6 +26,18 @@ var accepting_clients: bool = false
 
 # --- Lifecycle ---
 
+# Command dispatch tables, built once from the method list. The _cmd_ prefix
+# is the allowlist; arg counts are validated against the stored signatures.
+var _command_table: Dictionary = {} # StringName -> Callable
+var _command_arg_counts: Dictionary = {} # StringName -> int (args after player_number)
+
+func _ready() -> void:
+	for m in get_method_list():
+		var method_name: StringName = m["name"]
+		if String(method_name).begins_with("_cmd_"):
+			_command_table[method_name] = Callable(self, method_name)
+			_command_arg_counts[method_name] = maxi(int(m["args"].size()) - 1, 0)
+
 func start(config: GameConfig) -> void:
 	enet_peer = ENetMultiplayerPeer.new()
 	var err := enet_peer.create_server(config.port, config.player_count)
@@ -44,19 +56,13 @@ func stop() -> void:
 # --- Command dispatch ---
 
 func handle_command(pnum: int, command: String, args: Array) -> void:
-	var method_name := "_cmd_" + command
-	if not has_method(method_name):
+	var method_name := StringName("_cmd_" + command)
+	if not _command_table.has(method_name):
 		push_error("Server: unknown command: ", command)
 		return
-	var method_list = get_method_list()
-	for m in method_list:
-		if m.name == method_name:
-			var expected_args = m.args.size()
-			var provided_args = 1 + args.size()
-			if provided_args != expected_args:
-				push_error("Server: arg count mismatch for ", command, ": got ", provided_args, " expected ", expected_args)
-				return
-			break
+	if args.size() != _command_arg_counts[method_name]:
+		push_error("Server: arg count mismatch for ", command, ": got ", args.size(), " expected ", _command_arg_counts[method_name])
+		return
 	callv(method_name, [pnum] + args)
 
 # --- Peer management ---

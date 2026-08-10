@@ -83,5 +83,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	time += delta
 	if cylinder:
-		cylinder.top_radius = abs(sin(time)) + 0.5
-		cylinder.bottom_radius = cylinder.top_radius
+		# Mutating mesh radii dirties and re-uploads the mesh — only write when
+		# the pulse actually moved by more than a hair.
+		var r := absf(sin(time)) + 0.5
+		if absf(r - cylinder.top_radius) > 0.02:
+			cylinder.top_radius = r
+			cylinder.bottom_radius = r
