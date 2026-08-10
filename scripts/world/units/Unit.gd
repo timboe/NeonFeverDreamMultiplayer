@@ -29,6 +29,9 @@ var job: Dictionary = {}
 var health: float = 100.0
 var scram_count: int = 0
 var _repair_timer := 0.0
+# Lazy-cached per-frame lookups (type is set by subclasses after initialise).
+var _max_hp: float = -1.0
+var _self_heals := false
 
 # --- Pathfinding ---
 
@@ -131,11 +134,10 @@ func _get_muzzle_global() -> Vector3:
 		weapon_node.force_update_transform()
 		return weapon_node.global_position
 	# Avatars live in their FPSBody child — the root stays at spawn, so aim/detect
-	# from the body's real position.
-	var body := get_node_or_null("FPSBody") as Node3D
-	if body:
-		body.force_update_transform()
-		return body.global_position
+	# from the body's real position (ref cached at spawn).
+	if fps_body_node:
+		fps_body_node.force_update_transform()
+		return fps_body_node.global_position
 	return global_position
 
 # --- Combat visuals ---
@@ -187,19 +189,21 @@ func initialise(b: Building) -> void:
 	move_tween.tween_callback(idle_callback)
 
 func _process(delta: float) -> void:
-	var max_hp: float = Config.UNIT_MAX_HP.get(type, 100.0)
+	if _max_hp < 0.0:
+		_max_hp = Config.UNIT_MAX_HP.get(type, 100.0)
+		_self_heals = type in Config.SELF_HEALING_UNITS
 	if _health_bar:
-		_health_bar.set_health(health, max_hp)
+		_health_bar.set_health(health, _max_hp)
 
 	update_weapon_aim(delta)
 	_update_combat_visuals(delta)
 
 	# If under repair (on server)
-	if multiplayer.is_server() and health < max_hp and type in Config.SELF_HEALING_UNITS:
+	if multiplayer.is_server() and _self_heals and health < _max_hp:
 		_repair_timer += delta
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL
-			health = minf(health + REPAIR_AMOUNT, max_hp)
+			health = minf(health + REPAIR_AMOUNT, _max_hp)
 
 # --- Job assignment ---
 

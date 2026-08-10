@@ -269,7 +269,7 @@ func _setup_production(unit_type: UnitManager.Type) -> void:
 # need an access tile to spawn onto. Subclasses that saturate (e.g. MCP at its
 # zoomba cap) override this.
 func _can_produce() -> bool:
-	return not location.get_access_tiles().is_empty()
+	return location.has_access()
 
 func _produce_unit() -> void:
 	if not multiplayer.is_server():

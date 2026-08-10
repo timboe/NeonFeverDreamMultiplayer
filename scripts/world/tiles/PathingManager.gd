@@ -5,6 +5,12 @@ class_name PathingManager
 var astar: AStar3D
 var monorail: MonorailMultimesh
 
+# Memoized (tile pair) -> path. Any graph mutation (connect/disconnect/add)
+# bumps _graph_generation, which clears the cache — a cached path can never
+# outlive an edge change, so results stay exactly as fresh as live A* queries.
+var _path_cache: Dictionary = {} # int (canonical pair key) -> PackedInt64Array
+var _graph_generation := 0
+
 var debug_enabled := false
 var debug_mesh: ImmediateMesh
 var debug_mesh_instance: MeshInstance3D
@@ -54,11 +60,17 @@ func _setup_debug() -> void:
 
 # --- Graph operations ---
 
+func _bump_generation() -> void:
+	_graph_generation += 1
+	_path_cache.clear()
+
 func add_tile(tile: TileElement) -> void:
 	astar.add_point(tile.get_id(), tile.pathing_centre)
+	_bump_generation()
 
 func connect_tiles(from: TileElement, to: TileElement, bidirectional: bool = true) -> void:
 	astar.connect_points(from.get_id(), to.get_id(), bidirectional)
+	_bump_generation()
 	if monorail:
 		monorail.connect_edge(from.get_id(), to.get_id())
 		monorail.cap_raise(from.get_id())
@@ -66,6 +78,7 @@ func connect_tiles(from: TileElement, to: TileElement, bidirectional: bool = tru
 
 func disconnect_tiles(a: TileElement, b: TileElement, bidirectional: bool = true) -> void:
 	astar.disconnect_points(a.get_id(), b.get_id(), bidirectional)
+	_bump_generation()
 	if monorail:
 		monorail.disconnect_edge(a.get_id(), b.get_id())
 
@@ -73,6 +86,7 @@ func disconnect_tile(tile: TileElement) -> void:
 	var tile_id := tile.get_id()
 	for conn_id in astar.get_point_connections(tile_id):
 		astar.disconnect_points(tile_id, conn_id, true)
+	_bump_generation()
 	if monorail:
 		monorail.disconnect_tile_edges(tile_id)
 		monorail.cap_lower(tile_id)
@@ -87,7 +101,16 @@ func are_tiles_connected(a: TileElement, b: TileElement) -> bool:
 	return pathfind(a, b).size() > 0
 
 func pathfind(from: TileElement, to: TileElement) -> PackedInt64Array:
-	return astar.get_id_path(from.get_id(), to.get_id())
+	# The graph is undirected (all connect_points are bidirectional), so cache
+	# by canonical pair. PackedInt64Array is a value type — callers that resize
+	# their own copy cannot corrupt the cache.
+	var key := mini(from.get_id(), to.get_id()) * 100000 + maxi(from.get_id(), to.get_id())
+	var cached = _path_cache.get(key)
+	if cached != null:
+		return cached
+	var path := astar.get_id_path(from.get_id(), to.get_id())
+	_path_cache[key] = path
+	return path
 
 func get_point(id: int) -> Vector3:
 	return astar.get_point_position(id)

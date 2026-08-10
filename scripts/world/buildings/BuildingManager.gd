@@ -85,6 +85,22 @@ func position_all_terminals() -> void:
 			mcp_by_player[pnum] = mcp_nodes[0].location if not mcp_nodes.is_empty() else null
 		b.position_terminal(mcp_by_player[pnum])
 
+# A tile's state change can only affect terminals of buildings whose location is
+# adjacent to it (their access tiles / terminal spots changed). Reposition just
+# those instead of all buildings — per toggle, this is a handful of buildings
+# instead of every one (each with a 25-vertex-pair _compute_edge scan).
+func position_terminals_around(tile: TileElement) -> void:
+	var mcp_by_player: Dictionary = {}
+	for n in tile.neighbours:
+		var b: Building = n.building
+		if b == null:
+			continue
+		var pnum: int = b.player_owner
+		if not mcp_by_player.has(pnum):
+			var mcp_nodes := get_tree().get_nodes_in_group("mcp_player" + str(pnum))
+			mcp_by_player[pnum] = mcp_nodes[0].location if not mcp_nodes.is_empty() else null
+		b.position_terminal(mcp_by_player[pnum])
+
 # --- Blueprint ---
 
 func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void:

@@ -93,7 +93,11 @@ func toggle_selected_by(player_n: int) -> bool:
 
 func set_lowered() -> void:
 	state = TileManager.State.LOWERED
-	_emission_requests.clear()
+	# Only the selection highlight is provably stale here (begin_toggle cleared
+	# selected_by). Generator-catchment / hover / pulse requests self-manage and
+	# must survive — a full clear made the catchment ring flicker off whenever
+	# an adjacent tile finished lowering.
+	release_emission(EmissionEffect.TILE_SELECTED)
 	_apply_emission()
 	var t := transform
 	t.origin.y = -HEIGHT
@@ -126,6 +130,19 @@ func get_access_tiles(require_aoe: int = 0) -> Array[TileElement]:
 			continue
 		result.append(n)
 	return result
+
+# Allocation-free access check — get_access_tiles() built a fresh typed array
+# per call, which production buildings were doing every frame.
+func has_access(require_aoe: int = 0) -> bool:
+	for n in neighbours:
+		if n.building != null:
+			continue
+		if n.state != TileManager.State.LOWERED:
+			continue
+		if require_aoe and require_aoe not in n.aoe:
+			continue
+		return true
+	return false
 
 # --- Lifecycle ---
 
@@ -379,7 +396,7 @@ func done_toggle() -> void:
 		t.origin.y = -Global.TILE_OFFSET
 		transform = t
 		set_tile_mm_height(-Global.TILE_OFFSET)
-	Global.BM.position_all_terminals()
+	Global.BM.position_terminals_around(self)
 	var entries = _working_unit_dict.duplicate()
 	_working_unit_dict.clear()
 	for pnum in entries:
@@ -434,4 +451,4 @@ func _sync_state_after_toggle(dest: float) -> void:
 	state = TileManager.State.LOWERED if dest < -Global.FLOOR_HEIGHT else TileManager.State.RAISED
 
 func _reposition_terminals_after_toggle() -> void:
-	Global.BM.position_all_terminals()
+	Global.BM.position_terminals_around(self)

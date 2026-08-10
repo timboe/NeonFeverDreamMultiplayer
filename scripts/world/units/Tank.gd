@@ -4,7 +4,12 @@ class_name Tank
 
 # --- Combat visuals ---
 
+# Beam transform updates at 20 Hz — _get_muzzle_global() forces the transform
+# chain to sync, which is expensive per frame.
+const BEAM_UPDATE_INTERVAL := 0.05
+
 var _beam_node: MeshInstance3D
+var _beam_update_timer := 0.0
 
 func initialise(b: Building) -> void:
 	super.initialise(b)
@@ -71,24 +76,30 @@ func _update_combat_visuals(delta: float) -> void:
 	super._update_combat_visuals(delta)
 	if _beam_node == null:
 		return
-	if _beam_node.visible and combat_target and is_instance_valid(combat_target):
-		var from = _get_muzzle_global()
-		var to = combat_manager.combat_target_position(combat_target)
-		var dir = to - from
-		var dist = dir.length()
-		if dist < 0.1:
-			_hide_beam()
-			return
-		var y = dir / dist
-		var x = Vector3.UP.cross(y)
-		if x.length_squared() < 0.0001:
-			x = Vector3.RIGHT
-		x = x.normalized()
-		var z = x.cross(y).normalized()
-		var new_basis = Basis(x, y, z)
-		new_basis.x *= 0.35
-		new_basis.y *= dist
-		new_basis.z *= 0.35
-		_beam_node.global_transform = Transform3D(new_basis, from)
-	elif _beam_node:
+	if not _beam_node.visible or not combat_target or not is_instance_valid(combat_target):
 		_beam_node.visible = false
+		return
+	# Transform force-sync is expensive — update the beam at 20 Hz; the burst
+	# visual is a fat cylinder, so the lag is invisible.
+	_beam_update_timer -= delta
+	if _beam_update_timer > 0.0:
+		return
+	_beam_update_timer = BEAM_UPDATE_INTERVAL
+	var from = _get_muzzle_global()
+	var to = combat_manager.combat_target_position(combat_target)
+	var dir = to - from
+	var dist = dir.length()
+	if dist < 0.1:
+		_hide_beam()
+		return
+	var y = dir / dist
+	var x = Vector3.UP.cross(y)
+	if x.length_squared() < 0.0001:
+		x = Vector3.RIGHT
+	x = x.normalized()
+	var z = x.cross(y).normalized()
+	var new_basis = Basis(x, y, z)
+	new_basis.x *= 0.35
+	new_basis.y *= dist
+	new_basis.z *= 0.35
+	_beam_node.global_transform = Transform3D(new_basis, from)

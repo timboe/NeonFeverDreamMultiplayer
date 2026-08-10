@@ -43,9 +43,9 @@ func _poll() -> void:
 		_wheel_cache -= 1 * sign(_wheel_cache)
 	zoom = clamp(zoom, -1, 1)
 	if zoom != 0:
-		if zoom == -1 and position.y == Y_LIMIT.y:
+		if zoom == -1 and is_equal_approx(position.y, Y_LIMIT.y):
 			pass
-		elif zoom == 1 and position.y == Y_LIMIT.x:
+		elif zoom == 1 and is_equal_approx(position.y, Y_LIMIT.x):
 			pass
 		else:
 			var a := deg_to_rad(10 + rotation_degrees.x)

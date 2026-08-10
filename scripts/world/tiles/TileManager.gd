@@ -224,11 +224,12 @@ func apply_loaded_level() -> void:
 # --- AoE computation ---
 
 func recompute_aoe() -> void:
-	if not multiplayer.is_server():
-		return
-	# Building/AoE changes can alter sight lines — drop cached combat LOS.
-	Global.CM._invalidate_los()
-	Global.EM.invalidate_collections()
+	# Deterministic BFS — runs on every peer so clients render AoE claims and
+	# validate blueprint previews locally (no server guard!).
+	if multiplayer.is_server():
+		# Building/AoE changes can alter sight lines — drop cached combat LOS.
+		Global.CM._invalidate_los()
+		Global.EM.invalidate_collections()
 	for t in tiles():
 		t.aoe.clear()
 		t.gen_count = 0

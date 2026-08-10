@@ -34,10 +34,12 @@ func combat_target_position(combat_target : Variant) -> Vector3:
 		return Vector3.ZERO
 	if combat_target is Building:
 		return combat_target.location.pathing_centre + Vector3(0, Cairo.HEIGHT / 2.0, 0)
-	# Avatars live in their FPSBody child — the Unit root stays at spawn, so aim at the body.
-	var body := combat_target.get_node_or_null("FPSBody") as Node3D
-	if body:
-		return body.global_position
+	# Avatars live in their FPSBody child — the Unit root stays at spawn, so aim
+	# at the body. The ref is cached on Unit at spawn (fps_body_node).
+	if combat_target is Unit:
+		var body := combat_target.fps_body_node as Node3D
+		if body:
+			return body.global_position
 	return combat_target.global_position
 func _enemy_list_for(unit: Unit) -> Array[int]:
 	# Explicit enemy list only — no fallback to "everyone". An empty list means
@@ -137,7 +139,7 @@ func _can_see(attacker: Unit, target) -> bool:
 	if not _in_range(from, to):
 		return false
 	var key := _los_target_key(target)
-	var by_attacker: Dictionary = _los_cache.get(attacker)
+	var by_attacker = _los_cache.get(attacker)
 	if by_attacker == null:
 		by_attacker = {}
 		_los_cache[attacker] = by_attacker

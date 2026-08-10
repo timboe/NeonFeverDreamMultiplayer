@@ -37,6 +37,9 @@ func _process(delta: float) -> void:
 # --- Rendering ---
 
 func draw_jaggy_to(dist: float) -> void:
+	if dist <= 0.0:
+		imm_mesh.clear_surfaces()
+		return
 	imm_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	imm_mesh.surface_set_color(Color.WHITE)
 	var pos := Vector3.ZERO

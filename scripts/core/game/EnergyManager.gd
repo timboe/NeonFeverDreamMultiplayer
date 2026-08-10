@@ -115,18 +115,18 @@ func request_energy(pnum: int, amount: float) -> float:
 	# banked surplus is spent at full rate); when it empties, scale requests by
 	# the supply ratio so the remaining production income is split fairly instead
 	# of going first-come-first-served.
-	if energy[pnum] <= 0.0:
+	if energy.get(pnum, 0.0) <= 0.0:
 		var produced: float = _produced.get(pnum, 0.0)
 		if produced > 0.0:
 			# Draw against this tick's production income (plus any residue) so an
 			# empty store doesn't zero out the proportional share. The overdraft
 			# is bounded by one tick of production and repaid next tick.
-			allocated = minf(amount * _ratio.get(pnum, 1.0), maxf(energy[pnum], 0.0) + produced * TICK_INTERVAL)
+			allocated = minf(amount * _ratio.get(pnum, 1.0), maxf(energy.get(pnum, 0.0), 0.0) + produced * TICK_INTERVAL)
 		else:
 			allocated = 0.0
 	else:
-		allocated = minf(amount, energy[pnum])
-	energy[pnum] -= allocated
+		allocated = minf(amount, energy.get(pnum, 0.0))
+	energy[pnum] = energy.get(pnum, 0.0) - allocated
 	_requested_tick[pnum] += amount
 	_consumed_tick[pnum] += allocated
 	return allocated
