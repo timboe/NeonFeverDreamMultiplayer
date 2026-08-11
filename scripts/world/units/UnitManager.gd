@@ -138,5 +138,11 @@ func rpc_remove_unit(unit_id: int) -> void:
 			# If the local player's avatar died while in FPS, snap back to the RTS camera.
 			if u.player_owner == Global.my_player_number:
 				Global.VM.exit_fps_immediate()
+		# Unit debris: its own meshes become physics chunks blasted from the unit
+		# (unit scale, no particle burst). This RPC is call_local so every peer
+		# spawns the same effect simultaneously — cosmetic, no sync. Cloaked
+		# VIRUS deaths stay invisible (no reveal).
+		if not (u is Virus and u.cloaked):
+			DestructionFX.spawn_unit(u)
 		_count_remove(u)
 		u.queue_free()
