@@ -48,7 +48,16 @@ func _ready() -> void:
 		_disable_collision_recursive(c)
 	_hide_controls(self)
 
-func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
+# Build a placement ghost from a freshly instantiated building scene — mirrors
+# everything _ready() applies to the live BlueprintsEnabled/Disabled templates
+# (blueprint materials, hidden Terminal/particles/collision, hidden Controls),
+# so per-placement ghosts never need Node.duplicate() of a live template.
+static func prepare_ghost(ghost: Node, mat: ShaderMaterial) -> void:
+	apply_blueprint_material(ghost, mat)
+	_disable_collision_recursive(ghost)
+	_hide_controls(ghost)
+
+static func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
 	# The Terminal isn't part of the ghost — hide it. (queue_free breaks
 	# Node.duplicate() of the building templates, so we hide instead; the
 	# visible=false override survives duplication into placed ghosts.)

@@ -639,7 +639,7 @@ func apply_damage(amount: float, delay: float = 0.0, attacker: Unit = null) -> v
 		return
 	_apply_damage(amount, attacker)
 
-func _apply_damage(damage: float, attacker: Unit = null) -> void:
+func _apply_damage(damage: float, _attacker: Unit = null) -> void:
 	Global.SM.record_damage_received(player_owner, damage)
 	health -= damage
 	_repair_timer = -REPAIR_DELAY

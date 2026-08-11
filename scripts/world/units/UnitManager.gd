@@ -49,17 +49,24 @@ func _count_remove(u: Unit) -> void:
 # --- Spawning ---
 
 # Note: Ownership of the unit is stored as unit.player_owner
+# Unit scenes are instantiated per spawn (same pattern as buildings) — the
+# @tool-built models (AerialModel, VirusModel) build fresh in _ready, and
+# initialise() re-applies per-player colour/health/groups, so no live factory
+# template duplication is needed.
+const UNIT_SCENES: Dictionary = {
+	Type.ZOOMBA: preload("res://scenes/world/units/Zoomba.tscn"),
+	Type.AVATAR: preload("res://scenes/world/units/Avatar.tscn"),
+	Type.TANK: preload("res://scenes/world/units/Tank.tscn"),
+	Type.AERIAL: preload("res://scenes/world/units/Aerial.tscn"),
+	Type.VIRUS: preload("res://scenes/world/units/Virus.tscn"),
+}
+
 func spawn_unit(uid: int, type: Type, building: Building) -> void:
-	var u = null
-	match type:
-		Type.ZOOMBA: u = $UnitFactory/Zoomba.duplicate()
-		Type.AVATAR: u = $UnitFactory/Avatar.duplicate()
-		Type.TANK: u = $UnitFactory/Tank.duplicate()
-		Type.AERIAL: u = $UnitFactory/Aerial.duplicate()
-		# Virus's model is procedural (@tool, builds in _ready); duplicating the
-		# pre-built factory template would leave a second static copy behind.
-		Type.VIRUS: u = preload("res://scenes/world/units/Virus.tscn").instantiate()
-		_: push_error("UnitManager.spawn_unit: unknown type ", type); return
+	var scene: PackedScene = UNIT_SCENES.get(type)
+	if not scene:
+		push_error("UnitManager.spawn_unit: unknown type ", type)
+		return
+	var u := scene.instantiate() as Unit
 	add_to_dict_and_scene(uid, u)
 	u.initialise(building)
 	_count_add(u)

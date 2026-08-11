@@ -15,12 +15,13 @@ class_name AerialModel
 # each call, so units spawned from the same factory template never share a
 # colour.
 #
-# Duplicate-safe: UnitManager spawns aerials by duplicating the UnitFactory
-# template, so _ready() only builds when the generated nodes are absent, and
-# _process() re-locates the blade MultiMesh against the local tree. Draw-call
-# lean: all repeated geometry is instanced via MultiMesh — four arms share one
-# mesh, four rotor hubs one mesh, four blades one mesh. Total meshes rendered:
-# CSG hull + arms + hubs + blades + sensor + gun barrel = 6 draw calls.
+# Instantiate-safe: UnitManager spawns aerials from the packed scene, so
+# _ready() builds the model once (the has_node("Arms") guard also protects the
+# editor / duplicated legacy copies), and _process() re-locates the blade
+# MultiMesh against the local tree. Draw-call lean: all repeated geometry is
+# instanced via MultiMesh — four arms share one mesh, four rotor hubs one mesh,
+# four blades one mesh. Total meshes rendered: CSG hull + arms + hubs + blades
+# + sensor + gun barrel = 6 draw calls.
 
 const ROTOR_SPEED := 20.0
 const ROTOR_DIRS := [1.0, -1.0, 1.0, -1.0]

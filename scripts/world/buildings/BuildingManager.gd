@@ -103,6 +103,12 @@ func position_terminals_around(tile: TileElement) -> void:
 
 # --- Blueprint ---
 
+func _enabled_blueprint_material() -> ShaderMaterial:
+	var bp = get_node_or_null("BlueprintsEnabled")
+	if bp:
+		return bp.blueprint_enabled
+	return null
+
 func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	if not can_place_here(tile):
 		enabled_blueprints[type].position.y = HIDE_DEPTH
@@ -119,24 +125,30 @@ func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void
 
 # --- Building instances ---
 
+# Preloaded building scenes, instantiated per placement. Replaces duplicating
+# the live factory templates (the old BuildingFactory node is removed):
+# Node.duplicate() on a script-active subtree (instanced BuildingHUD children
+# removed/freed by _setup_hud on every placement) intermittently trips the
+# engine's children-cache accounting ("Index p_index out of bounds" in
+# get_child()). instantiate() builds from packed data and is immune to
+# live-tree state.
+const BUILDING_SCENES: Dictionary = {
+	Type.MCP_1: preload("res://scenes/world/buildings/MCP_1.tscn"),
+	Type.MCP_2: preload("res://scenes/world/buildings/MCP_2.tscn"),
+	Type.MCP_3: preload("res://scenes/world/buildings/MCP_3.tscn"),
+	Type.MCP_4: preload("res://scenes/world/buildings/MCP_4.tscn"),
+	Type.GEN: preload("res://scenes/world/buildings/Generator.tscn"),
+	Type.VAT: preload("res://scenes/world/buildings/Vat.tscn"),
+	Type.GARAGE: preload("res://scenes/world/buildings/Garage.tscn"),
+	Type.BEACON: preload("res://scenes/world/buildings/Beacon.tscn"),
+	Type.NEST: preload("res://scenes/world/buildings/Nest.tscn"),
+}
+
 func new_building_instance(t: Type) -> Node3D:
-	var node_name := ""
-	match t:
-		Type.MCP_1: node_name = "MCP_1"
-		Type.MCP_2: node_name = "MCP_2"
-		Type.MCP_3: node_name = "MCP_3"
-		Type.MCP_4: node_name = "MCP_4"
-		Type.GEN: node_name = "Generator"
-		Type.VAT: node_name = "Vat"
-		Type.GARAGE: node_name = "Garage"
-		Type.BEACON: node_name = "Beacon"
-		Type.NEST: node_name = "Nest"
-		_: return null
-	var factory_node = $BuildingFactory.get_node_or_null(node_name)
-	if not factory_node:
-		push_error("BuildingManager: factory node not found: ", node_name)
+	var scene: PackedScene = BUILDING_SCENES.get(t)
+	if not scene:
 		return null
-	var inst = factory_node.duplicate()
+	var inst := scene.instantiate() as Node3D
 	Blueprints.enable_collision_recursive(inst)
 	return inst
 
@@ -184,7 +196,8 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	# A new building changes access tiles for everyone, so reposition all
 	# terminals (the new building is already in building_dictionary).
 	position_all_terminals()
-	var new_blueprint = enabled_blueprints[type].duplicate()
+	var new_blueprint := new_building_instance(type)
+	Blueprints.prepare_ghost(new_blueprint, _enabled_blueprint_material())
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true
 	add_child(new_blueprint)

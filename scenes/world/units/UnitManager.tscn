@@ -1,16 +1,3 @@
 [gd_scene format=3 uid="uid://gnuq7frg6asq"]
 
-[ext_resource type="PackedScene" uid="uid://64ywqdxbkakh" path="res://scenes/world/units/Zoomba.tscn" id="1_2l7su"]
-[ext_resource type="PackedScene" uid="uid://4efjgde2341f" path="res://scenes/world/units/Avatar.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/world/units/Tank.tscn" id="3_tank"]
-[ext_resource type="PackedScene" path="res://scenes/world/units/Aerial.tscn" id="4_aerial"]
-
 [node name="UnitManager" type="Node3D" unique_id=1175523443]
-
-[node name="UnitFactory" type="Node3D" parent="." unique_id=1544408606]
-visible = false
-
-[node name="Zoomba" parent="UnitFactory" unique_id=685679189 instance=ExtResource("1_2l7su")]
-[node name="Avatar" parent="UnitFactory" unique_id=2088159802 instance=ExtResource("2")]
-[node name="Tank" parent="UnitFactory" instance=ExtResource("3_tank")]
-[node name="Aerial" parent="UnitFactory" instance=ExtResource("4_aerial")]
