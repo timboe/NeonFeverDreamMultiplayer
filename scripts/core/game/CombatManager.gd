@@ -1,6 +1,8 @@
 extends Node3D
 class_name CombatManager
 
+# --- State ---
+
 var _scan_timer := 0.0
 
 # LOS cache: raycasts are only run on the first query per (attacker, target)
@@ -12,7 +14,10 @@ const LOS_CACHE_TOL2: float = 4.0 # 2.0 units, squared
 var _los_cache: Dictionary = {} # Unit -> {target_key: {"from", "to", "los"}}
 var _los_dirty := true
 
-func _invalidate_los() -> void:
+# --- Lifecycle ---
+
+# Called by TileManager on any tile/building change that can alter sight lines.
+func invalidate_los() -> void:
 	_los_dirty = true
 
 func _ready() -> void:
@@ -29,7 +34,9 @@ func _process(delta: float) -> void:
 		_scan_targets()
 	_update_firing(delta)
 
-func combat_target_position(combat_target : Variant) -> Vector3:
+# --- Queries ---
+
+func combat_target_position(combat_target: Variant) -> Vector3:
 	if not combat_target or not is_instance_valid(combat_target):
 		return Vector3.ZERO
 	if combat_target is Building:
@@ -41,6 +48,7 @@ func combat_target_position(combat_target : Variant) -> Vector3:
 		if body:
 			return body.global_position
 	return combat_target.global_position
+
 func _enemy_list_for(unit: Unit) -> Array[int]:
 	# Explicit enemy list only — no fallback to "everyone". An empty list means
 	# the unit attacks nothing. Never include the unit's own team.
@@ -130,7 +138,7 @@ func _collect_collision_rids(node: Node) -> Array[RID]:
 		rids.append_array(_collect_collision_rids(child))
 	return rids
 
-func _can_see(attacker: Unit, target) -> bool:
+func _can_see(attacker: Unit, target: Node3D) -> bool:
 	if _los_dirty:
 		_los_cache.clear()
 		_los_dirty = false
@@ -151,7 +159,7 @@ func _can_see(attacker: Unit, target) -> bool:
 	by_attacker[key] = {"from": from, "to": to, "los": los}
 	return los
 
-static func _los_target_key(target) -> int:
+static func _los_target_key(target: Node3D) -> int:
 	if target is Unit:
 		return target.id
 	if target is Building:
@@ -160,6 +168,8 @@ static func _los_target_key(target) -> int:
 
 func _score_for_damage(dmg: float, health: float) -> float:
 	return dmg * 10.0 - health
+
+# --- Scanning ---
 
 func _scan_targets() -> void:
 	for unit in Global.UM.units():
@@ -318,6 +328,8 @@ func _avatar_camera_mode(pnum: int) -> int:
 	if nm and nm.server:
 		return nm.server.get_camera_mode(pnum)
 	return VideoManager.CameraStatus.OVERHEAD
+
+# --- Firing ---
 
 func _update_firing(delta: float) -> void:
 	for u in Global.UM.units():

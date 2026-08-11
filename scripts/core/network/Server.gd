@@ -11,6 +11,8 @@ class_name Server
 # Command handlers use the _cmd_ prefix for automatic dispatch via
 # reflection -- see handle_command().
 
+# --- State ---
+
 var enet_peer: ENetMultiplayerPeer
 var peer_to_player: Dictionary = {}
 var player_to_peer: Dictionary = {}
@@ -27,12 +29,12 @@ var camera_mode: Dictionary = {}
 # before that are rejected so they get a connection failure instead of joining.
 var accepting_clients: bool = false
 
-# --- Lifecycle ---
-
 # Command dispatch tables, built once from the method list. The _cmd_ prefix
 # is the allowlist; arg counts are validated against the stored signatures.
 var _command_table: Dictionary = {} # StringName -> Callable
 var _command_arg_counts: Dictionary = {} # StringName -> int (args after player_number)
+
+# --- Lifecycle ---
 
 func _ready() -> void:
 	for m in get_method_list():

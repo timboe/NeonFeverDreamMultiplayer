@@ -2,9 +2,13 @@ extends TextureRect
 
 class_name TerminalCursor
 
+# --- Constants ---
+
 # Manual pixel offset applied on top of the image-half alignment in show_at_uv(),
 # to dial the cursor graphic's tip onto the aim point.
 const CURSOR_FINE_TUNE: Vector2 = Vector2(-16, -10)
+
+# --- State ---
 
 var _screen_size: float = Config.TERMINAL_SCREEN_SIZE
 var _hovered: bool = false

@@ -2,10 +2,14 @@ extends Node3D
 
 class_name EnergyManager
 
+# --- Constants ---
+
 const TICK_INTERVAL := 0.05
 const SECOND_INTERVAL := 1.0
 # Number of ticks that make up the full 1s rolling window.
 const HISTORY_SAMPLES: int = int(SECOND_INTERVAL / TICK_INTERVAL)
+
+# --- State ---
 
 var energy: Dictionary = {}
 var capacity: Dictionary = {}
@@ -35,9 +39,6 @@ var _tick_timer := 0.0
 # invalidate_collections). Group queries at 20 Hz were the hot spot.
 var _generator_cache: Array = []
 var _collections_dirty := true
-
-func invalidate_collections() -> void:
-	_collections_dirty = true
 
 # --- Lifecycle ---
 
@@ -86,7 +87,7 @@ func _energy_tick() -> void:
 			continue
 		if b.state != Building.State.CONSTRUCTED:
 			continue
-		var gen : float = b.get_energy() * TICK_INTERVAL
+		var gen: float = b.get_energy() * TICK_INTERVAL
 		if gen > 0.0:
 			tick_rates[b.player_owner] = tick_rates.get(b.player_owner, 0.0) + gen
 	for p in range(1, Global.MAX_PLAYERS + 1):
@@ -105,6 +106,11 @@ func _energy_tick() -> void:
 	_broadcast_energy()
 
 # --- Public API ---
+
+# Called by TileManager whenever the "generator" group membership may have
+# changed (building place/remove/construct), so the 20 Hz tick re-scans it.
+func invalidate_collections() -> void:
+	_collections_dirty = true
 
 func request_energy(pnum: int, amount: float) -> float:
 	if not multiplayer.is_server():

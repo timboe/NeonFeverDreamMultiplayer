@@ -32,11 +32,11 @@ func _process(delta: float) -> void:
 		return
 
 	imm_mesh.clear_surfaces()
-	draw_jaggy_to(target_position.y)
+	_draw_jaggy_to(target_position.y)
 
 # --- Rendering ---
 
-func draw_jaggy_to(dist: float) -> void:
+func _draw_jaggy_to(dist: float) -> void:
 	if dist <= 0.0:
 		imm_mesh.clear_surfaces()
 		return

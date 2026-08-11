@@ -1,12 +1,16 @@
 extends Control
 class_name Lobby
 
+# --- Nodes ---
+
 @onready var slot_container: VBoxContainer = $VBoxContainer/SlotContainer
 @onready var status_label: Label = $VBoxContainer/StatusLabel
 @onready var back_button: Button = $VBoxContainer/BackButton
 
-var remote_needed: int = 0
-var slot_labels: Array[Label] = []
+# --- State ---
+
+var _remote_needed: int = 0
+var _slot_labels: Array[Label] = []
 var _started: bool = false
 # Peers that have confirmed they're inside the Lobby scene (rpc_client_lobby_ready).
 # The host waits for every connected client to report ready before broadcasting
@@ -14,20 +18,23 @@ var _started: bool = false
 # that hasn't loaded (or has already left) the scene.
 var _ready_peers: Dictionary = {}
 var _lobby_wait_timer: Timer
+
+# --- Constants ---
+
 const LOBBY_WAIT_TIMEOUT: float = 10.0
 
-func _ready():
+func _ready() -> void:
 	UiFX.apply_menu_backdrop($Background)
 	if Global.network_manager.server:
 		_setup_host()
 	else:
 		_setup_client()
 
-func _setup_host():
+func _setup_host() -> void:
 	var config = Global.network_manager.config
 	_populate_slots(config.slots, 0)
 
-	if remote_needed == 0:
+	if _remote_needed == 0:
 		_start_game()
 		return
 
@@ -44,7 +51,7 @@ func _setup_host():
 	add_child(_lobby_wait_timer)
 	_update_status()
 
-func _setup_client():
+func _setup_client() -> void:
 	status_label.text = "Connected. Waiting for host to start the game..."
 	back_button.pressed.connect(_on_back)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
@@ -78,7 +85,7 @@ func rpc_client_lobby_ready() -> void:
 	_ready_peers[peer] = true
 	_update_status()
 
-func _on_server_disconnected():
+func _on_server_disconnected() -> void:
 	status_label.text = "Disconnected from host."
 
 # Host only: a client asked for the current lobby state — reply just to them.
@@ -90,13 +97,13 @@ func rpc_request_lobby_state() -> void:
 	var caller := multiplayer.get_remote_sender_id()
 	rpc_id(caller, "rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size())
 
-func _on_peer_connected(_peer_id: int):
+func _on_peer_connected(_peer_id: int) -> void:
 	# Arm the fallback in case this client never reports lobby-ready.
 	if _lobby_wait_timer and _lobby_wait_timer.is_stopped():
 		_lobby_wait_timer.start()
 	call_deferred("_update_status")
 
-func _on_peer_disconnected(peer_id: int):
+func _on_peer_disconnected(peer_id: int) -> void:
 	_ready_peers.erase(peer_id)
 	_update_status()
 
@@ -109,32 +116,32 @@ func _on_lobby_wait_timeout() -> void:
 	var srv = Global.network_manager.server
 	if not srv:
 		return
-	if srv.peer_to_player.size() >= remote_needed:
+	if srv.peer_to_player.size() >= _remote_needed:
 		_broadcast_state()
 		_start_game()
 
-func _update_status():
+func _update_status() -> void:
 	var srv = Global.network_manager.server
 	if not srv:
 		return
 	var connected = srv.peer_to_player.size()
 	_populate_slots(Global.network_manager.config.slots, connected)
-	status_label.text = str(connected) + " / " + str(remote_needed) + " remote players connected"
+	status_label.text = str(connected) + " / " + str(_remote_needed) + " remote players connected"
 	# Only broadcast state / start once every connected client has confirmed it
 	# is inside the Lobby scene — otherwise the broadcast and rpc_start_game
 	# target /root/Lobby on a peer that hasn't loaded the scene yet.
-	if connected >= remote_needed and _ready_peers.size() >= connected:
+	if connected >= _remote_needed and _ready_peers.size() >= connected:
 		_broadcast_state()
 		_start_game()
 
 # Builds/updates the slot labels. Used by the host locally and by clients via
 # rpc_receive_lobby_state. Labels are created once and their text updated.
 func _populate_slots(slots: Array, connected_remote: int) -> void:
-	while slot_labels.size() < slots.size():
+	while _slot_labels.size() < slots.size():
 		var label := Label.new()
 		slot_container.add_child(label)
-		slot_labels.append(label)
-	remote_needed = 0
+		_slot_labels.append(label)
+	_remote_needed = 0
 	var remote_idx := 0
 	for i in range(slots.size()):
 		var text := "P" + str(i + 1) + ": "
@@ -143,14 +150,14 @@ func _populate_slots(slots: Array, connected_remote: int) -> void:
 			GameConfig.SlotType.LOCAL:
 				text += "Host"
 			GameConfig.SlotType.REMOTE:
-				remote_needed += 1
+				_remote_needed += 1
 				text += "Remote (connected)" if remote_idx < connected_remote else "Remote (waiting)"
 				remote_idx += 1
 			GameConfig.SlotType.AI:
 				text += "AI"
 			GameConfig.SlotType.CLOSED:
 				text += "Closed"
-		slot_labels[i].text = text
+		_slot_labels[i].text = text
 
 # Host only: push the current lobby state out to connected clients.
 func _broadcast_state() -> void:
@@ -162,11 +169,11 @@ func _broadcast_state() -> void:
 @rpc("authority", "call_remote", "reliable")
 func rpc_receive_lobby_state(slots: Array, connected_remote: int) -> void:
 	_populate_slots(slots, connected_remote)
-	status_label.text = str(connected_remote) + " / " + str(remote_needed) + " remote players connected"
+	status_label.text = str(connected_remote) + " / " + str(_remote_needed) + " remote players connected"
 	if Global.my_player_number >= 0:
 		status_label.text = "You are Player " + str(Global.my_player_number) + ". " + status_label.text
 
-func _start_game():
+func _start_game() -> void:
 	# Called on the host when all remote slots are filled.
 	# Broadcasts the transition RPC, then transitions locally.
 	# Guarded: peer connect/disconnect events can both land in the same frame
@@ -188,11 +195,11 @@ func _start_game():
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
 @rpc("authority", "call_remote")
-func rpc_start_game():
+func rpc_start_game() -> void:
 	# Executed on each remote client when the host starts the game.
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
-func _on_back():
+func _on_back() -> void:
 	if Global.network_manager:
 		if Global.network_manager.server:
 			Global.network_manager.server.accepting_clients = false

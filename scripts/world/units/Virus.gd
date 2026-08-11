@@ -2,9 +2,14 @@ extends Unit
 
 class_name Virus
 
+# --- Constants ---
+
 # Viewer-relative cloak opacity: the owner keeps a semi-transparent ghost so
 # their own viruses stay trackable, everyone else sees them fully invisible.
 const OWNER_CLOAK_ALPHA := 0.05
+const DECAY_INTERVAL := 0.1
+
+# --- State ---
 
 var cloaked: bool = false
 
@@ -17,10 +22,11 @@ var _recloak_timer: float = 0.0
 # Paused while WORKING (attached/channelling) so a limpet can finish its job.
 var _health_decay_rate: float = 1.25
 var _decay_timer: float = 0.0
-const DECAY_INTERVAL: float = 0.1
 
 # Idle time spent jobless (server) — prevents offense-job thrash.
 var _idle_time := 0.0
+
+# --- Limpet state ---
 
 # Limpet state (server only). One virus attaches to one target; multiple viruses
 # may attach to the same target.
@@ -31,6 +37,8 @@ var _health_at_attach: float = 0.0
 var _infection_duration: float = 0.0
 var _infection_timer: float = 0.0
 var _infection_complete: bool = false
+
+# --- Cloak visuals ---
 
 var _last_cloak_k: float = -1.0
 var _cloak_applied: bool = false
@@ -53,7 +61,7 @@ func _process(delta: float) -> void:
 		if not cloaked and state != State.WORKING:
 			_recloak_timer -= delta
 			if _recloak_timer <= 0.0:
-				recloak()
+				_recloak()
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	_update_cloak_visual()
 
@@ -95,7 +103,7 @@ func uncloak() -> void:
 	_recloak_timer = Config.VIRUS_RECLOAK_COOLDOWN
 	_update_cloak_visual()
 
-func recloak() -> void:
+func _recloak() -> void:
 	cloaked = true
 	_update_cloak_visual()
 

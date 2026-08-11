@@ -23,6 +23,8 @@ class_name AerialModel
 # four blades one mesh. Total meshes rendered: CSG hull + arms + hubs + blades
 # + sensor + gun barrel = 6 draw calls.
 
+# --- Constants ---
+
 const ROTOR_SPEED := 20.0
 const ROTOR_DIRS := [1.0, -1.0, 1.0, -1.0]
 const ROTOR_POS := [
@@ -31,15 +33,21 @@ const ROTOR_POS := [
 	Vector3(-0.95, 0.12, -0.95),
 	Vector3(-0.95, 0.12, 0.95),
 ]
-
-var _blade_mmi: MultiMeshInstance3D
-var _blade_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 # Rotor buffer writes at 30 Hz instead of per frame — 4 set_instance_transform
 # calls per airframe per frame were dirtying the MultiMesh buffer 60×/s.
 const ROTOR_INTERVAL := 0.033
+
+# --- State ---
+
+var _blade_mmi: MultiMeshInstance3D
+var _blade_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _rotor_timer := 0.0
 
+# --- Nodes ---
+
 @onready var _csg: MeshInstance3D = $CSG
+
+# --- Cached primitives ---
 
 static var _hex_mesh_cache: CylinderMesh
 static var _arm_mesh_cache: BoxMesh

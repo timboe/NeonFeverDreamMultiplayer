@@ -4,8 +4,12 @@ class_name LoadingOverlay
 # Full-screen loading screen shown on every peer while the World scene loads and
 # the server waits for all clients to be ready (see GameManager's start gate).
 
+# --- Nodes ---
+
 @onready var progress_label: Label = $Center/ProgressLabel
 @onready var pulse: ColorRect = $Center/PulseBar
+
+# --- State ---
 
 var _pulse_tween: Tween
 

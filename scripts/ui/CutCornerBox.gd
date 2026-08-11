@@ -3,6 +3,8 @@ extends StyleBox
 
 # Sci-fi octagonal panel: each corner is clipped at 45°, with a coloured border.
 
+# --- State ---
+
 var cut := 14.0
 var fill_color := Color(0.02, 0.02, 0.05, 0.92)
 var border_color := Color(0, 1, 1, 0.6)

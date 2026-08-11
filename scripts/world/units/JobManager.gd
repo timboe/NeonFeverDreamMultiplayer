@@ -2,18 +2,24 @@ extends Node3D
 
 class_name JobManager
 
+# --- Types ---
+
 enum Type {NONE, CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT_PERSUE, ATTACK}
 enum Orders {NONE, PATROL, ATTACK}
 enum Stance {WIDE, HOLD}
 
+# --- Constants ---
+
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0
+
+# --- State ---
 
 var jobs_dict: Dictionary # int (id) -> job dict
 var job_id := -1
 
 # Memoized (from_tile, to_tile) -> path length, valid only within one
-# assign_jobs() pass (see get_pathlength).
+# assign_jobs() pass (see _get_pathlength).
 var _path_cache: Dictionary = {}
 
 var debug_enabled := false
@@ -177,9 +183,9 @@ func assign_jobs() -> void:
 			continue
 		if unit.scram_count > 0:
 			continue
-		assign_nearest_job(unit)
+		_assign_nearest_job(unit)
 
-func assign_nearest_job(unit: Unit) -> bool:
+func _assign_nearest_job(unit: Unit) -> bool:
 	var pnum = unit.player_owner
 	var best_job = null
 	var best_dist := 9999
@@ -195,7 +201,7 @@ func assign_nearest_job(unit: Unit) -> bool:
 		var tile := target_tile(job["target"])
 		if tile == null:
 			continue
-		var dist = get_pathlength(unit.location, tile)
+		var dist = _get_pathlength(unit.location, tile)
 		if dist < best_dist:
 			best_dist = dist
 			best_job = job
@@ -244,7 +250,7 @@ func _unit_eligible_for_job(unit: Unit, job: Dictionary) -> bool:
 			return false
 	return true
 
-func get_pathlength(from: TileElement, to: TileElement) -> int:
+func _get_pathlength(from: TileElement, to: TileElement) -> int:
 	var key := from.id * 100000 + to.id
 	if _path_cache.has(key):
 		return _path_cache[key]

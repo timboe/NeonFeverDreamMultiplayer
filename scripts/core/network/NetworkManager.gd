@@ -5,9 +5,13 @@ class_name NetworkManager
 # On a remote machine, connect_to_server() sets up the ENet client peer
 # on the default multiplayer API so commands reach the server via RPC.
 
+# --- State ---
+
 var server: Server
 var ai_controllers: Array[AIController] = []
 var config: GameConfig
+
+# --- Signals ---
 
 # Emitted when a client connect attempt resolves: true = connected, false = failed.
 signal connect_result(success: bool)

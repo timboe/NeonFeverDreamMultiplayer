@@ -7,11 +7,11 @@ class_name Blueprints
 @onready var blueprint_enabled: ShaderMaterial = preload("res://materials/blueprint_enabled.tres")
 @onready var blueprint_disabled: ShaderMaterial = preload("res://materials/blueprint_disabled.tres")
 
-static func _disable_collision_recursive(node: Node) -> void:
+static func disable_collision_recursive(node: Node) -> void:
 	for c in node.get_children():
 		if c is CollisionShape3D:
 			c.disabled = true
-		_disable_collision_recursive(c)
+		disable_collision_recursive(c)
 
 static func _hide_controls(node: Node) -> void:
 	for c in node.get_children():
@@ -36,7 +36,7 @@ static func set_terminal_collision(building: Node, enabled: bool) -> void:
 	if enabled:
 		enable_collision_recursive(terminal)
 	else:
-		_disable_collision_recursive(terminal)
+		disable_collision_recursive(terminal)
 
 func _ready() -> void:
 	if name == "BlueprintsEnabled":
@@ -45,7 +45,7 @@ func _ready() -> void:
 		apply_blueprint_material(self, blueprint_disabled)
 	for c in get_children():
 		c.position.y = BuildingManager.HIDE_DEPTH
-		_disable_collision_recursive(c)
+		disable_collision_recursive(c)
 	_hide_controls(self)
 
 # Build a placement ghost from a freshly instantiated building scene — mirrors
@@ -54,7 +54,7 @@ func _ready() -> void:
 # so per-placement ghosts never need Node.duplicate() of a live template.
 static func prepare_ghost(ghost: Node, mat: ShaderMaterial) -> void:
 	apply_blueprint_material(ghost, mat)
-	_disable_collision_recursive(ghost)
+	disable_collision_recursive(ghost)
 	_hide_controls(ghost)
 
 static func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:

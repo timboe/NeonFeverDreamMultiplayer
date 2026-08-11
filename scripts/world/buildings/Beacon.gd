@@ -2,7 +2,11 @@ extends Building
 
 class_name Beacon
 
+# --- Constants ---
+
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/BeaconHUD.tscn")
+
+# --- State ---
 
 var patrol_strike_ratio: float = 0.5
 var _patrol_stance: JobManager.Stance = JobManager.Stance.WIDE
@@ -29,7 +33,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	orders["strike"]["order"] = JobManager.Orders.ATTACK
 	orders["strike"]["source"] = self
 	_update_orders()
-	
+
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return

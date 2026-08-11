@@ -59,13 +59,13 @@ func _ready() -> void:
 			multimesh.set_instance_custom_data(count, Color())
 			multimesh.set_instance_transform(count, Transform3D(Basis(),
 				Vector3(x * grid_mesh_instance.LENGTH, 0, z * grid_mesh_instance.LENGTH)))
-	current = generate_mountain()
+	current = _generate_mountain()
 	for i in range(EXTENT):
-		update_mountain(initial_mountain_index + i, current[i])
+		_update_mountain(initial_mountain_index + i, current[i])
 
 # --- Mountain generation ---
 
-func mountain_range(x: float) -> float:
+func _mountain_range(x: float) -> float:
 	var s: float
 	match slope:
 		Slope.STEEP:
@@ -89,30 +89,30 @@ func mountain_range(x: float) -> float:
 		slope = Slope.STEEP if rand.randf() > 0.5 else Slope.SHALLOW
 	return r
 
-func update_mountain(i: int, c: Color) -> void:
+func _update_mountain(i: int, c: Color) -> void:
 	multimesh.set_instance_custom_data(i, c)
 
-func generate_mountain() -> Array:
+func _generate_mountain() -> Array:
 	var array := []
 	var previous_mountain: float = 0.1
 	for _i in range(EXTENT):
 		var custom := Color()
 		custom.r = previous_mountain
-		custom.g = mountain_range(custom.r)
-		custom.b = mountain_range(custom.g)
-		custom.a = mountain_range(custom.b)
+		custom.g = _mountain_range(custom.r)
+		custom.b = _mountain_range(custom.g)
+		custom.a = _mountain_range(custom.b)
 		previous_mountain = custom.a
 		array.append(custom)
 	return array
 
 # --- Timer callback ---
 
-func _on_Timer_timeout() -> void:
+func _on_timer_timeout() -> void:
 	current = next if not next.is_empty() else current
-	next = generate_mountain()
-	var tween = create_tween()
+	next = _generate_mountain()
+	var tween := create_tween()
 	tween.set_parallel(true)
 	for i in range(EXTENT):
 		var idx := initial_mountain_index + i
-		tween.tween_method(func(v: Color): update_mountain(idx, v), current[i], next[i], MORPH_TIME) \
+		tween.tween_method(func(v: Color): _update_mountain(idx, v), current[i], next[i], MORPH_TIME) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

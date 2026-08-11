@@ -1,6 +1,8 @@
 extends Control
 class_name MainMenu
 
+# --- Nodes ---
+
 @onready var slots_container: VBoxContainer = $VBoxContainer/ModeTabs/HostSection/SlotsContainer
 @onready var player_count_spin: SpinBox = $VBoxContainer/ModeTabs/HostSection/PlayerCountSpin
 @onready var port_line: LineEdit = $VBoxContainer/ModeTabs/HostSection/PortLine
@@ -10,12 +12,16 @@ class_name MainMenu
 @onready var mode_tabs: TabContainer = $VBoxContainer/ModeTabs
 @onready var connect_error_overlay: ColorRect = $ConnectionErrorOverlay
 
-var slot_option_buttons: Array[OptionButton] = []
+# --- State ---
+
+var _slot_option_buttons: Array[OptionButton] = []
 var _connect_timer: Timer
+
+# --- Constants ---
 
 const CONNECT_TIMEOUT: float = 8.0
 
-func _ready():
+func _ready() -> void:
 	UiFX.apply_menu_backdrop($Background)
 	UiFX.pulse_title($VBoxContainer/Title)
 	mode_tabs.tab_changed.connect(_on_tab_changed)
@@ -29,13 +35,13 @@ func _ready():
 	if "--client" in OS.get_cmdline_args():
 		mode_tabs.current_tab = 1
 
-func _on_tab_changed(_tab_index: int):
+func _on_tab_changed(_tab_index: int) -> void:
 	_update_start_button()
 
-func _update_start_button():
+func _update_start_button() -> void:
 	if mode_tabs.current_tab == 0:
 		var has_remote = false
-		for btn in slot_option_buttons:
+		for btn in _slot_option_buttons:
 			if btn.selected == 1:
 				has_remote = true
 				break
@@ -43,10 +49,10 @@ func _update_start_button():
 	else:
 		start_button.text = "Connect"
 
-func _on_player_count_changed(count: int):
+func _on_player_count_changed(count: int) -> void:
 	for child in slots_container.get_children():
 		child.queue_free()
-	slot_option_buttons.clear()
+	_slot_option_buttons.clear()
 
 	for i in range(count):
 		var hbox = HBoxContainer.new()
@@ -66,35 +72,35 @@ func _on_player_count_changed(count: int):
 			option.selected = 1 if i == 1 else 2
 		option.item_selected.connect(_on_slot_selected.bind(option))
 		hbox.add_child(option)
-		slot_option_buttons.append(option)
+		_slot_option_buttons.append(option)
 		slots_container.add_child(hbox)
 
 	_update_start_button()
 
-func _on_slot_selected(selected_index: int, changed_button: OptionButton):
+func _on_slot_selected(selected_index: int, changed_button: OptionButton) -> void:
 	if selected_index != 0:
 		_update_start_button()
 		return
-	for btn in slot_option_buttons:
+	for btn in _slot_option_buttons:
 		if btn != changed_button and btn.selected == 0:
 			btn.selected = 1
 	_update_start_button()
 
-func _on_start_pressed():
+func _on_start_pressed() -> void:
 	if mode_tabs.current_tab == 0:
 		_start_host()
 	else:
 		_connect_to_server()
 
-func _start_host():
+func _start_host() -> void:
 	var config = GameConfig.new()
 	config.player_count = int(player_count_spin.value)
 	config.port = int(port_line.text)
 
 	config.slots.resize(config.player_count)
 	for i in range(config.player_count):
-		var idx = slot_option_buttons[i].selected
-		config.slots[i] = slot_option_buttons[i].get_item_id(idx) as GameConfig.SlotType
+		var idx = _slot_option_buttons[i].selected
+		config.slots[i] = _slot_option_buttons[i].get_item_id(idx) as GameConfig.SlotType
 
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
 	# Deterministic node name — the server routes RPCs (e.g. set_my_player_number)
@@ -126,7 +132,7 @@ func _start_host():
 	else:
 		get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
-func _connect_to_server():
+func _connect_to_server() -> void:
 	var ip = ip_line.text
 	var port = int(connect_port_line.text)
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
@@ -148,7 +154,7 @@ func _connect_to_server():
 	_connect_timer.start()
 	nm.connect_to_server(ip, port)
 
-func _on_connect_result(success: bool):
+func _on_connect_result(success: bool) -> void:
 	if _connect_timer:
 		_connect_timer.stop()
 	if success:
@@ -161,7 +167,7 @@ func _show_overlay(title: String, message: String) -> void:
 	connect_error_overlay.get_node("DialogPanel/VBox/Message").text = message
 	connect_error_overlay.visible = true
 
-func _handle_connect_failure():
+func _handle_connect_failure() -> void:
 	if _connect_timer:
 		_connect_timer.stop()
 		_connect_timer.queue_free()

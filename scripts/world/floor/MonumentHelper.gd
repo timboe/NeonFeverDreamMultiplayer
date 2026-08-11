@@ -27,7 +27,7 @@ static func add_vertex_alt(mesh_tool: SurfaceTool, edge_tool: SurfaceTool, y: fl
 
 static func add_face(mesh_tool: SurfaceTool, edge_tool: SurfaceTool, height: float,
 	bl: Vector2, tl: Vector2,
-	this_tr: Vector2, br: Vector2) -> void: # var tr otherwise shadows 
+	this_tr: Vector2, br: Vector2) -> void: # var tr otherwise shadows this_tr
 	mesh_tool.add_uv(Vector2(0, 0))
 	add_vertex(mesh_tool, edge_tool, Vector3(bl.x, 0, bl.y))
 	mesh_tool.add_uv(Vector2(0, 1))

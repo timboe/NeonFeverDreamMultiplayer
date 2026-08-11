@@ -1,12 +1,22 @@
 extends Node3D
 class_name TileManager
 
+# --- Signals ---
+
+signal level_loaded
+
+# --- Types ---
+
 enum State {RAISED, FALLING, LOWERED, RISING, DISABLED}
+
+# --- Nodes ---
 
 @onready var base_material: ShaderMaterial = preload("res://materials/aluminium.tres")
 @onready var outline_material: ShaderMaterial = preload("res://materials/floor/grid_edges.tres")
 @onready var disabled_material: StandardMaterial3D = preload("res://materials/disabled.tres")
 @onready var tile_script: Script = preload("res://scripts/world/tiles/TileElement.gd")
+
+# --- State ---
 
 var generated := false
 var tile_id: int = 0
@@ -18,7 +28,7 @@ var player_aoe_rings: Dictionary = {} # player_number -> Array[Array[TileElement
 
 # --- Accessors ---
 
-func tiles() -> Array:
+func _tiles() -> Array:
 	return tile_dictionary.values()
 
 func get_tile_by_id(id: int) -> TileElement:
@@ -30,7 +40,7 @@ func remove_tile_from_pathing(tile: TileElement) -> void:
 	$PathingManager.disconnect_tile(tile)
 	Global.UM.displace_units_on_tile(tile)
 
-func populate(physics_body_instance: StaticBody3D, rotation_group: String) -> void:
+func _populate(physics_body_instance: StaticBody3D, rotation_group: String) -> void:
 	var mesh_instance := MeshInstance3D.new()
 	if not Engine.is_editor_hint():
 		physics_body_instance.set_id(tile_id)
@@ -66,7 +76,7 @@ func populate(physics_body_instance: StaticBody3D, rotation_group: String) -> vo
 	if not Engine.is_editor_hint():
 		physics_body_instance.delayed_ready()
 
-func check_disabled(physics_body_instance: StaticBody3D) -> bool:
+func _check_disabled(physics_body_instance: StaticBody3D) -> bool:
 	var t_local: Vector3 = physics_body_instance.position
 	var t: Vector3 = physics_body_instance.to_global(t_local)
 	var distance_v := Vector2()
@@ -84,7 +94,7 @@ func check_disabled(physics_body_instance: StaticBody3D) -> bool:
 
 # --- Cluster generation ---
 
-func add_cluster(x_offset: int, y_offset: int) -> void:
+func _add_cluster(x_offset: int, y_offset: int) -> void:
 	var spatial := Node3D.new()
 	var y_mod: float = $CairoDisabled.RIGHT_POINT__UP * x_offset
 	var x_mod: float = $CairoDisabled.RIGHT_POINT__UP * y_offset
@@ -114,22 +124,22 @@ func add_cluster(x_offset: int, y_offset: int) -> void:
 	spatial.add_child(physics_body_c)
 	spatial.add_child(physics_body_d)
 	$Tiles.add_child(spatial)
-	if check_disabled(physics_body_a):
+	if _check_disabled(physics_body_a):
 		physics_body_a.queue_free()
 	else:
-		populate(physics_body_a, "tilesA")
-	if check_disabled(physics_body_b):
+		_populate(physics_body_a, "tilesA")
+	if _check_disabled(physics_body_b):
 		physics_body_b.queue_free()
 	else:
-		populate(physics_body_b, "tilesB")
-	if check_disabled(physics_body_c):
+		_populate(physics_body_b, "tilesB")
+	if _check_disabled(physics_body_c):
 		physics_body_c.queue_free()
 	else:
-		populate(physics_body_c, "tilesC")
-	if check_disabled(physics_body_d):
+		_populate(physics_body_c, "tilesC")
+	if _check_disabled(physics_body_d):
 		physics_body_d.queue_free()
 	else:
-		populate(physics_body_d, "tilesD")
+		_populate(physics_body_d, "tilesD")
 
 func _generate() -> void:
 	tile_id = 0
@@ -147,13 +157,11 @@ func _generate() -> void:
 				continue
 			if (x + border < 0 + floor_v.y or x - border > arena + floor_v.y):
 				continue
-			add_cluster(x, y)
+			_add_cluster(x, y)
 	set_physics_process(true)
 	generated = true
 
 # --- Lifecycle ---
-
-signal level_loaded
 
 func _ready() -> void:
 	Global.TM = self
@@ -165,19 +173,19 @@ func _physics_process(_delta: float) -> void:
 	set_physics_process(false)
 	if Engine.is_editor_hint():
 		return
-	set_neighbours()
+	_set_neighbours()
 	$MonorailMultimesh.setup(tile_dictionary)
 	$MonorailMultimesh.cap_setup(tile_dictionary, $MonorailCapMultimesh)
 	$PathingManager.monorail = $MonorailMultimesh
-	disabled_tiles_to_multimesh()
-	enabled_tiles_to_multimesh()
-	apply_loaded_level()
+	_disabled_tiles_to_multimesh()
+	_enabled_tiles_to_multimesh()
+	_apply_loaded_level()
 	level_loaded.emit()
 	$MonorailMultimesh.finish_setup()
 
 # --- Neighbour + pathing setup ---
 
-func set_neighbours() -> void:
+func _set_neighbours() -> void:
 	for tile in get_tree().get_nodes_in_group("tiles"):
 		var ray: RayCast3D = tile.get_child(2)
 		for _a in range(10):
@@ -202,7 +210,7 @@ func set_neighbours() -> void:
 
 # --- Level loading ---
 
-func apply_loaded_level() -> void:
+func _apply_loaded_level() -> void:
 	for tile in get_tree().get_nodes_in_group("tiles"):
 		if tile.get_id() in Global.level.MCP_ARRAY:
 			var player_number = (Global.level.MCP_ARRAY.find(tile.get_id()) + 1)
@@ -228,9 +236,9 @@ func recompute_aoe() -> void:
 	# validate blueprint previews locally (no server guard!).
 	if multiplayer.is_server():
 		# Building/AoE changes can alter sight lines — drop cached combat LOS.
-		Global.CM._invalidate_los()
+		Global.CM.invalidate_los()
 		Global.EM.invalidate_collections()
-	for t in tiles():
+	for t in _tiles():
 		t.aoe.clear()
 		t.gen_count = 0
 	var touched := {}
@@ -240,7 +248,7 @@ func recompute_aoe() -> void:
 		# peer at construction completion (rpc_constructed).
 		if b.state != Building.State.CONSTRUCTED:
 			continue
-		var radius : int = b.get_aoe_radius()
+		var radius: int = b.get_aoe_radius()
 		if b.type == BuildingManager.Type.GEN and b.is_empowered:
 			radius += 1
 		var queue := []
@@ -310,11 +318,11 @@ func recompute_aoe() -> void:
 	# Un-select anything no longer under AoE and re-render every tile: a tile
 	# whose only claim just vanished (building removed) is not in `touched`,
 	# so it must be refreshed here or its tint/selection goes stale.
-	for t in tiles():
+	for t in _tiles():
 		for s in t.selected_by:
 			if s not in t.aoe:
 				t.selected_by.erase(s)
-	for t in tiles():
+	for t in _tiles():
 		t.update_selection_and_aoe_visual()
 
 # --- Tile toggle (server only) ---
@@ -341,7 +349,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 	tile.update_selection_and_aoe_visual()
 	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 	# Tile state changes alter sight lines — drop cached combat LOS.
-	Global.CM._invalidate_los()
+	Global.CM.invalidate_los()
 
 # --- RPCs ---
 
@@ -385,7 +393,7 @@ func rpc_monorail_cap_lower(lower_tile_id: int) -> void:
 
 # --- MultiMesh builders ---
 
-func disabled_tiles_to_multimesh() -> void:
+func _disabled_tiles_to_multimesh() -> void:
 	var disabled := get_tree().get_nodes_in_group("disabled")
 	var disabled_mm := $DisabledTileMultimesh
 	disabled_mm.multimesh = MultiMesh.new()
@@ -396,7 +404,7 @@ func disabled_tiles_to_multimesh() -> void:
 		disabled_mm.multimesh.set_instance_transform(i, disabled[i].get_global_transform())
 		disabled[i].get_child(0).queue_free()
 
-func enabled_tiles_to_multimesh() -> void:
+func _enabled_tiles_to_multimesh() -> void:
 	var enabled: Array = get_tree().get_nodes_in_group("interactive")
 	var tile_mm: MultiMeshInstance3D = $TileMultimesh
 	tile_mm.multimesh = MultiMesh.new()

@@ -2,9 +2,9 @@ extends Building
 
 class_name Vat
 
-const HUD_SCENE: PackedScene = preload("res://scenes/ui/VatHUD.tscn")
-
 # --- Constants ---
+
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/VatHUD.tscn")
 
 const FULL_Y: float = 10.5
 const EMPTY_Y: float = -7.5

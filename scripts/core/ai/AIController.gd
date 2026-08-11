@@ -1,6 +1,8 @@
 extends Node
 class_name AIController
 
+# --- State ---
+
 var player_number: int
 var timer: Timer
 

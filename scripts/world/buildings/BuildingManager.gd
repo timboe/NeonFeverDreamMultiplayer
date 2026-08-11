@@ -10,10 +10,29 @@ enum Type {NONE, MCP_1, MCP_2, MCP_3, MCP_4, GEN, VAT, GARAGE, BEACON, NEST}
 
 const HIDE_DEPTH: float = -50.0
 
+# Preloaded building scenes, instantiated per placement. Replaces duplicating
+# the live factory templates (the old BuildingFactory node is removed):
+# Node.duplicate() on a script-active subtree (instanced BuildingHUD children
+# removed/freed by _setup_hud on every placement) intermittently trips the
+# engine's children-cache accounting ("Index p_index out of bounds" in
+# get_child()). instantiate() builds from packed data and is immune to
+# live-tree state.
+const BUILDING_SCENES: Dictionary = {
+	Type.MCP_1: preload("res://scenes/world/buildings/MCP_1.tscn"),
+	Type.MCP_2: preload("res://scenes/world/buildings/MCP_2.tscn"),
+	Type.MCP_3: preload("res://scenes/world/buildings/MCP_3.tscn"),
+	Type.MCP_4: preload("res://scenes/world/buildings/MCP_4.tscn"),
+	Type.GEN: preload("res://scenes/world/buildings/Generator.tscn"),
+	Type.VAT: preload("res://scenes/world/buildings/Vat.tscn"),
+	Type.GARAGE: preload("res://scenes/world/buildings/Garage.tscn"),
+	Type.BEACON: preload("res://scenes/world/buildings/Beacon.tscn"),
+	Type.NEST: preload("res://scenes/world/buildings/Nest.tscn"),
+}
+
 # --- State ---
 
 var building_dictionary: Dictionary = {}
-var _next_building_id: int = 1
+var _next_id: int = 1
 
 # --- Blueprints ---
 
@@ -23,6 +42,8 @@ var disabled_blueprints: Dictionary = {}
 # --- Empower tracking ---
 
 var _empowered_by_player: Dictionary = {}  # pnum -> Building
+
+# --- Hover state ---
 
 # Building the mouse is currently over in RTS mode (for the main HUD tooltip).
 var hovered_building: Building = null
@@ -79,13 +100,13 @@ func buildings() -> Array:
 func get_building_by_id(id: int) -> Building:
 	return building_dictionary.get(id)
 
-func can_place_here(tile: TileElement) -> bool:
+func _can_place_here(tile: TileElement) -> bool:
 	return tile.state == TileManager.State.LOWERED and tile.building == null
 
-func check_under_aoe(player_number: int, tile: TileElement) -> bool:
+func _check_under_aoe(player_number: int, tile: TileElement) -> bool:
 	return player_number in tile.aoe
 
-func check_access(tile: TileElement) -> Array:
+func _check_access(tile: TileElement) -> Array:
 	return tile.get_access_tiles()
 
 func position_all_terminals() -> void:
@@ -123,11 +144,11 @@ func _enabled_blueprint_material() -> ShaderMaterial:
 	return null
 
 func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
-	if not can_place_here(tile):
+	if not _can_place_here(tile):
 		enabled_blueprints[type].position.y = HIDE_DEPTH
 		disabled_blueprints[type].position.y = HIDE_DEPTH
 		return
-	if check_under_aoe(player_number, tile) and check_access(tile).size() > 0:
+	if _check_under_aoe(player_number, tile) and _check_access(tile).size() > 0:
 		enabled_blueprints[type].global_transform = tile.get_global_transform()
 		enabled_blueprints[type].global_position.y = 0
 		disabled_blueprints[type].position.y = HIDE_DEPTH
@@ -202,7 +223,7 @@ func set_remove_mode(active: bool) -> void:
 		if active:
 			_enable_collision_except_terminal(child)
 		else:
-			Blueprints._disable_collision_recursive(child)
+			Blueprints.disable_collision_recursive(child)
 
 func _enable_collision_except_terminal(node: Node) -> void:
 	if node.name == "Terminal":
@@ -220,26 +241,7 @@ func _disabled_blueprint_material() -> ShaderMaterial:
 
 # --- Building instances ---
 
-# Preloaded building scenes, instantiated per placement. Replaces duplicating
-# the live factory templates (the old BuildingFactory node is removed):
-# Node.duplicate() on a script-active subtree (instanced BuildingHUD children
-# removed/freed by _setup_hud on every placement) intermittently trips the
-# engine's children-cache accounting ("Index p_index out of bounds" in
-# get_child()). instantiate() builds from packed data and is immune to
-# live-tree state.
-const BUILDING_SCENES: Dictionary = {
-	Type.MCP_1: preload("res://scenes/world/buildings/MCP_1.tscn"),
-	Type.MCP_2: preload("res://scenes/world/buildings/MCP_2.tscn"),
-	Type.MCP_3: preload("res://scenes/world/buildings/MCP_3.tscn"),
-	Type.MCP_4: preload("res://scenes/world/buildings/MCP_4.tscn"),
-	Type.GEN: preload("res://scenes/world/buildings/Generator.tscn"),
-	Type.VAT: preload("res://scenes/world/buildings/Vat.tscn"),
-	Type.GARAGE: preload("res://scenes/world/buildings/Garage.tscn"),
-	Type.BEACON: preload("res://scenes/world/buildings/Beacon.tscn"),
-	Type.NEST: preload("res://scenes/world/buildings/Nest.tscn"),
-}
-
-func new_building_instance(t: Type) -> Node3D:
+func _new_building_instance(t: Type) -> Node3D:
 	var scene: PackedScene = BUILDING_SCENES.get(t)
 	if not scene:
 		return null
@@ -247,12 +249,12 @@ func new_building_instance(t: Type) -> Node3D:
 	Blueprints.enable_collision_recursive(inst)
 	return inst
 
-func next_building_id() -> int:
-	var nbid := _next_building_id
-	_next_building_id += 1
+func _next_building_id() -> int:
+	var nbid := _next_id
+	_next_id += 1
 	return nbid
 
-func add_to_dict_and_scene(bid: int, b: Building, type: Type) -> void:
+func _add_to_dict_and_scene(bid: int, b: Building, type: Type) -> void:
 	b.id = bid
 	b.type = type
 	building_dictionary[b.id] = b
@@ -264,34 +266,34 @@ func add_to_dict_and_scene(bid: int, b: Building, type: Type) -> void:
 func place_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	if not multiplayer.is_server():
 		return
-	if not can_place_here(tile):
+	if not _can_place_here(tile):
 		return
-	if not check_under_aoe(player_number, tile):
+	if not _check_under_aoe(player_number, tile):
 		return
-	if check_access(tile).size() == 0:
+	if _check_access(tile).size() == 0:
 		return
 	update_blueprint(player_number, tile, type)
 	Global.TM.remove_tile_from_pathing(tile)
-	var bid := next_building_id()
+	var bid := _next_building_id()
 	rpc("broadcast_place_blueprint", bid, player_number, tile.id, type)
 
 @rpc("authority", "call_local", "reliable")
 func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Type) -> void:
 	var tm = Global.TM
 	var tile = tm.get_tile_by_id(tid)
-	var new_building := new_building_instance(type)
+	var new_building := _new_building_instance(type)
 	new_building.visible = false
 	# Invisible until constructed — its terminal must not collide (invisible
 	# wall on an access tile). rpc_constructed re-enables it on reveal.
 	Blueprints.set_terminal_collision(new_building, false)
-	add_to_dict_and_scene(bid, new_building, type)
+	_add_to_dict_and_scene(bid, new_building, type)
 	new_building.global_transform = tile.get_global_transform()
 	new_building.global_position.y = 0
 	new_building.initialise(player_number, tile)
 	# A new building changes access tiles for everyone, so reposition all
 	# terminals (the new building is already in building_dictionary).
 	position_all_terminals()
-	var new_blueprint := new_building_instance(type)
+	var new_blueprint := _new_building_instance(type)
 	Blueprints.prepare_ghost(new_blueprint, _enabled_blueprint_material())
 	new_blueprint.name = "Blueprint_" + str(bid)
 	new_blueprint.visible = true
@@ -327,8 +329,8 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 
 # Skips all construction phases, used during level setup
 func place_building(pnum: int, tile: TileElement, type: Type) -> void:
-	var b := new_building_instance(type)
-	add_to_dict_and_scene(next_building_id(), b, type)
+	var b := _new_building_instance(type)
+	_add_to_dict_and_scene(_next_building_id(), b, type)
 	b.initialise(pnum, tile)
 	b.position_terminal()
 	b.state = b.State.CONSTRUCTED
@@ -343,8 +345,8 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 func rpc_remove_building(id: int) -> void:
 	var b = building_dictionary.get(id)
 	if b:
-		if multiplayer.is_server() and is_instance_valid(b._working_unit):
-			b._working_unit.job_finished()
+		if multiplayer.is_server() and is_instance_valid(b.working_unit):
+			b.working_unit.job_finished()
 		building_dictionary.erase(id)
 		var tile = b.location
 		if tile:

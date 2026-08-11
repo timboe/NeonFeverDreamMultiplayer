@@ -2,7 +2,11 @@ extends TerminalHUD
 
 class_name VatHUD
 
+# --- References ---
+
 var building: Vat
+
+# --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
 @onready var energy_bar: ProgressBar = $Window/VBox/EnergyBar
@@ -13,8 +17,13 @@ var building: Vat
 @onready var hp_label: Label = $Window/VBox/HPRow/HPLabel
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
 
+# --- Constants ---
+
 # Terminal HUDs refresh at 4 Hz — energy and pool state change on tick cadence.
 const REFRESH_INTERVAL := 0.25
+
+# --- State ---
+
 var _refresh_timer := 0.0
 
 func _ready() -> void:

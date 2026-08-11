@@ -2,6 +2,8 @@ extends PanelContainer
 
 class_name NotificationManager
 
+# --- Constants ---
+
 const MAX_VISIBLE := 7
 const DISPLAY_DURATION := 20.0
 
@@ -11,6 +13,8 @@ const EVENT_COLORS := {
 	"abandoned": Color(1, 0.7, 0.2, 1),
 	"finished": Color(0.7, 1, 1, 1),
 }
+
+# --- State ---
 
 var notification_list: VBoxContainer
 var placeholder: Label

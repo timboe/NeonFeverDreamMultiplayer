@@ -113,7 +113,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `Server` | `scripts/core/network/Server.gd` | ENet server, `peer_to_player`/`player_to_peer`, `remote_slot_pnums` pool (remotes draw from it in slot order; freed on disconnect), `_cmd_*` dispatch |
 | `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon grid gen, `State` enum, `apply_toggle`, `recompute_aoe` (+`player_aoe_totals`/`player_aoe_rings`/`gen_count`), `remove_tile_from_pathing`, tile selection broadcast |
 | `TileElement` | `scripts/world/tiles/TileElement.gd` | One tile: state transitions, neighbours, `aoe`/`selected_by`, MultiMesh visuals, emission priority system, `_working_unit_dict` countdown chain, mouse input → `send_command_me` |
-| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, `pathfind`, debug renderer |
+| `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D, `connect_tiles`/`disconnect_tile`, `pathfind`, debug renderer |
 | `MonorailMultimesh` | `scripts/world/tiles/MonorailMultimesh.gd` | Active: monorail rail meshes + caps between tiles, tweened connect/disconnect |
 | `GameConfig` | `scripts/core/game/GameConfig.gd` | Resource: `player_count`, `port`, `server_ip`, `slots` array (LOCAL/REMOTE/AI/CLOSED) |
 | `GameManager` | `scripts/core/game/GameManager.gd` | Snapshots/interpolation, 1s job tick (`Global.JM.assign_jobs()` + each building `check_work()`), avatar relay |
@@ -127,16 +127,16 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `Generator` | `scripts/world/buildings/Generator.gd` | Energy output = Σ `1/gen_count` over its AoE tiles (each tile's output split N ways); hover shows catchment; empowered → +1 influence radius (`_aoe_tiles_extra` ring) |
 | `Vat` | `scripts/world/buildings/Vat.gd` | Capacity = 1000 + 100/adjacent same-owner Vat, ×1.5 if empowered; empowered vat also discounts construction/production drains ×0.9 (type-wide via `Global.BM.empowered_type`); liquid-level visual |
 | `Garage` | `scripts/world/buildings/Garage.gd` | Creates CONSUME_ZOOMBA jobs (zoomba → TANK conversion), `zoomba_tank_ratio`, patrol orders; empowered → all player TANKs fire +25% faster vs AERIAL |
-| `Beacon` | `scripts/world/buildings/Beacon.gd` | Produces AERIAL, patrol/strike orders, `patrol_strike_ratio`, patrol stance; empowered → all player AERIALs gain +30s lifetime (`Aerial.get_lifetime()`) |
+| `Beacon` | `scripts/world/buildings/Beacon.gd` | Produces AERIAL, patrol/strike orders, `patrol_strike_ratio`, patrol stance; empowered → all player AERIALs gain +30s lifetime (`Aerial._get_lifetime()`) |
 | `Nest` | `scripts/world/buildings/Nest.gd` | Produces VIRUS, attack orders, `_virus_tank_building_ratio`; empowered → all player VIRUS +30% speed, limpeted TANKs immobilized |
 | `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam visual (ImmediateMesh + RayCast3D) |
 | `DestructionFX` | `scripts/world/fx/DestructionFX.gd` | One-shot destruction debris (buildings + units): spawns the victim's own `MeshInstance3D`s as `RigidBody3D` chunks (blasted out from the centre, own collision layer vs tiles only; a dying building is dropped out of physics first so depenetration can't eject the chunks), white ember particle burst + `Global.VM.add_trauma` (buildings only); chunks freeze and sink 18u (6u for units) below their resting spot before `queue_free`. `spawn(building)` / `spawn_unit(unit)` (unit scale, no burst; Avatar FX centres on the FPSBody). Spawned locally by every peer in `rpc_remove_building` / `rpc_remove_unit` (call_local) — cosmetic, no sync. Cloaked VIRUS deaths skip FX. TODOs: MCP_2's CSGCombiner top sections and MultiMeshInstance3D parts (AERIAL blades, VIRUS rings) bake no chunks yet |
 | `Blueprints` | `scripts/world/buildings/Blueprints.gd` | Ghost preview, material assignment, collision enable |
-| `UnitManager` | `scripts/world/units/UnitManager.gd` | `Type` enum (NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS), `spawn_unit` (via `rpc_spawn_unit`), `rpc_remove_unit`, `displace_units_on_tile`, `unit_count` |
+| `UnitManager` | `scripts/world/units/UnitManager.gd` | `Type` enum (NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS), `_spawn_unit` (via `rpc_spawn_unit`), `rpc_remove_unit`, `displace_units_on_tile`, `unit_count` |
 | `Unit` | `scripts/world/units/Unit.gd` | Base unit: IDLE/PATHING/WORKING, job lifecycle, health, self-heal, scram, combat aim/fire-event visuals, `apply_damage`; `work_speed_multiplier()` (empowered-MCP zoomba buff) |
 | `Zoomba` | `scripts/world/units/Zoomba.gd` | Basic unit, player-colour material |
 | `Tank` | `scripts/world/units/Tank.gd` | Anti-air unit (only damages AERIAL); `_attached_virus` tracking + `virus_immobilized()` (Nest empower buff) |
-| `Aerial` | `scripts/world/units/Aerial.gd` | Flying, patrol/strike modes, projectile delay, 120s lifetime (auto-removed; +30s while a Beacon is empowered via `get_lifetime()`); STRIKE self-generates personal COMBAT_PERSUE jobs |
+| `Aerial` | `scripts/world/units/Aerial.gd` | Flying, patrol/strike modes, projectile delay, 120s lifetime (auto-removed; +30s while a Beacon is empowered via `_get_lifetime()`); STRIKE self-generates personal COMBAT_PERSUE jobs |
 | `Virus` | `scripts/world/units/Virus.gd` | Cloaked limpet unit: personal `ATTACK` jobs from Nest orders, spawns uncloaked → re-cloaks after 5s, drains TANKs (dies with the tank) or channels a building infection (self-sacrifice, effect stubbed) |
 | `Avatar` | `scripts/world/units/Avatar.gd` | FPS character: `FPSBody` (CharacterBody3D + FPSCamera), ignores job system, screen-cursor terminal clicks |
 | `JobManager` | `scripts/world/units/JobManager.gd` | Job pool + worker-centric assignment, abandon timers, `personal` jobs, job-event notifications |
@@ -151,7 +151,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 ## Level system
 
 - `Global.level` = `levels/skirmish_01.gd`. It defines `SEED`, `TRIPLETS`/`BORDER_TRIPLETS` (arena size), `MCP_ARRAY` (tile ids; index+1 = player number), `LOWERED`, `IMMUTABLE`, `INVISIBLE`.
-- `TileManager.populate()` marks tiles IMMUTABLE/INVISIBLE as DISABLED (`disabled`/`invisible` groups) vs `interactive`. `apply_loaded_level()` places each MCP via `BuildingManager.place_building(...)` and lowers the LOWERED tiles, then `recompute_aoe()`.
+- `TileManager._populate()` marks tiles IMMUTABLE/INVISIBLE as DISABLED (`disabled`/`invisible` groups) vs `interactive`. `_apply_loaded_level()` places each MCP via `BuildingManager.place_building(...)` and lowers the LOWERED tiles, then `recompute_aoe()`.
 - Tile IDs are the deterministic generation order — editing the level means editing these ID arrays.
 
 ## Tile system
@@ -190,7 +190,7 @@ Every unit has exactly one of three states. State transitions are the core of th
 ```
 					┌──────────────────────────────────────────────────┐
 					│                                                  │
-  ┌─────────┐   assign_job()   ┌─────────┐   start_work()   ┌─────────┐
+  ┌─────────┐   assign_job()   ┌─────────┐   _start_work()   ┌─────────┐
   │  IDLE   │ ───────────────→ │ PATHING │ ───────────────→ │ WORKING │
   └─────────┘                  └─────────┘                  └─────────┘
 	   ↑                            │    │                        │  │
@@ -210,23 +210,23 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 ### Job types
 
-`JobManager.Type` = CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT_PERSUE, ATTACK. `start_work()` routes:
+`JobManager.Type` = CONSTRUCT_BUILDING, REPAIR_BUILDING, TOGGLE_TILE, CONSUME_ZOOMBA, COMBAT_PERSUE, ATTACK. `_start_work()` routes:
 - `TOGGLE_TILE` → `tile.do_toggle_countdown(self)` (tile owns the callback chain)
 - `CONSTRUCT_BUILDING` → `building.start_construction(self)`
 - `REPAIR_BUILDING` → `building.start_repair(self)`
 - `CONSUME_ZOOMBA` → `_consume_for_tank()` (spawns a TANK at the garage, then removes this zoomba)
-- `COMBAT_PERSUE` → never WORKING — `pathing_callback()` diverts to `combat_pathing_callback()` (chase/orbit, see below)
+- `COMBAT_PERSUE` → never WORKING — `_pathing_callback()` diverts to `_combat_pathing_callback()` (chase/orbit, see below)
 - `ATTACK` → `start_attack()` (no-op in base `Unit`; VIRUS overrides it for the limpet). Personal VIRUS jobs, generated by `Virus.try_generate_offense_job()`, go through the normal pathing flow and DO enter WORKING. STRIKE aerials similarly self-derive a **personal `COMBAT_PERSUE`** job (`Aerial.try_generate_offense_job` → `choose_building_target`) after 1s idle.
 
 ### Unit.gd functions
 
-**`idle_callback()`** — Idle loop entry. If `job` non-empty: asserts PATHING, clears path, calls `pathing_callback()`. If empty: picks a random accessible tile (own-AoE preferred for HOME_TERRITORY_UNITS; PATROL+HOLD units restricted to their building's `_aoe_tiles`), avoids backtracking, calls `move(idle_callback)`. Scrammed units (`scram_count > 0`) head toward their MCP instead.
+**`idle_callback()`** — Idle loop entry. If `job` non-empty: asserts PATHING, clears path, calls `_pathing_callback()`. If empty: picks a random accessible tile (own-AoE preferred for HOME_TERRITORY_UNITS; PATROL+HOLD units restricted to their building's `_aoe_tiles`), avoids backtracking, calls `_move(idle_callback)`. Scrammed units (`scram_count > 0`) head toward their MCP instead.
 
-**`pathing_callback()`** — Each pathfinding step: checks scram first (→ IDLE + `idle_callback`), `JobManager.check_job_still_valid` (→ `job_finished()`), reached `path_dest` (→ `start_work()`), `check_pathing_valid()` (→ `abandon_job()`), then moves to next node.
+**`_pathing_callback()`** — Each pathfinding step: checks scram first (→ IDLE + `idle_callback`), `JobManager.check_job_still_valid` (→ `job_finished()`), reached `path_dest` (→ `_start_work()`), `_check_pathing_valid()` (→ `abandon_job()`), then moves to next node.
 
-**`check_pathing_valid()`** — Validates remaining path nodes are still LOWERED (else invalidates). If path empty, re-paths from current location to all access tiles of the target, picking the shortest; sets `job["path_dest"]`. Returns false (→ abandon) if unreachable. Handles tiles lowered/raised mid-path, displaced edges, and access tiles changing.
+**`_check_pathing_valid()`** — Validates remaining path nodes are still LOWERED (else invalidates). If path empty, re-paths from current location to all access tiles of the target, picking the shortest; sets `job["path_dest"]`. Returns false (→ abandon) if unreachable. Handles tiles lowered/raised mid-path, displaced edges, and access tiles changing.
 
-**`start_work()`** — PATHING → WORKING, quick-rotate, zapper on, dispatch by job type (above).
+**`_start_work()`** — PATHING → WORKING, quick-rotate, zapper on, dispatch by job type (above).
 
 **`job_finished()`** — Job completed/removed: hides zapper, state=IDLE, `JobManager.remove_job(job["id"])` (which calls our `remove_job()`).
 
@@ -236,7 +236,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 **`abandon_job()`** — Cleans working state if WORKING, sets IDLE, kills tween, `JobManager.abandon_job(id)` (job stays in pool), `idle_callback()`.
 
-**`move(callback)`** — Kills previous tween, slerps rotation + moves to `location.pathing_centre`, calls callback. IDLE moves at 2x speed; scram at 0.5x. `move_tween` is a plain var (Tween is RefCounted).
+**`_move(callback)`** — Kills previous tween, slerps rotation + moves to `location.pathing_centre`, calls callback. IDLE moves at 2x speed; scram at 0.5x. `move_tween` is a plain var (Tween is RefCounted).
 
 **`scram()`** — `ui_scram` key (C) or auto-triggered when a ZOOMBA takes damage: `scram_count = SCRAM`; if busy, `abandon_job()`. Scrambled units aren't assigned jobs and aren't eligible during `assign_jobs`.
 
@@ -244,25 +244,25 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 - **`add_job(pnum, type, target, request_assign=null, personal=false, eligible_types=[], patrol_only=false, territory_only=false)`** — `target` is a TileElement/Unit/Building (resolve via `target_tile()`); dedupes identical pnum/type/target jobs (personal jobs exempt). Passing a `request_assign` Unit immediately tries to assign the job to it. `eligible_types`/`patrol_only`/`territory_only` gate which units `assign_jobs` may hand it to. `personal` jobs can't be reassigned — they're erased on abandon.
 - **`cancel_job`** — deselect → `remove_job`. **`remove_job(id)`** — permanent deletion; if assigned, calls `unit.remove_job()`. **`abandon_job(id)`** — stays in pool, `abandoned_n`++, timer `min(60, abandoned_n × 11)`, clears `assigned`; personal jobs are erased instead.
-- **`assign_jobs()`** (every 1s from GameManager) — two passes: decrement abandon timers, then for each idle unit (skipping AVATAR and `scram_count > 0`) → `assign_nearest_job(unit)` (shortest path length among eligible unassigned jobs for that player).
+- **`assign_jobs()`** (every 1s from GameManager) — two passes: decrement abandon timers, then for each idle unit (skipping AVATAR and `scram_count > 0`) → `_assign_nearest_job(unit)` (shortest path length among eligible unassigned jobs for that player).
 - **`check_job_still_valid(job)`** — per-type: CONSTRUCT_BUILDING (blueprint present), TOGGLE_TILE (state RAISED/LOWERED + still `selected_by`), REPAIR_BUILDING (damaged), CONSUME_ZOOMBA (constructed GARAGE), COMBAT_PERSUE (target alive; a re-cloaked VIRUS is invalid — same as destroyed), ATTACK (target alive). New job types extend this `match`.
 - **`_notify_job_event`** — server-side job add/assign/abandon/finish → `NotificationManager.rpc_add_job_notification`.
 
 ### TileElement.gd (tile-side job support)
 
-- **`do_toggle_countdown(z)`** — server-only. Adds entry to `_working_unit_dict[pnum]` with unit/job and a 2s countdown tween → `begin_toggle`. RPC mode 0 = visual countdown.
+- **`do_toggle_countdown(z)`** — server-only. Adds entry to `_working_unit_dict[pnum]` with unit/job and a 2s countdown tween → `_begin_toggle`. RPC mode 0 = visual countdown.
 - **`cancel_toggle_countdown(pnum)`** — server-only. Removes entry, kills its tween, RPC mode 1.
-- **`_cancel_other_workers(except_pnum)`** — `begin_toggle` kills all other workers' countdowns, calls `job_finished()` on their units, RPC mode 1 each.
-- **`begin_toggle()`** — server-only. First countdown fires: if tile state changed during countdown → `job_finished()` all workers (abort). Else cancel others, transition RAISED→FALLING / LOWERED→RISING, clear `selected_by`, broadcast, second tween (`fall_time + thunk_time`) → `done_toggle`.
-- **`done_toggle()`** — server-only. Completes state change (set_lowered / RAISED + position reset). For each worker whose job is still assigned to its unit → `JobManager.remove_job`. Clears `_working_unit_dict`.
+- **`_cancel_other_workers(except_pnum)`** — `_begin_toggle` kills all other workers' countdowns, calls `job_finished()` on their units, RPC mode 1 each.
+- **`_begin_toggle()`** — server-only. First countdown fires: if tile state changed during countdown → `job_finished()` all workers (abort). Else cancel others, transition RAISED→FALLING / LOWERED→RISING, clear `selected_by`, broadcast, second tween (`fall_time + thunk_time`) → `_done_toggle`.
+- **`_done_toggle()`** — server-only. Completes state change (set_lowered / RAISED + position reset). For each worker whose job is still assigned to its unit → `JobManager.remove_job`. Clears `_working_unit_dict`.
 
-Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → begin_toggle) and `toggle_tween` (synced visual, created by `rpc_toggle_animation` modes 0/2; `_apply_emission` skips while it runs).
+Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → _begin_toggle) and `toggle_tween` (synced visual, created by `rpc_toggle_animation` modes 0/2; `_apply_emission` skips while it runs).
 
 ### Job finish vs abandon vs cancel
 
 | Outcome | Who triggers | Job lifecycle | Unit lifecycle | Tile lifecycle |
 |---|---|---|---|---|
-| **Finish** | Tile animation → `done_toggle` → `job_finished()` | Removed (`remove_job`) | → IDLE → `idle_callback` | State change completed, dict cleared |
+| **Finish** | Tile animation → `_done_toggle` → `job_finished()` | Removed (`remove_job`) | → IDLE → `idle_callback` | State change completed, dict cleared |
 | **Cancel** | Human deselects → `cancel_job` → `remove_job` | Removed | → IDLE → `idle_callback` | `remove_job` cancels countdown if WORKING |
 | **Abandon (pathing)** | Path invalid → `abandon_job()` | Stays in pool, reassignable after timer | → IDLE → `idle_callback` | N/A |
 | **Abandon (working)** | Unit gives up → `abandon_job()` | Stays in pool | → IDLE → `idle_callback` | Countdown cancelled, dict entry removed |
@@ -284,15 +284,15 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - **Construction**: BLUEPRINT building's `_process` consumes energy at `CONSTRUCTION_COST / CONSTRUCTION_TIME`; at full → `set_constructed()` (`rpc_constructed` removes the blueprint and reveals the building).
 - **Production**: CONSTRUCTED building accumulates `_production_energy` via `request_energy`; at `UNIT_COST` → spawn via `um.rpc("rpc_spawn_unit", uid, type, building_id)`; cooldown from `Config.PRODUCTION_COOLDOWNS`. MCP overrides: AVATAR first, then ZOOMBA up to `zoomba_cap = floor(sqrt(player_aoe_totals[pnum]))`. Garage overrides: issues CONSUME_ZOOMBA jobs instead of spawning directly. Beacon → AERIAL, Nest → VIRUS.
 - **Empower**: `BuildingManager.set_empowered_for_player` (one building per player, swap clears the previous), `rpc_set_empowered` (reliable, call_local → every peer applies `_empower_changed`), `empowered_type(pnum)` for type-wide army buffs. Buffs per DESIGN: **Generator** +1 influence radius (instance); **Vat** ×1.5 capacity + ×0.9 drain discount (instance capacity, type-wide discount via `Building._vat_spend_mult`); **MCP** zoomba spawn rate ×0.8 cooldown, zoomba move/work speed ×1.2, damage reduction ×0.75 (instance); **Garage** all TANKs fire interval ×0.8 vs AERIAL (type-wide); **Beacon** all AERIALs +30s lifetime (type-wide, dynamic); **Nest** all VIRUS move time /1.3 + limpeted TANKs immobilized (type-wide). Terminal Empowered row shows per-type buff text + state (EMPOWERED / BUFF ACTIVE via another of the type / dim idle hint) via `TerminalHUD._set_empower_indicator`.
-- Building HUDs: each building gets its own `SubViewport` + HUD scene (`_setup_hud`), rendered into the `Terminal/Screen` material; terminal positioned at the access tile nearest the MCP (`position_terminal`). Building settings are mirrored to all peers through the snapshot system, so enemy terminals are spyable (`GameManager.refresh_foreign_building_terminals`, 4Hz).
+- Building HUDs: each building gets its own `SubViewport` + HUD scene (`_setup_hud`), rendered into the `Terminal/Screen` material; terminal positioned at the access tile nearest the MCP (`position_terminal`). Building settings are mirrored to all peers through the snapshot system, so enemy terminals are spyable (`GameManager._refresh_foreign_building_terminals`, 4Hz).
 
 ## Combat
 
 - **CombatManager** (server-only): every 0.5s re-scans TANK/AERIAL/AVATAR units; score = `dmg × 10 - health`, must pass range (40) and line-of-sight (raycast that ignores LOWERED/FALLING tiles and self/target; per-pair results are cached and invalidated on any tile/building change). Enemy targeting is **explicit-list only**: a unit attacks players in `orders["enemy"]` — an empty list means it attacks nothing (no "everyone" fallback), and its own team is never included. Aerial roles: "patrol" = PATROL mode (home patrol, 3-tile VIRUS detect), "strike" = STRIKE mode (enemy overfly, 1-tile detect). Detection uncloaks a cloaked VIRUS (`c.uncloak()`); a cloaked VIRUS is never a fire target (`_update_firing` skips it). Kill-VIRUS jobs (`COMBAT_PERSUE`, `patrol_only` + `territory_only`) are executed only by PATROL aerials.
 - **Avatar uncloak**: `_scan_avatar` uncloaks cloaked enemy VIRUS within Avatar LoS — 40u in FPS, 10u in RTS (`AVATAR_VIRUS_DETECT_RADIUS_FPS/RTS`), per DESIGN. Radius follows the owner's camera mode: local avatar reads `Global.VM.camera_status`, remote avatars use the mode their client reported via the `camera_mode` command.
-- Firing: when weapon aligned (`Unit.is_weapon_aligned()`, slerped in `update_weapon_aim`), bursts of `WEAPON_BURST_DURATION`(0.4) with damage ticks every 0.1s. TANK fires an instant burst (fire interval ×0.8 vs AERIAL while a Garage is empowered — type-wide); AERIAL applies a projectile delay (`update_projectile_delay`). `combat_fire_event` is bumped server-side and drives client visuals (`_update_combat_visuals`). A TANK immobilized by a VIRUS limpet from an empowered Nest cannot fire at all (`virus_immobilized()`).
+- Firing: when weapon aligned (`Unit.is_weapon_aligned()`, slerped in `_update_weapon_aim`), bursts of `WEAPON_BURST_DURATION`(0.4) with damage ticks every 0.1s. TANK fires an instant burst (fire interval ×0.8 vs AERIAL while a Garage is empowered — type-wide); AERIAL applies a projectile delay (`update_projectile_delay`). `combat_fire_event` is bumped server-side and drives client visuals (`_update_combat_visuals`). A TANK immobilized by a VIRUS limpet from an empowered Nest cannot fire at all (`virus_immobilized()`).
 - **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay, attacker)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK, AVATAR) heal server-side at `Config.SELF_HEAL_RATE` (10/25/10 HP/s) after 10s out of combat. A damaged ZOOMBA scram(). A CONSTRUCTED building calls for defense: `_call_for_defense(attacker)` queues a `COMBAT_PERSUE` job on the attacker — VIRUS attacker → PATROL aerials (`patrol_only` + `territory_only`), any other (AERIAL) → TANKs (`territory_only`).
-- **VIRUS combat**: VIRUS doesn't fire — it generates a **personal `ATTACK` job** (`Virus.try_generate_offense_job`, like Aerial-strike) from its copied Nest orders (`enemy` / `target` / `tank_ratio`). Target = random enemy tank on the `tank_ratio` roll, else `CombatManager.choose_building_target()` (shared with Aerial-strike). An aerial spotting an enemy tank also queues a **pooled** `ATTACK` job (`eligible_types=[VIRUS]`) so a freshly spawned virus can be assigned it before it self-derives (the 1s `_idle_time` guard). On arrival `start_work()` → `start_attack()`: uncloak, attach (`_limpet_target`, registered on the tank via `Tank.register_virus` so the Nest immobilize buff applies), `VIRUS_ATTACH_DELAY`(1s) pause, then tank drain at `VIRUS_TANK_DRAIN_DPS`(40) — the limpet **tracks the tank's position** each tick (snaps `location`/`global_position`) — or a building infection channel (`VIRUS_INFECTION_BASE_DURATION` 15s × health-at-attach/150; `_apply_building_effect()` is a stub). Ambient 1.25/s decay pauses while WORKING. Re-cloaks after `VIRUS_RECLOAK_COOLDOWN`(5s) when uncloaked & not attached (spawns uncloaked). Dies when its limpet TANK dies (any cause) or when a building infection completes (self-sacrifice); survives if the building is destroyed mid-channel → re-targets. Multiple VIRUS may limpet one target (personal jobs skip dedup).
+- **VIRUS combat**: VIRUS doesn't fire — it generates a **personal `ATTACK` job** (`Virus.try_generate_offense_job`, like Aerial-strike) from its copied Nest orders (`enemy` / `target` / `tank_ratio`). Target = random enemy tank on the `tank_ratio` roll, else `CombatManager.choose_building_target()` (shared with Aerial-strike). An aerial spotting an enemy tank also queues a **pooled** `ATTACK` job (`eligible_types=[VIRUS]`) so a freshly spawned virus can be assigned it before it self-derives (the 1s `_idle_time` guard). On arrival `_start_work()` → `start_attack()`: uncloak, attach (`_limpet_target`, registered on the tank via `Tank.register_virus` so the Nest immobilize buff applies), `VIRUS_ATTACH_DELAY`(1s) pause, then tank drain at `VIRUS_TANK_DRAIN_DPS`(40) — the limpet **tracks the tank's position** each tick (snaps `location`/`global_position`) — or a building infection channel (`VIRUS_INFECTION_BASE_DURATION` 15s × health-at-attach/150; `_apply_building_effect()` is a stub). Ambient 1.25/s decay pauses while WORKING. Re-cloaks after `VIRUS_RECLOAK_COOLDOWN`(5s) when uncloaked & not attached (spawns uncloaked). Dies when its limpet TANK dies (any cause) or when a building infection completes (self-sacrifice); survives if the building is destroyed mid-channel → re-targets. Multiple VIRUS may limpet one target (personal jobs skip dedup).
 - Health bars: `HealthBar3D` for units and buildings. Debug keys in HUD: `ui_damage_building` (P), `ui_damage_unit` (L) deal 40% max health.
 - RTS cursor light (`OmniLight3D_RTS`): `ui_debug_light` (F3) toggles a wireframe gizmo (magenta sphere = `omni_range`, white axis = down direction, cyan cross = light origin) built by `OmniLight._build_debug_mesh()`. The light is omnidirectional — OmniLight3D has no cone/`omni_angle` property in this engine.
 
@@ -329,11 +329,11 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - `rpc_id(1, ...)` targets the server (peer 1 is always the server in ENet).
 - `TileManager.apply_toggle` validates `tile.state == RAISED` and LOWERED-with-no-building before toggling. Never call it directly — use `Global.send_command*`.
 - `Global.my_player_number` = -1 for a host with no LOCAL slot (spectator); `send_command_me` no-ops and HUD energy reads 0.
-- `%` unique-node lookup requires caller `owner`. Dynamically created TileElements miss this → use a stored `pathing_manager` ref (set by `TileManager.set_neighbours`) instead of `%PathingManager`.
+- `%` unique-node lookup requires caller `owner`. Dynamically created TileElements miss this → use a stored `pathing_manager` ref (set by `TileManager._set_neighbours`) instead of `%PathingManager`.
 - `TileElement` has no `.player` — check `.selected_by` / `.aoe` / `player_owner` on buildings/units.
 - Server-only functions called from `_process`/`_physics_process` (which run on all peers) must self-guard.
 - `create_tween()` returns RefCounted — local var, `.kill()` + `.is_valid()` guard, no `@onready`.
-- Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client. Sole exception: level-setup MCP placement (`TileManager.apply_loaded_level` → `BuildingManager.place_building`) is deterministic and runs locally on every peer — no RPC involved.
+- Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client. Sole exception: level-setup MCP placement (`TileManager._apply_loaded_level` → `BuildingManager.place_building`) is deterministic and runs locally on every peer — no RPC involved.
 - **Avatar root stays put** — the `Avatar` (Unit) node remains at its spawn tile; only its `FPSBody` child moves. Always read `avatar.get_node("FPSBody").global_position` for where the avatar actually is.
 - `EnergyManager`/job/player dicts are 1-based (1..`MAX_PLAYERS`). Loops: `range(1, Global.MAX_PLAYERS + 1)`.
 
@@ -349,7 +349,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ## Floor (decorative only, no multiplayer sync)
 
-- `scenes/world/floor/Floor.tscn` — 50×50 visual floor with animated mountains (vertex displacement via per-instance custom data), monuments with pulsing beacon, no collision, no RPCs. Timer morphs mountains via `create_tween()` → `tween_method()` → `update_mountain(idx, color)`.
+- `scenes/world/floor/Floor.tscn` — 50×50 visual floor with animated mountains (vertex displacement via per-instance custom data), monuments with pulsing beacon, no collision, no RPCs. Timer morphs mountains via `create_tween()` → `tween_method()` → `_update_mountain(idx, color)`.
 
 ## UI rules
 

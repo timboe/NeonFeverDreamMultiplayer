@@ -1,7 +1,11 @@
 extends Resource
 class_name GameConfig
 
+# --- Types ---
+
 enum SlotType { CLOSED, LOCAL, REMOTE, AI }
+
+# --- Exports ---
 
 @export var player_count: int = 2
 @export var port: int = 8070

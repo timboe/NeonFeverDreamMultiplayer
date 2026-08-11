@@ -11,9 +11,15 @@ class_name VirusModel
 # call / one material), and the chevron + primitive meshes are static-shared
 # across every Virus instance. Per unit this is 4 nodes / 4 draws / 4 materials.
 
+# --- Constants ---
+
 const OUTER := {"radius": 1.15, "count": 12, "span": 0.34, "depth": 0.42, "spin": 0.95}
 const INNER := {"radius": 0.62, "count": 8, "span": 0.26, "depth": 0.3, "spin": -1.2}
 const LIFT_Y := 1.0
+const CLOAK_FADE_TIME := 1.0
+const BASE_EMISSION := 2.2
+
+# --- State ---
 
 static var _mesh_cache: Dictionary = {}
 static var _sphere_mesh: SphereMesh
@@ -28,9 +34,6 @@ var _t := 0.0
 var _alpha_k := 1.0
 var _target_k := 1.0
 var _alpha_tween: Tween
-
-const CLOAK_FADE_TIME := 1.0
-const BASE_EMISSION := 2.2
 
 func _ready() -> void:
 	_outer = _build_ring(OUTER, 0.08)
@@ -65,7 +68,7 @@ func set_cloak_alpha(k: float) -> void:
 	_alpha_tween = create_tween()
 	_alpha_tween.tween_method(_apply_alpha_k, from, k, CLOAK_FADE_TIME)
 
-func set_cloak(cloaked: bool) -> void:
+func _set_cloak(cloaked: bool) -> void:
 	set_cloak_alpha(0.12 if cloaked else 1.0)
 
 func _apply_alpha_k(k: float) -> void:
@@ -86,7 +89,7 @@ func _mat(c: Color, alpha: float, additive: bool) -> StandardMaterial3D:
 	m.albedo_color = Color(c.r, c.g, c.b, alpha)
 	m.emission_enabled = true
 	m.emission = c
-	m.emission_energy_multiplier = 2.2
+	m.emission_energy_multiplier = BASE_EMISSION
 	_mats.append(m)
 	_base_alphas.append(alpha)
 	return m

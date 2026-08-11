@@ -6,8 +6,8 @@ class_name Building
 
 const CONSTRUCTION_TIME: float = 5.0
 const HEALTH_BAR_HEIGHT: float = 22.0
-const REPAIR_INTERVAL := 0.05
-const REPAIR_AMOUNT := 2.5
+const REPAIR_INTERVAL: float = 0.05
+const REPAIR_AMOUNT: float = 2.5
 # Squared XZ distance tolerance when matching shared pentagon edge vertices in
 # _compute_edge (0.1 world units at Cairo.UNIT = 10).
 const EDGE_MATCH_EPSILON: float = 0.01
@@ -38,7 +38,7 @@ var _repair_timer := 0.0
 
 # --- Construction ---
 
-var _working_unit: Unit = null
+var working_unit: Unit = null
 var _construction_energy_spent := 0.0
 
 # --- Production ---
@@ -110,7 +110,7 @@ func _on_hover_exited() -> void:
 # --- Mouse click (RTS remove mode) ---
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx) -> void:
-	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
+	if not event is InputEventMouseButton or not event.is_pressed() or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if not hud or not hud.is_removing():
@@ -143,11 +143,11 @@ func _process(delta: float) -> void:
 				_produce_unit()
 
 	# If under repair (on server)
-	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED and _working_unit:
+	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED and working_unit:
 		_repair_timer += delta
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL
-			if not is_instance_valid(_working_unit):
+			if not is_instance_valid(working_unit):
 				finish_repair()
 				return
 			if _repair_heal():
@@ -236,8 +236,8 @@ func _vat_spend_mult() -> float:
 # Empowered MCP work-speed bonus: construction drains faster and repairs heal
 # more per tick while the working zoomba's MCP is empowered (×1.2 work speed).
 func _work_mult() -> float:
-	if is_instance_valid(_working_unit):
-		return _working_unit.work_speed_multiplier()
+	if is_instance_valid(working_unit):
+		return working_unit.work_speed_multiplier()
 	return 1.0
 
 # Combined per-tick construction drain multiplier (vat discount × zoomba work).
@@ -442,7 +442,7 @@ func start_construction(unit: Unit) -> void:
 		return
 	assert(state == State.BLUEPRINT)
 	state = State.UNDER_CONSTRUCTION
-	_working_unit = unit
+	working_unit = unit
 	if Config.CONSTRUCTION_COST.get(type, 0.0) <= 0.0:
 		set_constructed()
 
@@ -451,16 +451,16 @@ func cancel_construction() -> void:
 		return
 	assert(state == State.UNDER_CONSTRUCTION)
 	state = State.BLUEPRINT
-	_working_unit = null
+	working_unit = null
 
 func set_constructed() -> void:
 	if not multiplayer.is_server():
 		return
 	assert(state == State.UNDER_CONSTRUCTION)
 	state = State.CONSTRUCTED
-	if is_instance_valid(_working_unit):
-		_working_unit.job_finished()
-	_working_unit = null
+	if is_instance_valid(working_unit):
+		working_unit.job_finished()
+	working_unit = null
 	rpc("rpc_constructed", id)
 	# Inherit the player's latest settings for this building type: the server
 	# applies them authoritatively through the same command relay the terminal
@@ -517,14 +517,14 @@ func start_repair(unit: Unit) -> void:
 	if not multiplayer.is_server():
 		return
 	assert(state == State.CONSTRUCTED)
-	_working_unit = unit
+	working_unit = unit
 
 func finish_repair() -> void:
 	if not multiplayer.is_server():
 		return
-	if is_instance_valid(_working_unit):
-		_working_unit.job_finished()
-	_working_unit = null
+	if is_instance_valid(working_unit):
+		working_unit.job_finished()
+	working_unit = null
 
 # One repair-heal tick. Returns true when the repair is complete (health full).
 # Subclasses (Vat shared pools) override to redirect healing.

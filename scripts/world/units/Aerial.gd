@@ -10,6 +10,8 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/world/effects/Aerial
 
 enum Mode {PATROL, STRIKE}
 
+# --- State ---
+
 # Shared per-player glow materials (one per player colour, built lazily) — never
 # duplicate the projectile material per shot.
 static var _projectile_mats: Array[StandardMaterial3D] = []
@@ -23,7 +25,7 @@ var _idle_time := 0.0 # time spent jobless & idle (server) - prevents offense jo
 # DESIGN Beacon avatar buff: all the player's AERIALs gain +30s lifetime (2m ->
 # 2m30s) while a Beacon is empowered (type-wide, dynamic — mid-flight units
 # benefit while the buff is up).
-func get_lifetime() -> float:
+func _get_lifetime() -> float:
 	var base: float = Config.UNIT_LIFETIME.get(type, 120.0)
 	if Global.BM.empowered_type(player_owner) == BuildingManager.Type.BEACON:
 		base += Config.EMPOWER_AERIAL_LIFETIME_EXTRA
@@ -54,11 +56,11 @@ func _process(delta: float) -> void:
 	if multiplayer.is_server():
 		if state != State.WORKING:
 			_lifetime_timer += delta
-			if _lifetime_timer >= get_lifetime():
+			if _lifetime_timer >= _get_lifetime():
 				Global.UM.rpc("rpc_remove_unit", id)
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	if _lifetime_bar:
-		var lifetime := get_lifetime()
+		var lifetime := _get_lifetime()
 		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
 
 func initialise(b: Building) -> void:
@@ -163,7 +165,7 @@ func _spawn_projectile() -> void:
 	var target_node = combat_target # The unit might change target, but we don't change this projectile
 	projectile.set_meta("last_pos", to)
 	var tween = projectile.create_tween()
-	tween.tween_method(func(t):
+	tween.tween_method(func(t: float):
 		# Track the target's live position so that if it's destroyed mid-flight we
 		# keep flying to its last-known position instead of snapping back to spawn.
 		if is_instance_valid(target_node):

@@ -2,6 +2,8 @@ extends TerminalHUD
 
 class_name NestHUD
 
+# --- Constants ---
+
 const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.MCP_1: "MCP",
 	BuildingManager.Type.GEN: "Generator",
@@ -11,7 +13,11 @@ const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.NEST: "Nest",
 }
 
+# --- References ---
+
 var building: Nest
+
+# --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
 @onready var prod_btn: Button = $Window/VBox/ProdRow/ProdBtn
@@ -23,6 +29,8 @@ var building: Nest
 @onready var virus_label: Label = $Window/VBox/VirusRow/VirusLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/VirusRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
+
+# --- State ---
 
 var _enemy_buttons: Dictionary = {}
 var _building_buttons: Dictionary = {}

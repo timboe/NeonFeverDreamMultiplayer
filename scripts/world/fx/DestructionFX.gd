@@ -75,7 +75,7 @@ static func spawn(building: Building) -> void:
 	fx.name = "DestructionFX_" + str(building.id)
 	building.get_parent().add_child(fx)
 	fx.global_transform = building.global_transform
-	fx.setup(building)
+	fx._setup(building)
 
 # Unit variant: the same debris machinery at unit scale, no particle burst.
 # The Avatar root never moves, so its FX centres on the FPSBody instead.
@@ -92,16 +92,16 @@ static func spawn_unit(unit: Unit) -> void:
 	fx._blast_lift_max = UNIT_BLAST_LIFT_MAX
 	fx._mass_floor = UNIT_MASS_FLOOR
 	fx._spawn_particles = false
-	fx.setup_unit(unit)
+	fx._setup_unit(unit)
 
-func setup(building: Building) -> void:
+func _setup(building: Building) -> void:
 	_make_chunks_from(building)
 	if _spawn_particles:
 		_add_particles(building)
 	Global.VM.add_trauma(0.35, global_position, 0.2)
 	_arm_cleanup()
 
-func setup_unit(unit: Unit) -> void:
+func _setup_unit(unit: Unit) -> void:
 	var body := unit.get_node_or_null("FPSBody")
 	global_position = body.global_position if body else unit.global_position
 	_make_chunks_from(unit)

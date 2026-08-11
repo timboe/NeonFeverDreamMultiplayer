@@ -4,7 +4,12 @@ class_name TerminalHUD
 
 # Shared cursor wiring for all diegetic terminal HUDs. Each subclass scene must
 # contain a "Cursor" node (TerminalCursor scene/script) that the avatar ray drives.
+
+# --- Nodes ---
+
 @onready var cursor: TerminalCursor = $Cursor
+
+# --- State ---
 
 var _crt_overlay: ColorRect
 var _crt_material: ShaderMaterial

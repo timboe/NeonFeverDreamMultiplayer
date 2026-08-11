@@ -52,7 +52,7 @@ func _physics_process(delta: float) -> void:
 			# Horizontal tracking stays exact — snap straight to the cursor's ground hit.
 			position.x = result.position.x
 			position.z = result.position.z
-			var lowered : bool = result.position.y < LOWERED_THRESHOLD
+			var lowered: bool = result.position.y < LOWERED_THRESHOLD
 			desired_height = HEIGHT + (RAISED_BOOST if not lowered else 0.0)
 		else:
 			# Cursor is off the playfield (sky / decorative floor): lift the light

@@ -6,7 +6,7 @@ class_name MonorailMultimesh
 const HIDE_DEPTH: float = -3.0
 const CONNECT_TIME: float = 0.5
 const DISCONNECT_TIME: float = 0.2
-const _SNAP := 1000.0
+const SNAP_FACTOR := 1000.0
 
 # --- State ---
 
@@ -334,8 +334,8 @@ func _weld_entries(entries: Array[Array]) -> Mesh:
 				var wn := (xform.basis * in_norms[i]).normalized() if i < in_norms.size() else Vector3.UP
 				var wuv: Vector2 = in_uvs[i] if in_uvs != null and i < in_uvs.size() else Vector2.ZERO
 				var key := "%d_%d_%d_%d_%d_%d" % [
-					roundi(wp.x * _SNAP), roundi(wp.y * _SNAP), roundi(wp.z * _SNAP),
-					roundi(wn.x * _SNAP), roundi(wn.y * _SNAP), roundi(wn.z * _SNAP)]
+					roundi(wp.x * SNAP_FACTOR), roundi(wp.y * SNAP_FACTOR), roundi(wp.z * SNAP_FACTOR),
+					roundi(wn.x * SNAP_FACTOR), roundi(wn.y * SNAP_FACTOR), roundi(wn.z * SNAP_FACTOR)]
 				if snap_to_idx.has(key):
 					local_to_global[i] = snap_to_idx[key]
 				else:

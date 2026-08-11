@@ -2,6 +2,8 @@ extends Building
 
 class_name Generator
 
+# --- Constants ---
+
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/GeneratorHUD.tscn")
 
 # --- State ---

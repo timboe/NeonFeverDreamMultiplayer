@@ -66,23 +66,23 @@ func _connect_hud() -> void:
 		hud.toggle_camera.connect(_on_toggle_camera)
 
 func _process(delta: float) -> void:
-	apply_shake(delta)
-	decay_trauma(delta)
+	_apply_shake(delta)
+	_decay_trauma(delta)
 
 # --- Camera toggle ---
 
 func _on_toggle_camera() -> void:
 	match camera_status:
 		CameraStatus.OVERHEAD:
-			to_fps_cam_start()
+			_to_fps_cam_start()
 		CameraStatus.FPS:
-			to_overhead_cam_start()
+			_to_overhead_cam_start()
 
 # Drop out of FPS mode if the player is in it (used when interacting with a
 # terminal, e.g. pressing Empower).
 func force_leave_fps() -> void:
 	if camera_status == CameraStatus.FPS:
-		to_overhead_cam_start()
+		_to_overhead_cam_start()
 
 # Snap straight back to the RTS camera with no tween — used when the local
 # player's avatar dies while in FPS mode.
@@ -112,7 +112,7 @@ func exit_fps_immediate() -> void:
 	overhead_camera.rotation_degrees = Vector3(-55, rad_to_deg(anchor.basis.get_euler().y), 0)
 	call_deferred("_show_mouse")
 
-func to_fps_cam_start() -> void:
+func _to_fps_cam_start() -> void:
 	avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
 	if not avatar:
 		return
@@ -127,11 +127,11 @@ func to_fps_cam_start() -> void:
 
 	var tw = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(overhead_camera, "position", camera_target, TRANSITION_TIME).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_method(quat_transform, 0.0, 1.0, TRANSITION_TIME).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_callback(to_fps_cam_end).set_delay(TRANSITION_TIME)
+	tw.parallel().tween_method(_quat_transform, 0.0, 1.0, TRANSITION_TIME).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_callback(_to_fps_cam_end).set_delay(TRANSITION_TIME)
 	_cam_tween = tw
 
-func to_fps_cam_end() -> void:
+func _to_fps_cam_end() -> void:
 	camera_status = CameraStatus.FPS
 	overhead_camera.current = false
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
@@ -143,7 +143,7 @@ func to_fps_cam_end() -> void:
 	# Keep the server's per-player camera state in sync (avatar VIRUS-detect radius).
 	Global.send_command_me("camera_mode", [int(camera_status)])
 
-func to_overhead_cam_start() -> void:
+func _to_overhead_cam_start() -> void:
 	camera_status = CameraStatus.TO_OVERHEAD
 	var avatar_body = avatar.get_node_or_null("FPSBody")
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
@@ -168,18 +168,18 @@ func to_overhead_cam_start() -> void:
 	# whipping backward (EASE_OUT fast-start reads as an instant jump out).
 	var tw = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(overhead_camera, "position", target_tf.origin, TRANSITION_TIME).from(start_tf.origin)
-	tw.parallel().tween_method(quat_transform, 0.0, 1.0, TRANSITION_TIME)
-	tw.tween_callback(to_overhead_cam_end).set_delay(TRANSITION_TIME)
+	tw.parallel().tween_method(_quat_transform, 0.0, 1.0, TRANSITION_TIME)
+	tw.tween_callback(_to_overhead_cam_end).set_delay(TRANSITION_TIME)
 	_cam_tween = tw
 
-func to_overhead_cam_end() -> void:
+func _to_overhead_cam_end() -> void:
 	camera_status = CameraStatus.OVERHEAD
 	_cam_tween = null
 	call_deferred("_show_mouse")
 	# Keep the server's per-player camera state in sync (avatar VIRUS-detect radius).
 	Global.send_command_me("camera_mode", [int(camera_status)])
 
-func quat_transform(amount: float) -> void:
+func _quat_transform(amount: float) -> void:
 	var mid = quat_from.slerp(quat_to, amount)
 	overhead_camera.transform.basis = Basis(mid)
 
@@ -206,7 +206,7 @@ func jump_to(location: Vector3) -> void:
 
 # --- Trauma / Shake ---
 
-func add_trauma(amount: float, from, add_linger: float = 0.0) -> void:
+func add_trauma(amount: float, from: Variant, add_linger: float = 0.0) -> void:
 	# Shake distance is measured from the viewer: in FPS (or heading there) from
 	# the avatar's FPSBody — the body travels the world, the root stays on its
 	# spawn tile; anywhere else from the RTS camera, which also covers
@@ -223,12 +223,12 @@ func add_trauma(amount: float, from, add_linger: float = 0.0) -> void:
 		amount *= RUMBLE_FALLOFF / d
 	trauma = min(trauma + amount, 1.0)
 
-func decay_trauma(delta: float) -> void:
+func _decay_trauma(delta: float) -> void:
 	var change := shake_decay * delta
 	trauma = max(trauma - change, 0.0)
 	linger = max(linger - delta, 0.0)
 
-func apply_shake(delta: float) -> void:
+func _apply_shake(delta: float) -> void:
 	_time += delta * shake_speed * 5000.0
 	var trauma_mod: float = trauma
 	if linger > 0:

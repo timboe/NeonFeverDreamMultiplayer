@@ -2,12 +2,30 @@ extends Node3D
 
 class_name UnitManager
 
+# --- Types ---
+
 enum Type {NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS}
+
+# --- Constants ---
+
+# Unit scenes are instantiated per spawn (same pattern as buildings) — the
+# @tool-built models (AerialModel, VirusModel) build fresh in _ready, and
+# initialise() re-applies per-player colour/health/groups, so no live factory
+# template duplication is needed.
+const UNIT_SCENES: Dictionary = {
+	Type.ZOOMBA: preload("res://scenes/world/units/Zoomba.tscn"),
+	Type.AVATAR: preload("res://scenes/world/units/Avatar.tscn"),
+	Type.TANK: preload("res://scenes/world/units/Tank.tscn"),
+	Type.AERIAL: preload("res://scenes/world/units/Aerial.tscn"),
+	Type.VIRUS: preload("res://scenes/world/units/Virus.tscn"),
+}
+
+# --- State ---
 
 var unit_dictionary: Dictionary # int (id) -> Unit
 var _next_unit_id: int = 1
 
-# Per-player, per-type unit counts, maintained event-driven in spawn_unit /
+# Per-player, per-type unit counts, maintained event-driven in _spawn_unit /
 # rpc_remove_unit (both call_local authority RPCs, so the cache stays
 # consistent on every peer). Replaces O(units) scans that ran every frame
 # from production buildings and terminal HUDs.
@@ -49,25 +67,13 @@ func _count_remove(u: Unit) -> void:
 # --- Spawning ---
 
 # Note: Ownership of the unit is stored as unit.player_owner
-# Unit scenes are instantiated per spawn (same pattern as buildings) — the
-# @tool-built models (AerialModel, VirusModel) build fresh in _ready, and
-# initialise() re-applies per-player colour/health/groups, so no live factory
-# template duplication is needed.
-const UNIT_SCENES: Dictionary = {
-	Type.ZOOMBA: preload("res://scenes/world/units/Zoomba.tscn"),
-	Type.AVATAR: preload("res://scenes/world/units/Avatar.tscn"),
-	Type.TANK: preload("res://scenes/world/units/Tank.tscn"),
-	Type.AERIAL: preload("res://scenes/world/units/Aerial.tscn"),
-	Type.VIRUS: preload("res://scenes/world/units/Virus.tscn"),
-}
-
-func spawn_unit(uid: int, type: Type, building: Building) -> void:
+func _spawn_unit(uid: int, type: Type, building: Building) -> void:
 	var scene: PackedScene = UNIT_SCENES.get(type)
 	if not scene:
-		push_error("UnitManager.spawn_unit: unknown type ", type)
+		push_error("UnitManager._spawn_unit: unknown type ", type)
 		return
 	var u := scene.instantiate() as Unit
-	add_to_dict_and_scene(uid, u)
+	_add_to_dict_and_scene(uid, u)
 	u.initialise(building)
 	_count_add(u)
 
@@ -76,7 +82,7 @@ func next_unit_id() -> int:
 	_next_unit_id += 1
 	return nuid
 
-func add_to_dict_and_scene(uid: int, u: Unit) -> void:
+func _add_to_dict_and_scene(uid: int, u: Unit) -> void:
 	u.id = uid
 	unit_dictionary[u.id] = u
 	add_child(u)
@@ -85,7 +91,7 @@ func add_to_dict_and_scene(uid: int, u: Unit) -> void:
 func rpc_spawn_unit(uid: int, type: int, building_id: int) -> void:
 	var building = Global.BM.get_building_by_id(building_id)
 	if building:
-		spawn_unit(uid, type as Type, building)
+		_spawn_unit(uid, type as Type, building)
 
 # --- Displacement ---
 

@@ -2,6 +2,8 @@ extends Unit
 
 class_name Avatar
 
+# --- Constants ---
+
 const GRAVITY := -60.0
 const MAX_SPEED := 20.0
 const JUMP_SPEED := 18.0
@@ -14,6 +16,8 @@ const MOUSE_SENSITIVITY := 0.4
 # to be interactive (DESIGN: FPS terminal interaction range, 2 tiles).
 const TERMINAL_INTERACT_RANGE: float = Cairo.UNIT * 2.0
 
+# --- Nodes ---
+
 @onready var fps_body: CharacterBody3D = $FPSBody
 @onready var camera: Camera3D = $FPSBody/Rotation_Helper/FPSCamera
 @onready var rotation_helper: Node3D = $FPSBody/Rotation_Helper
@@ -21,6 +25,8 @@ const TERMINAL_INTERACT_RANGE: float = Cairo.UNIT * 2.0
 @onready var screen_ray: RayCast3D = $FPSBody/Rotation_Helper/FPSCamera/ScreenRay
 @onready var ray_render: MeshInstance3D = $FPSBody/Rotation_Helper/RayRender
 @onready var rand := RandomNumberGenerator.new()
+
+# --- State ---
 
 var ray_mesh := ImmediateMesh.new()
 var vel := Vector3()
@@ -42,8 +48,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not Global.game_started:
 		return
-	process_input(delta)
-	process_movement(delta)
+	_process_input(delta)
+	_process_movement(delta)
 
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
@@ -73,7 +79,7 @@ func idle_callback() -> void:
 
 # --- Input ---
 
-func process_input(delta: float) -> void:
+func _process_input(delta: float) -> void:
 	if not camera.current:
 		return
 
@@ -115,7 +121,7 @@ func process_input(delta: float) -> void:
 			ray_mesh.clear_surfaces()
 			if ray.is_colliding():
 				var local = ray_render.global_transform.affine_inverse() * ray.get_collision_point()
-				draw_jaggy_to(local.y)
+				_draw_jaggy_to(local.y)
 	else:
 		ray_mesh.clear_surfaces()
 		mouse_initial = true
@@ -125,7 +131,7 @@ func process_input(delta: float) -> void:
 
 # --- Movement ---
 
-func process_movement(delta: float) -> void:
+func _process_movement(delta: float) -> void:
 	if not camera.current:
 		return
 
@@ -216,7 +222,7 @@ func _hide_all_hud_cursors() -> void:
 		if hud_root and hud_root.has_method("hide_cursor"):
 			hud_root.hide_cursor()
 
-func draw_jaggy_to(dist: float) -> void:
+func _draw_jaggy_to(dist: float) -> void:
 	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	ray_mesh.surface_set_color(Color.WHITE)
 	ray_mesh.surface_add_vertex(Vector3.ZERO)

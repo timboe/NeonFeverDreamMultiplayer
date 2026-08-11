@@ -2,7 +2,11 @@ extends TerminalHUD
 
 class_name GeneratorHUD
 
+# --- References ---
+
 var building: Generator
+
+# --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
 @onready var power_label: Label = $Window/VBox/PowerRow/PowerLabel

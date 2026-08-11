@@ -2,18 +2,27 @@ extends Node3D
 
 class_name GameManager
 
+# --- Constants ---
+
 const SNAPSHOT_INTERVAL := 0.05
 const JOB_TICK_INTERVAL := 1.0
 const INTERPOLATION_DELAY := 0.075
 const AVATAR_SEND_INTERVAL := 0.05
 const SLOT_COUNT := 10
 const MAX_SNAPSHOT_BUFFER := 4
+# Foreign terminal UI refresh runs at 4 Hz instead of every frame/snapshot.
+const TERMINAL_REFRESH_INTERVAL := 0.25
+const READY_TIMEOUT: float = 15.0
+# Cached per-player avatar nodes: group lookups with string concat were running
+# every server frame (_interpolate_avatars) and at 20 Hz client-side
+# (_send_avatar_snapshot). Entries expire after AVATAR_CACHE_TTL seconds.
+const AVATAR_CACHE_TTL: float = 1.0
+
+# --- State ---
 
 var _snapshot_timer := 0.0
 var _job_timer := 0.0
 var _avatar_snapshot_timer := 0.0
-# Foreign terminal UI refresh runs at 4 Hz instead of every frame/snapshot.
-const TERMINAL_REFRESH_INTERVAL := 0.25
 var _terminal_refresh_timer := 0.0
 
 var _snapshots: Array = []
@@ -25,11 +34,15 @@ var _pack_scratch: PackedFloat64Array
 # Client-side interpolation scratch (per unit per frame).
 var _interp_scratch: Array[float] = []
 
-# Cached per-player avatar nodes: group lookups with string concat were running
-# every server frame (_interpolate_avatars) and at 20 Hz client-side
-# (_send_avatar_snapshot). Entries expire after AVATAR_CACHE_TTL seconds.
-const AVATAR_CACHE_TTL: float = 1.0
 var _avatar_cache: Dictionary = {} # pnum -> {"avatar": Node, "time": float}
+
+var _server_ready: bool = false
+var _world_ready: bool = false  # client: this peer has finished initialising World
+var _expected_clients: int = 0
+var _ready_peers: Dictionary = {}  # pnum -> true
+var _start_timeout: float = 0.0
+
+# --- Avatar cache ---
 
 func _get_avatar(pnum: int) -> Unit:
 	var now := Time.get_ticks_msec() / 1000.0
@@ -39,16 +52,6 @@ func _get_avatar(pnum: int) -> Unit:
 	var avatar := get_tree().get_first_node_in_group("avatar_player" + str(pnum)) as Unit
 	_avatar_cache[pnum] = {"avatar": avatar, "time": now}
 	return avatar
-
-# --- Game start gate ---
-
-const READY_TIMEOUT: float = 15.0
-
-var _server_ready: bool = false
-var _world_ready: bool = false  # client: this peer has finished initialising World
-var _expected_clients: int = 0
-var _ready_peers: Dictionary = {}  # pnum -> true
-var _start_timeout: float = 0.0
 
 # --- Lifecycle ---
 
@@ -97,7 +100,7 @@ func _throttled_terminal_refresh(delta: float) -> void:
 	_terminal_refresh_timer += delta
 	if _terminal_refresh_timer >= TERMINAL_REFRESH_INTERVAL:
 		_terminal_refresh_timer = 0.0
-		refresh_foreign_building_terminals()
+		_refresh_foreign_building_terminals()
 
 # --- Game start gate ---
 
@@ -204,8 +207,7 @@ func _send_avatar_snapshot() -> void:
 	var avatar := _get_avatar(Global.my_player_number)
 	if not avatar:
 		return
-	var cam = Global.VM
-	if cam and cam.camera_status != cam.CameraStatus.FPS:
+	if Global.VM.camera_status != Global.VM.CameraStatus.FPS:
 		return
 	var data := PackedFloat64Array()
 	_pack_unit(data, avatar)
@@ -261,7 +263,7 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 	slots[9] = float(u.combat_fire_event)
 	data.append_array(_pack_scratch)
 
-static func _encode_target(target) -> float:
+static func _encode_target(target: Node3D) -> float:
 	if target and is_instance_valid(target):
 		if target is Unit:
 			return float(target.id)
@@ -581,8 +583,8 @@ func _apply_building(b: Building, slots: Array) -> void:
 # building the current player does NOT own, so they can spy on the settings of
 # enemy terminals. Runs after snapshot application on clients and at the same
 # cadence on the server (which can also be a local player).
-func refresh_foreign_building_terminals() -> void:
-	for b : Building in Global.BM.buildings() :
+func _refresh_foreign_building_terminals() -> void:
+	for b: Building in Global.BM.buildings():
 		if b.player_owner == Global.my_player_number:
 			continue
 		b.refresh_terminal_ui()

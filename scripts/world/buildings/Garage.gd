@@ -2,7 +2,11 @@ extends Building
 
 class_name Garage
 
+# --- Constants ---
+
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/GarageHUD.tscn")
+
+# --- State ---
 
 var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
 var cached_tank_count: int = 0
@@ -75,15 +79,15 @@ func check_work() -> void:
 		# energy on a conversion that hasn't happened.
 		if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
 			return
-		var total_zoombas : int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
-		var claimed : int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
+		var total_zoombas: int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
+		var claimed: int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 		# Always keep at least 1 zoomba free
 		if total_zoombas - claimed < 2:
 			_production_energy = 0.0
 			_production_timer = 0.0
 			return
 		# Tank cap based on ratio, minus already claimed zoombas
-		var target_tanks : int = roundi(total_zoombas * zoomba_tank_ratio)
+		var target_tanks: int = roundi(total_zoombas * zoomba_tank_ratio)
 		if cached_tank_count + claimed >= target_tanks:
 			_production_energy = 0.0
 			_production_timer = 0.0
@@ -102,11 +106,11 @@ func _can_produce() -> bool:
 		return false
 	if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
 		return false
-	var total_zoombas : int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
-	var claimed : int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
+	var total_zoombas: int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
+	var claimed: int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 	if total_zoombas - claimed < 2:
 		return false
-	var target_tanks : int = roundi(total_zoombas * zoomba_tank_ratio)
+	var target_tanks: int = roundi(total_zoombas * zoomba_tank_ratio)
 	if cached_tank_count + claimed >= target_tanks:
 		return false
 	return true

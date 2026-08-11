@@ -94,10 +94,7 @@ func close() -> void:
 	visible = false
 
 func _can_open() -> bool:
-	var vm = Global.VM
-	if not vm:
-		return false
-	return vm.camera_status == vm.CameraStatus.OVERHEAD
+	return Global.VM.camera_status == Global.VM.CameraStatus.OVERHEAD
 
 # --- Graph refresh ---
 

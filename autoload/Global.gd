@@ -1,5 +1,7 @@
 extends Node
 
+# --- Constants ---
+
 const MAX_PLAYERS := 4
 const FLOOR_HEIGHT: float = 20.0 # Visible floor-to-roof of tile
 const TILE_OFFSET: float = 1.95 # Tile extends this far below floor level
@@ -21,8 +23,12 @@ var SM: StatisticsManager = null
 var PM: PathingManager = null
 var NM: NotificationManager = null
 
+# --- State ---
+
 # False until every peer has loaded the World and the server signals game_start.
 var game_started: bool = false
+
+@onready var rand := RandomNumberGenerator.new()
 
 # --- Network ---
 
@@ -30,9 +36,7 @@ var network_manager: NetworkManager
 var game_config: GameConfig
 var my_player_number: int = -1
 
-@onready var rand := RandomNumberGenerator.new()
-
-func _get_server() -> Server:
+func get_server() -> Server:
 	if network_manager:
 		return network_manager.server
 	return null
@@ -43,7 +47,7 @@ func send_command_me(command: String, args: Array) -> void:
 	send_command(my_player_number, command, args)
 
 func send_command(pnum: int, command: String, args: Array) -> void:
-	var srv := _get_server()
+	var srv := get_server()
 	if srv:
 		srv.handle_command(pnum, command, args)
 	else:
@@ -52,7 +56,7 @@ func send_command(pnum: int, command: String, args: Array) -> void:
 @rpc("any_peer", "call_remote")
 func _on_remote_command(command: String, args: Array) -> void:
 	var caller := multiplayer.get_remote_sender_id()
-	var srv := _get_server()
+	var srv := get_server()
 	if srv:
 		var pnum = srv.peer_to_player.get(caller)
 		if pnum != null:

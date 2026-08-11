@@ -61,7 +61,11 @@ const PLUME_BASE_RADIUS: float = 7.5
 const PLUME_VEL_MIN: float = 1.5
 const PLUME_VEL_MAX: float = 3.5
 
+# --- Nodes ---
+
 @onready var HEIGHT: float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
+
+# --- Types ---
 
 enum EmissionEffect {
 	GENERATOR_CATCHMENT, # highest priority
@@ -69,6 +73,8 @@ enum EmissionEffect {
 	TILE_HOVER,
 	PULSE_ANIMATION,     # lowest priority
 }
+
+# --- State ---
 
 var _emission_requests: Dictionary = {} # EmissionEffect (int) -> {color: Color, strength: float}
 
@@ -81,9 +87,6 @@ func set_building(b: Building) -> void:
 
 func set_disabled() -> void:
 	state = TileManager.State.DISABLED
-
-func get_state() -> TileManager.State:
-	return state
 
 func set_id(i: int) -> void:
 	id = i
@@ -111,7 +114,7 @@ func toggle_selected_by(player_n: int) -> bool:
 
 func set_lowered() -> void:
 	state = TileManager.State.LOWERED
-	# Only the selection highlight is provably stale here (begin_toggle cleared
+	# Only the selection highlight is provably stale here (_begin_toggle cleared
 	# selected_by). Generator-catchment / hover / pulse requests self-manage and
 	# must survive — a full clear made the catchment ring flicker off whenever
 	# an adjacent tile finished lowering.
@@ -120,14 +123,14 @@ func set_lowered() -> void:
 	var t := transform
 	t.origin.y = -HEIGHT
 	transform = t
-	set_tile_mm_height(-HEIGHT)
+	_set_tile_mm_height(-HEIGHT)
 	# Connect pathing to any already-lowered neighbours
 	for n in neighbours:
 		if n.state == TileManager.State.LOWERED and n.building == null:
 			pathing_manager.connect_tiles(self, n)
 
 # Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
-func set_rising() -> void:
+func _set_rising() -> void:
 	state = TileManager.State.RISING
 	Global.TM.remove_tile_from_pathing(self)
 
@@ -196,7 +199,7 @@ func update_selection_and_aoe_visual() -> void:
 		elif p == 2: mask.g = 1.0
 		elif p == 3: mask.b = 1.0
 		elif p == 4: mask.a = 1.0
-	set_tile_mm_selecting_mask(mask)
+	_set_tile_mm_selecting_mask(mask)
 
 	# Emission priority system — toggle_tween guard is inside _apply_emission
 	var is_selected = (Global.my_player_number in selected_by)
@@ -207,32 +210,25 @@ func update_selection_and_aoe_visual() -> void:
 
 # --- Visual: MultiMesh accessors ---
 
-func get_tile_mm_height() -> float:
+func _get_tile_mm_height() -> float:
 	return tile_mm.get_instance_transform(tile_mm_id).origin.y
 
-func set_tile_mm_height(value: float) -> void:
+func _set_tile_mm_height(value: float) -> void:
 	var t: Transform3D = tile_mm.get_instance_transform(tile_mm_id)
 	t.origin.y = value
 	tile_mm.set_instance_transform(tile_mm_id, t)
 
-func set_tile_mm_selecting_mask(mask: Color) -> void:
+func _set_tile_mm_selecting_mask(mask: Color) -> void:
 	if tile_mm == null:
 		return
 	var d := mask
 	tile_mm.set_instance_custom_data(tile_mm_id, d)
 
-func get_tile_mm_color() -> Color:
-	var c = tile_mm.get_instance_color(tile_mm_id)
-	return Color(c.r, c.g, c.b, 1.0)
-
-func set_tile_mm_color(value: Color) -> void:
+func _set_tile_mm_color(value: Color) -> void:
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	tile_mm.set_instance_color(tile_mm_id, Color(value.r, value.g, value.b, c.a))
 
-func get_tile_mm_emission() -> float:
-	return tile_mm.get_instance_color(tile_mm_id).a
-
-func set_tile_mm_emission(value: float) -> void:
+func _set_tile_mm_emission(value: float) -> void:
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	c.a = value
 	tile_mm.set_instance_color(tile_mm_id, c)
@@ -258,10 +254,10 @@ func _apply_emission() -> void:
 	var effect = _get_active_effect()
 	if effect != -1:
 		var req = _emission_requests[effect]
-		set_tile_mm_color(req.color)
-		set_tile_mm_emission(req.strength)
+		_set_tile_mm_color(req.color)
+		_set_tile_mm_emission(req.strength)
 	else:
-		set_tile_mm_emission(0.0)
+		_set_tile_mm_emission(0.0)
 
 func _get_active_effect() -> int:
 	var best := -1
@@ -281,7 +277,7 @@ func do_toggle_countdown(z: Unit) -> void:
 	# work-speed multiplier, and the client sweep follows via the RPC payload.
 	var cd_time := TOGGLE_COUNTDOWN_TIME / z.work_speed_multiplier()
 	var t = create_tween()
-	t.tween_callback(begin_toggle.bind(pnum)).set_delay(cd_time)
+	t.tween_callback(_begin_toggle.bind(pnum)).set_delay(cd_time)
 	_working_unit_dict[pnum] = {"unit": z, "job_id": z.job["id"], "countdown_tween": t}
 	Global.TM.rpc("rpc_toggle_animation", id, 0, pnum, cd_time) # MODE 0
 
@@ -316,7 +312,7 @@ func _cancel_other_workers(except_pnum: int) -> void:
 # Point of no return - raising or lowering if this gets called.
 # The firing player is bound into the countdown tween callback (do_toggle_countdown),
 # never inferred from dict order.
-func begin_toggle(active_pnum: int) -> void:
+func _begin_toggle(active_pnum: int) -> void:
 	if not multiplayer.is_server():
 		return
 	if not _working_unit_dict.has(active_pnum):
@@ -338,7 +334,7 @@ func begin_toggle(active_pnum: int) -> void:
 	if state == TileManager.State.RAISED:
 		state = TileManager.State.FALLING
 	elif state == TileManager.State.LOWERED:
-		set_rising()
+		_set_rising()
 
 	selected_by.clear()
 	Global.TM.rpc("broadcast_tile_selection", id, selected_by.duplicate())
@@ -353,7 +349,7 @@ func begin_toggle(active_pnum: int) -> void:
 
 	# Finished animation callback only runs on the server
 	var t = create_tween()
-	t.tween_callback(done_toggle).set_delay(fall_time + thunk_time)
+	t.tween_callback(_done_toggle).set_delay(fall_time + thunk_time)
 
 # Called locally by TileManager.rpc_toggle_animation
 # For modes 0/1: pnum_or_a is the player number
@@ -361,13 +357,13 @@ func begin_toggle(active_pnum: int) -> void:
 # For mode 2: pnum_or_a is unused, b=thunk_distance, c=thunk_time, d=fall_time, e=dest
 func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float = 0, d: float = 0, e: float = 0) -> void:
 	if mode == 0: # Countdown
-		set_tile_mm_color(Color.WHITE)
-		set_tile_mm_emission(0.4)
+		_set_tile_mm_color(Color.WHITE)
+		_set_tile_mm_emission(0.4)
 		if _countdown_tweens.has(pnum_or_a) and _countdown_tweens[pnum_or_a] and _countdown_tweens[pnum_or_a].is_valid():
 			_countdown_tweens[pnum_or_a].kill()
 		var cd_time := b if b > 0.0 else TOGGLE_COUNTDOWN_TIME
 		_countdown_tweens[pnum_or_a] = create_tween()
-		_countdown_tweens[pnum_or_a].tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, cd_time)\
+		_countdown_tweens[pnum_or_a].tween_method(_set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, cd_time)\
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	elif mode == 1: # Cancel
 		if _countdown_tweens.has(pnum_or_a):
@@ -391,7 +387,7 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 		var start := transform.origin.y
 		var travel := absf(dest - start)
 		var dir := 1.0 if dest > start else -1.0
-		var thunk_pos : float = start + dir * thunk_distance * travel
+		var thunk_pos: float = start + dir * thunk_distance * travel
 		# Lowering vents dust from the surface (stress release); raising gets a quiet plume.
 		# Burst magnitude scales with the thunk so a bigger jerk reads bigger.
 		if dest < -Global.FLOOR_HEIGHT:
@@ -404,21 +400,21 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 		# Need to alter collision box and nav mesh
 		toggle_tween.tween_property(self, "position:y", thunk_pos, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		toggle_tween.parallel().tween_method(set_tile_mm_height, get_tile_mm_height(), thunk_pos, thunk_time)\
+		toggle_tween.parallel().tween_method(_set_tile_mm_height, _get_tile_mm_height(), thunk_pos, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		toggle_tween.parallel().tween_method(set_tile_mm_emission, 1.0, 0.0, thunk_time)\
+		toggle_tween.parallel().tween_method(_set_tile_mm_emission, 1.0, 0.0, thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.parallel().tween_property(self, "position:y", dest, fall_time)\
 			.from(thunk_pos).set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
-		toggle_tween.parallel().tween_method(set_tile_mm_height, thunk_pos, dest, fall_time)\
+		toggle_tween.parallel().tween_method(_set_tile_mm_height, thunk_pos, dest, fall_time)\
 			.set_delay(thunk_time)\
 			.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN_OUT)
 		toggle_tween.tween_callback(_apply_emission)
 		if not multiplayer.is_server():
 			toggle_tween.tween_callback(_sync_state_after_toggle.bind(dest))
 			# Reposition terminals once this tile's state is final on the client.
-			# (The server repositions in done_toggle after finalizing its own state.)
+			# (The server repositions in _done_toggle after finalizing its own state.)
 			toggle_tween.tween_callback(_reposition_terminals_after_toggle)
 
 # One-shot burst fired at the start of the thunk. Runs on every peer — the
@@ -432,7 +428,7 @@ func _fire_toggle_burst(particles: GPUParticles3D, base_amount: int, base_radius
 	particles.amount = maxi(1, roundi(base_amount * k))
 	particles.emitting = true
 
-func done_toggle() -> void:
+func _done_toggle() -> void:
 	if not multiplayer.is_server():
 		return
 	if state == TileManager.State.FALLING:
@@ -442,8 +438,8 @@ func done_toggle() -> void:
 		var t := transform
 		t.origin.y = -Global.TILE_OFFSET
 		transform = t
-		set_tile_mm_height(-Global.TILE_OFFSET)
-		# begin_toggle cleared selected_by — drop the stale selection highlight
+		_set_tile_mm_height(-Global.TILE_OFFSET)
+		# _begin_toggle cleared selected_by — drop the stale selection highlight
 		# (set_lowered does the same; without this a raised tile stays lit until re-hovered)
 		release_emission(EmissionEffect.TILE_SELECTED)
 		_apply_emission()
@@ -486,7 +482,7 @@ func _on_StaticBody_mouse_exited() -> void:
 	update_selection_and_aoe_visual()
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx) -> void:
-	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
+	if not event is InputEventMouseButton or not event.is_pressed() or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if not hud:

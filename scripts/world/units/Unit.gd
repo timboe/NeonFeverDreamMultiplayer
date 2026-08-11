@@ -90,7 +90,7 @@ func get_mode() -> int:
 
 # --- Combat aiming ---
 
-func update_weapon_aim(delta: float) -> bool:
+func _update_weapon_aim(delta: float) -> bool:
 	if not weapon_node or not combat_target or not is_instance_valid(combat_target):
 		return false
 	var target_pos = combat_manager.combat_target_position(combat_target)
@@ -200,7 +200,7 @@ func _process(delta: float) -> void:
 	if _health_bar:
 		_health_bar.set_health(health, _max_hp)
 
-	update_weapon_aim(delta)
+	_update_weapon_aim(delta)
 	_update_combat_visuals(delta)
 
 	# If under repair (on server)
@@ -224,7 +224,7 @@ func assign_job(new_job: Dictionary) -> void:
 	progress = 0
 	# Kick off pathing immediately if nothing is already moving us
 	if move_tween == null or not move_tween.is_valid() or not move_tween.is_running():
-		pathing_callback()
+		_pathing_callback()
 
 func _job_target_tile() -> TileElement:
 	if job.is_empty():
@@ -240,7 +240,7 @@ func _kill_combat_hold() -> void:
 func try_generate_offense_job() -> bool:
 	return false
 
-# Attack hook - called from start_work() for a JobManager.Type.ATTACK job.
+# Attack hook - called from _start_work() for a JobManager.Type.ATTACK job.
 # Overridden by units that stop-and-attach (VIRUS limpet). Default is a no-op.
 func start_attack() -> void:
 	pass
@@ -264,7 +264,7 @@ func idle_callback() -> void:
 		assert(state == State.PATHING)
 		assert(scram_count == 0)
 		path.resize(0)
-		pathing_callback()
+		_pathing_callback()
 		return
 
 	# Offence hook - idle strike units generate their own combat job
@@ -320,11 +320,11 @@ func idle_callback() -> void:
 		location = possible_destinations[Global.rand.randi() % possible_destinations.size()]
 
 	# Go to new location. In extreme cases may be the same tile (possible_destinations.size() == 0)
-	move(idle_callback)
+	_move(idle_callback)
 
 # --- Pathing state ---
 
-func pathing_callback() -> void:
+func _pathing_callback() -> void:
 	if not multiplayer.is_server():
 		return
 	# First - check we didn't scram while moving.
@@ -339,23 +339,23 @@ func pathing_callback() -> void:
 	# COMBAT_PERSUE jobs never enter WORKING - chase/orbit the target instead.
 	# (ATTACK jobs are the exception: they path normally and stop-and-attach.)
 	if job["type"] == JobManager.Type.COMBAT_PERSUE:
-		return combat_pathing_callback()
+		return _combat_pathing_callback()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
-		return start_work()
+		return _start_work()
 	# Fourth, run pathing
-	if not check_pathing_valid():
+	if not _check_pathing_valid():
 		return abandon_job()
 	# Re-check: path_dest may have just been set to our current location (unit already adjacent)
 	if job.has("path_dest") and job["path_dest"].id == location.id:
-		return start_work()
+		return _start_work()
 	# Fifth, move to next location
 	assert(progress < path.size())
 	location = _pathing_manager.get_tile(path[progress])
 	progress += 1
-	move(pathing_callback)
+	_move(_pathing_callback)
 
-func check_pathing_valid() -> bool:
+func _check_pathing_valid() -> bool:
 	if not multiplayer.is_server():
 		return false
 	# Validate remaining path nodes are still traversable
@@ -376,7 +376,7 @@ func check_pathing_valid() -> bool:
 				job["path_dest"] = n
 		progress = 1 # 0 is our starting location
 		if path.size() < 2:
-			# path.size() == 1 means we're already on an access tile -- start_work will catch it
+			# path.size() == 1 means we're already on an access tile -- _start_work will catch it
 			if path.size() == 1 and job.has("path_dest") and job["path_dest"].id == location.id:
 				return true
 			return false # We were unable to path
@@ -384,7 +384,7 @@ func check_pathing_valid() -> bool:
 
 # --- Combat state (no WORKING - path to the target, keep moving in its vicinity) ---
 
-func combat_pathing_callback() -> void:
+func _combat_pathing_callback() -> void:
 	if not multiplayer.is_server():
 		return
 	if combat_hold_tween and combat_hold_tween.is_valid():
@@ -402,19 +402,19 @@ func combat_pathing_callback() -> void:
 	if not Global.JM.check_job_still_valid(job):
 		return job_finished()
 	# Third - pick the next tile: orbit when adjacent, chase otherwise
-	var dest: TileElement = combat_next_tile()
+	var dest: TileElement = _combat_next_tile()
 	if dest == null:
 		return abandon_job()
 	previous_location = location
 	if dest == location:
 		# No reachable alternative - hold adjacent and re-check shortly
 		combat_hold_tween = create_tween()
-		combat_hold_tween.tween_callback(combat_pathing_callback).set_delay(0.5)
+		combat_hold_tween.tween_callback(_combat_pathing_callback).set_delay(0.5)
 		return
 	location = dest
-	move(combat_pathing_callback)
+	_move(_combat_pathing_callback)
 
-func combat_next_tile() -> TileElement:
+func _combat_next_tile() -> TileElement:
 	if not multiplayer.is_server():
 		return null
 	var target_tile: TileElement = Global.JM.target_tile(job["target"])
@@ -461,12 +461,12 @@ func combat_next_tile() -> TileElement:
 
 # --- Working state ---
 
-func start_work() -> void:
+func _start_work() -> void:
 	if not multiplayer.is_server():
 		return
 	assert(state == State.PATHING)
 	state = State.WORKING
-	quick_rotate()
+	_quick_rotate()
 	if has_node("Zapper"):
 		$Zapper.visible = true
 		$Zapper.target_position.y = Cairo.UNIT
@@ -482,7 +482,7 @@ func start_work() -> void:
 		JobManager.Type.ATTACK:
 			start_attack()
 		_:
-			push_error("Unit.start_work: unknown job type ", job["type"])
+			push_error("Unit._start_work: unknown job type ", job["type"])
 			assert(false)
 
 # --- Job completion ---
@@ -574,7 +574,7 @@ func work_speed_multiplier() -> float:
 		return Config.EMPOWER_ZOOMBA_SPEED_MULT
 	return 1.0
 
-func move(callback: Callable) -> void:
+func _move(callback: Callable) -> void:
 	if not multiplayer.is_server():
 		return
 	setup_rotation(location, null if job.is_empty() else _job_target_tile())
@@ -607,17 +607,17 @@ func move(callback: Callable) -> void:
 		# Rotate first, then move — gives a deliberate turn-then-walk feel
 		var rot_time := time / 4.0
 		var move_time := time - rot_time
-		move_tween.tween_method(quat_transform, 0.0, 1.0, rot_time)
+		move_tween.tween_method(_quat_transform, 0.0, 1.0, rot_time)
 		move_tween.tween_property(self, "position", _move_target, move_time)
 		move_tween.tween_callback(callback)
 	else:
-		move_tween.tween_method(quat_transform, 0.0, 1.0, time / 2.0)
+		move_tween.tween_method(_quat_transform, 0.0, 1.0, time / 2.0)
 		move_tween.parallel().tween_property(self, "position", _move_target, time)
 		move_tween.parallel().tween_callback(callback).set_delay(time)
 
 # --- Rotation ---
 
-func quick_rotate() -> void:
+func _quick_rotate() -> void:
 	if not multiplayer.is_server():
 		return
 	var target_tile := _job_target_tile()
@@ -627,9 +627,9 @@ func quick_rotate() -> void:
 	if _rotate_tween and _rotate_tween.is_valid():
 		_rotate_tween.kill()
 	_rotate_tween = create_tween()
-	_rotate_tween.tween_method(quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
+	_rotate_tween.tween_method(_quat_transform, 0.0, 1.0, QUICK_ROTATE_TIME)
 
-func quat_transform(amount: float) -> void:
+func _quat_transform(amount: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var mid = quat_from.slerp(quat_to, amount)

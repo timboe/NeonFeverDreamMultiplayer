@@ -2,6 +2,8 @@ extends Node
 
 class_name PathingManager
 
+# --- State ---
+
 var astar: AStar3D
 var monorail: MonorailMultimesh
 
@@ -37,7 +39,7 @@ func _process(_delta: float) -> void:
 				debug_mesh.surface_add_vertex(astar.get_point_position(conn_id))
 	debug_mesh.surface_end()
 
-func toggle_debug() -> void:
+func _toggle_debug() -> void:
 	debug_enabled = not debug_enabled
 	set_process(debug_enabled)
 	if debug_enabled:
@@ -76,12 +78,6 @@ func connect_tiles(from: TileElement, to: TileElement, bidirectional: bool = tru
 		monorail.cap_raise(from.get_id())
 		monorail.cap_raise(to.get_id())
 
-func disconnect_tiles(a: TileElement, b: TileElement, bidirectional: bool = true) -> void:
-	astar.disconnect_points(a.get_id(), b.get_id(), bidirectional)
-	_bump_generation()
-	if monorail:
-		monorail.disconnect_edge(a.get_id(), b.get_id())
-
 func disconnect_tile(tile: TileElement) -> void:
 	var tile_id := tile.get_id()
 	for conn_id in astar.get_point_connections(tile_id):
@@ -97,14 +93,11 @@ func distance(a: TileElement, b: TileElement) -> int:
 	var path := pathfind(a, b)
 	return max(0, path.size() - 1)
 
-func are_tiles_connected(a: TileElement, b: TileElement) -> bool:
-	return pathfind(a, b).size() > 0
-
 func pathfind(from: TileElement, to: TileElement) -> PackedInt64Array:
 	# Directional key: a cached path always starts at `from`. A symmetric key
 	# would hand a unit the reverse-direction path — walking it to the end
 	# leaves progress == path.size() with path_dest unreached (assert fires in
-	# Unit.pathing_callback).
+	# Unit._pathing_callback).
 	var key := from.get_id() * 100000 + to.get_id()
 	var cached = _path_cache.get(key)
 	if cached != null:
@@ -117,9 +110,6 @@ func pathfind(from: TileElement, to: TileElement) -> PackedInt64Array:
 	# mutate it freely.
 	_path_cache[key] = path.duplicate()
 	return path
-
-func get_point(id: int) -> Vector3:
-	return astar.get_point_position(id)
 
 func get_tile(id: int) -> TileElement:
 	return Global.TM.tile_dictionary[id]

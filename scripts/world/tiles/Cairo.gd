@@ -8,6 +8,8 @@ class_name Cairo
 # TileManager.tscn) are used instead. The constants below are used by
 # TileManager and TileElement for positioning and layout calculations.
 
+# --- Constants ---
+
 const GENERATE = false
 
 # HEIGHT is vertical height (+y) off of the ground plane (x,z)
@@ -56,7 +58,7 @@ const BASE_VERTICES: Array = [
 var cairo_mesh: ArrayMesh
 var cairo_mesh_shape := ConvexPolygonShape3D.new()
 
-func add_face(surface_tool: SurfaceTool, start: int) -> void:
+func _add_face(surface_tool: SurfaceTool, start: int) -> void:
 	surface_tool.add_index(start + 0)
 	surface_tool.add_index(start + 1)
 	surface_tool.add_index(start + 2)
@@ -64,7 +66,7 @@ func add_face(surface_tool: SurfaceTool, start: int) -> void:
 	surface_tool.add_index(start + 3)
 	surface_tool.add_index(start + 2)
 
-func add_face_vertex(surface_tool: SurfaceTool, outline_tool: SurfaceTool, from: Vector3, to: Vector3) -> void:
+func _add_face_vertex(surface_tool: SurfaceTool, outline_tool: SurfaceTool, from: Vector3, to: Vector3) -> void:
 	# Add the four points needed to draw the two triangles of a rectangle face
 	surface_tool.add_uv(Vector2(0.0, 0.0))
 	surface_tool.add_vertex(from)
@@ -82,7 +84,7 @@ func add_face_vertex(surface_tool: SurfaceTool, outline_tool: SurfaceTool, from:
 	outline_tool.add_vertex(from)
 	outline_tool.add_vertex(to)
 
-func generate_cairo_pentagon() -> ArrayMesh:
+func _generate_cairo_pentagon() -> ArrayMesh:
 	var surface_tool = SurfaceTool.new()
 	var outline_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -107,15 +109,15 @@ func generate_cairo_pentagon() -> ArrayMesh:
 	surface_tool.add_vertex(Vector3(RIGHT_POINT__UP, HEIGHT, RIGHT_POINT__RIGHT))
 	###################################
 	# First side (rect 1x2), 5-8
-	add_face_vertex(surface_tool, outline_tool, Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, UNIT))
+	_add_face_vertex(surface_tool, outline_tool, Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, UNIT))
 	# Second side (rect sqrt(3)-1x2), 9-12
-	add_face_vertex(surface_tool, outline_tool, Vector3(0.0, 0.0, UNIT), Vector3(RIGHT_POINT__UP, 0.0, RIGHT_POINT__RIGHT))
+	_add_face_vertex(surface_tool, outline_tool, Vector3(0.0, 0.0, UNIT), Vector3(RIGHT_POINT__UP, 0.0, RIGHT_POINT__RIGHT))
 	# Third side (rect 1x2), 13-16
-	add_face_vertex(surface_tool, outline_tool, Vector3(RIGHT_POINT__UP, 0.0, RIGHT_POINT__RIGHT), Vector3(TOP_POINT__UP, 0.0, TOP_POINT__RIGHT))
+	_add_face_vertex(surface_tool, outline_tool, Vector3(RIGHT_POINT__UP, 0.0, RIGHT_POINT__RIGHT), Vector3(TOP_POINT__UP, 0.0, TOP_POINT__RIGHT))
 	# Fourth side (rect 1x2), 17-20
-	add_face_vertex(surface_tool, outline_tool, Vector3(TOP_POINT__UP, 0.0, TOP_POINT__RIGHT), Vector3(UNIT, 0.0, 0))
+	_add_face_vertex(surface_tool, outline_tool, Vector3(TOP_POINT__UP, 0.0, TOP_POINT__RIGHT), Vector3(UNIT, 0.0, 0))
 	# Fifth side (rect 1x2), 21-24
-	add_face_vertex(surface_tool, outline_tool, Vector3(UNIT, 0.0, 0), Vector3(0.0, 0.0, 0))
+	_add_face_vertex(surface_tool, outline_tool, Vector3(UNIT, 0.0, 0), Vector3(0.0, 0.0, 0))
 	#####################################################
 	# Top face, three triangles
 	surface_tool.add_index(0)
@@ -128,15 +130,15 @@ func generate_cairo_pentagon() -> ArrayMesh:
 	surface_tool.add_index(3)
 	surface_tool.add_index(4)
 	# First side (rect 1x2)
-	add_face(surface_tool, 5)
+	_add_face(surface_tool, 5)
 	# Second side (rect sqrt(3)-1x2)
-	add_face(surface_tool, 9)
+	_add_face(surface_tool, 9)
 	# Third side (rect 1x2)
-	add_face(surface_tool, 13)
+	_add_face(surface_tool, 13)
 	# Fourth side (rect 1x2)
-	add_face(surface_tool, 17)
+	_add_face(surface_tool, 17)
 	# Fifth side (rect 1x2)
-	add_face(surface_tool, 21)
+	_add_face(surface_tool, 21)
 	#####################################################
 	surface_tool.generate_normals()
 	surface_tool.generate_tangents()
@@ -147,7 +149,7 @@ func generate_cairo_pentagon() -> ArrayMesh:
 
 func _ready() -> void:
 	if GENERATE:
-		cairo_mesh = generate_cairo_pentagon()
+		cairo_mesh = _generate_cairo_pentagon()
 		cairo_mesh_shape.set_points(cairo_mesh.get_faces())
 		mesh = cairo_mesh
 		$CollisionShape.shape = cairo_mesh_shape

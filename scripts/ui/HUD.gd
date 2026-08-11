@@ -27,7 +27,7 @@ const MODE_TO_BUILDING_TYPE: Dictionary = {
 var tile_mode: Mode = Mode.LOWER
 var build_mode: Mode = Mode.NONE
 var _drag_action: DragAction = DragAction.NONE
-var _tooltip_hud  # cached tooltip HUD Control (per building type)
+var _tooltip_hud: Control  # cached tooltip HUD Control (per building type)
 var _tooltip_hud_type: BuildingManager.Type = BuildingManager.Type.NONE
 var _active_btn_style: StyleBoxFlat
 var _btn_normal: StyleBoxFlat
@@ -52,8 +52,11 @@ var _tooltip_tween: Tween
 @onready var tooltip: PanelContainer = $HUDRoot/Tooltip
 @onready var tooltip_viewport: SubViewport = $HUDRoot/Tooltip/SubViewportContainer/Viewport
 
+# --- Mode buttons ---
+
 var _tile_buttons: Dictionary = {}
 var _build_buttons: Dictionary = {}
+
 # --- Queries ---
 
 func building_being_placed() -> int:
@@ -240,7 +243,7 @@ func _get_player_energy() -> Dictionary:
 
 # --- Statistics window ---
 
-func _stats_window():
+func _stats_window() -> Node:
 	return get_tree().get_first_node_in_group("statistics_window")
 
 # --- Mode buttons ---

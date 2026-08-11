@@ -63,7 +63,7 @@ func _tick() -> void:
 	var tm = Global.TM
 	var em = Global.EM
 	var um = Global.UM
-	var srv = Global._get_server()
+	var srv = Global.get_server()
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		var record: Dictionary = _empty_record()
 		record["time"] = Time.get_ticks_msec() / 1000.0

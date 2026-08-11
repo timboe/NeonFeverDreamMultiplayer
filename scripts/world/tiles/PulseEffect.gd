@@ -2,11 +2,15 @@ extends Node3D
 
 class_name PulseEffect
 
+# --- Constants ---
+
 const CYCLE_TIME := 1.0
 const BASE_TICK_TIME := 0.1
 const MIN_TICK_TIME := 0.04
 const BASE_EMISSION := 0.1
 const MIN_EMISSION := 0.05
+
+# --- State ---
 
 var tile_manager: TileManager
 

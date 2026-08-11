@@ -2,7 +2,11 @@ extends Building
 
 class_name Nest
 
+# --- Constants ---
+
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/NestHUD.tscn")
+
+# --- State ---
 
 var _virus_tank_building_ratio: float = 0.5
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
@@ -23,7 +27,7 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	orders["order"] = JobManager.Orders.ATTACK
 	orders["source"] = self
 	_update_orders()
-	
+
 func _update_orders() -> void:
 	_enemy_targets = _clean_enemy_targets(_enemy_targets)
 	orders["enemy"] = _enemy_targets

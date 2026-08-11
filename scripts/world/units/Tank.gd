@@ -11,6 +11,8 @@ const BEAM_UPDATE_INTERVAL := 0.05
 var _beam_node: MeshInstance3D
 var _beam_update_timer := 0.0
 
+# --- Limpet state ---
+
 # VIRUS units currently limpeted onto this tank (server only; multiple viruses
 # may attach). A tank with an attached VIRUS whose player has an empowered Nest
 # is immobilized and cannot fire against AERIAL (DESIGN Nest avatar buff).
@@ -45,9 +47,9 @@ func initialise(b: Building) -> void:
 	_beam_node.mesh = _make_beam_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.emission_enabled = true
-	mat.emission = Config.PLAYER_COLORS[ player_owner - 1 ]
+	mat.emission = Config.PLAYER_COLORS[player_owner - 1]
 	mat.emission_energy_multiplier = 5.0
-	mat.albedo_color = Config.PLAYER_COLORS[ player_owner - 1 ]
+	mat.albedo_color = Config.PLAYER_COLORS[player_owner - 1]
 	mat.albedo_color.a = 0.85
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_beam_node.material_override = mat

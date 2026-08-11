@@ -2,6 +2,8 @@ extends TerminalHUD
 
 class_name BeaconHUD
 
+# --- Constants ---
+
 const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.MCP_1: "MCP",
 	BuildingManager.Type.GEN: "Gen",
@@ -11,7 +13,11 @@ const BUILDING_TYPE_NAMES: Dictionary = {
 	BuildingManager.Type.NEST: "Nest",
 }
 
+# --- References ---
+
 var building: Beacon
+
+# --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
 @onready var prod_btn: Button = $Window/VBox/ProdRow/ProdBtn
@@ -24,6 +30,8 @@ var building: Beacon
 @onready var aerial_label: Label = $Window/VBox/AerialRow/AerialLabel
 @onready var spawn_bar: ProgressBar = $Window/VBox/AerialRow/SpawnBar
 @onready var empower_indicator: Label = $Window/VBox/EmpowerRow/EmpowerIndicator
+
+# --- State ---
 
 var _enemy_buttons: Dictionary = {}
 var _strike_buttons: Dictionary = {}

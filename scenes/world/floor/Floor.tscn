@@ -207,4 +207,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, -100)
 [node name="Monument2" parent="." unique_id=2133194480 instance=ExtResource("2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 0, 400)
 
-[connection signal="timeout" from="GridMultiMesh/Timer" to="GridMultiMesh" method="_on_Timer_timeout"]
+[connection signal="timeout" from="GridMultiMesh/Timer" to="GridMultiMesh" method="_on_timer_timeout"]

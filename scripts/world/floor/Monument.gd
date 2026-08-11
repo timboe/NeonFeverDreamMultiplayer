@@ -9,6 +9,9 @@ const GENERATE: bool = false
 @onready var beacon: MeshInstance3D
 @onready var mesh_instance: MeshInstance3D = $MeshInstance
 @onready var cylinder: CylinderMesh
+
+# --- Preloads ---
+
 @onready var helper = preload("res://scripts/world/floor/MonumentHelper.gd")
 
 # --- State ---
@@ -17,7 +20,7 @@ var time: float = 0.0
 
 # --- Mesh generation (dead code, GENERATE=false) ---
 
-func add_monument(mesh_tool: SurfaceTool, edge_tool: SurfaceTool, p_length: float, p_height: float, p_centre: float) -> void:
+func _add_monument(mesh_tool: SurfaceTool, edge_tool: SurfaceTool, p_length: float, p_height: float, p_centre: float) -> void:
 	helper.add_face(mesh_tool, edge_tool, p_height,
 		Vector2(0, 0), Vector2(p_length, p_length),
 		Vector2(p_length, p_length + p_centre), Vector2(0, p_length + p_length + p_centre))
@@ -56,7 +59,7 @@ func _ready() -> void:
 		edge_tool.add_color(Color.CYAN)
 		mesh_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var faces := 4
-		add_monument(mesh_tool, edge_tool, p_length, p_height, p_centre)
+		_add_monument(mesh_tool, edge_tool, p_length, p_height, p_centre)
 		for f in range(0, (faces + 1) * 4, 4):
 			helper.add_faces_edges(mesh_tool, edge_tool, f)
 		mesh_tool.generate_normals()
@@ -64,8 +67,8 @@ func _ready() -> void:
 		var m: ArrayMesh = mesh_tool.commit()
 		edge_tool.index()
 		edge_tool.commit(m)
-		var face_mat = load("res://materials/grid_faces.tres")
-		var edge_mat = load("res://materials/grid_edges.tres")
+		var face_mat: Material = load("res://materials/grid_faces.tres")
+		var edge_mat: Material = load("res://materials/grid_edges.tres")
 		m.surface_set_material(0, face_mat)
 		m.surface_set_material(1, edge_mat)
 		mesh_instance.set_mesh(m)

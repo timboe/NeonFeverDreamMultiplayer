@@ -2,7 +2,11 @@ extends TerminalHUD
 
 class_name GarageHUD
 
+# --- References ---
+
 var building: Garage
+
+# --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
 @onready var prod_btn: Button = $Window/VBox/ProdRow/ProdBtn
@@ -15,6 +19,8 @@ var building: Garage
 @onready var enemy_grid: GridContainer = $Window/VBox/EnemyGrid
 @onready var patrol_hold_btn: Button = $Window/VBox/PatrolStanceRow/PatrolHoldBtn
 @onready var patrol_wide_btn: Button = $Window/VBox/PatrolStanceRow/PatrolWideBtn
+
+# --- State ---
 
 var _enemy_buttons: Dictionary = {}
 var _mcp: Node

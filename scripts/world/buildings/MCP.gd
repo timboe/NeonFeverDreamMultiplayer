@@ -2,9 +2,9 @@ extends Building
 
 class_name MCP
 
-const HUD_SCENE: PackedScene = preload("res://scenes/ui/MCPHUD.tscn")
-
 # --- Constants ---
+
+const HUD_SCENE: PackedScene = preload("res://scenes/ui/MCPHUD.tscn")
 
 const A_VELOCITY: float = 100.0
 const BASE_GENERATION: float = 27.0
