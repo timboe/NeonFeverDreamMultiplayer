@@ -68,10 +68,12 @@ layout_mode = 2
 
 [node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0, 1, 1, 1)
-text = "⚡ EMPOWERED: +20% CAPACITY"
+text = "⚡ Not empowered"
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="EnergyRow" type="HBoxContainer" parent="Window/VBox"]
 layout_mode = 2

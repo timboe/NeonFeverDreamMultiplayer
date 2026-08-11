@@ -183,7 +183,7 @@ func _apply_damage(damage: float, attacker: Unit = null) -> void:
 
 func _repair_heal() -> bool:
 	var target: Vat = pool_master if pool_master != null else self
-	target.health = minf(target.health + REPAIR_AMOUNT, target.max_health)
+	target.health = minf(target.health + REPAIR_AMOUNT * _work_mult(), target.max_health)
 	target._sync_pool_health()
 	if target.health >= target.max_health:
 		finish_repair()
@@ -193,7 +193,7 @@ func _repair_heal() -> bool:
 # --- Empower ---
 
 func _empower_changed(val: bool) -> void:
-	capacity_mult_empower = 1.2 if val else 1.0
+	capacity_mult_empower = Config.EMPOWER_VAT_CAPACITY_MULT if val else 1.0
 	if not multiplayer.is_server():
 		return
 	if pool_master != null:

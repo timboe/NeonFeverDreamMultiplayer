@@ -15,11 +15,19 @@ enum Mode {PATROL, STRIKE}
 static var _projectile_mats: Array[StandardMaterial3D] = []
 
 var mode: Mode = Mode.PATROL
-var lifetime: float = 120.0
 var _lifetime_timer: float = 0.0
 var _lifetime_bar: HealthBar3D
 var _projectile_delay := 0.0
 var _idle_time := 0.0 # time spent jobless & idle (server) - prevents offense job thrash
+
+# DESIGN Beacon avatar buff: all the player's AERIALs gain +30s lifetime (2m ->
+# 2m30s) while a Beacon is empowered (type-wide, dynamic — mid-flight units
+# benefit while the buff is up).
+func get_lifetime() -> float:
+	var base: float = Config.UNIT_LIFETIME.get(type, 120.0)
+	if Global.BM.empowered_type(player_owner) == BuildingManager.Type.BEACON:
+		base += Config.EMPOWER_AERIAL_LIFETIME_EXTRA
+	return base
 
 func get_mode() -> int:
 	return mode
@@ -46,10 +54,11 @@ func _process(delta: float) -> void:
 	if multiplayer.is_server():
 		if state != State.WORKING:
 			_lifetime_timer += delta
-			if _lifetime_timer >= lifetime:
+			if _lifetime_timer >= get_lifetime():
 				Global.UM.rpc("rpc_remove_unit", id)
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	if _lifetime_bar:
+		var lifetime := get_lifetime()
 		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
 
 func initialise(b: Building) -> void:

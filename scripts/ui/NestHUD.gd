@@ -120,7 +120,7 @@ func _process(delta: float) -> void:
 		spawn_bar.value = clampf(building._production_energy / building._production_cost * 100.0, 0.0, 100.0)
 	else:
 		spawn_bar.value = 0.0
-	empower_indicator.visible = building.is_empowered
+	_set_empower_indicator(empower_indicator, building)
 	if _should_render_controls_from_vars():
 		_update_controls_from_vars()
 

@@ -123,7 +123,7 @@ func _process(delta: float) -> void:
 	# Do construction - consumes energy
 	if multiplayer.is_server() and Global.game_started and state == State.UNDER_CONSTRUCTION:
 		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
-		var energy_per_tick := cost / CONSTRUCTION_TIME * delta
+		var energy_per_tick := cost / CONSTRUCTION_TIME * delta * _drain_multiplier()
 		_construction_energy_spent += Global.EM.request_energy(player_owner, energy_per_tick)
 		if _construction_energy_spent >= cost:
 			set_constructed()
@@ -137,7 +137,7 @@ func _process(delta: float) -> void:
 				_production_timer = 0.0
 		elif _production_enabled and _can_produce():
 			if _production_cost > 0.0:
-				var tick_amount := _production_cost * delta
+				var tick_amount := _production_cost * delta * _vat_spend_mult()
 				_production_energy += Global.EM.request_energy(player_owner, tick_amount)
 			if _production_energy >= _production_cost:
 				_produce_unit()
@@ -225,6 +225,24 @@ func rpc_set_empowered(val: bool) -> void:
 
 func _empower_changed(_val: bool) -> void:
 	pass
+
+# Empowered Vat spend discount: construction/production drains cost 10% less
+# while the player has a Vat empowered.
+func _vat_spend_mult() -> float:
+	if Global.BM.empowered_type(player_owner) == BuildingManager.Type.VAT:
+		return Config.EMPOWER_VAT_SPEND_MULT
+	return 1.0
+
+# Empowered MCP work-speed bonus: construction drains faster and repairs heal
+# more per tick while the working zoomba's MCP is empowered (×1.2 work speed).
+func _work_mult() -> float:
+	if is_instance_valid(_working_unit):
+		return _working_unit.work_speed_multiplier()
+	return 1.0
+
+# Combined per-tick construction drain multiplier (vat discount × zoomba work).
+func _drain_multiplier() -> float:
+	return _vat_spend_mult() * _work_mult()
 
 # --- Settings inheritance ---
 
@@ -511,7 +529,7 @@ func finish_repair() -> void:
 # One repair-heal tick. Returns true when the repair is complete (health full).
 # Subclasses (Vat shared pools) override to redirect healing.
 func _repair_heal() -> bool:
-	health += REPAIR_AMOUNT
+	health += REPAIR_AMOUNT * _work_mult()
 	if health >= max_health:
 		health = max_health
 		finish_repair()

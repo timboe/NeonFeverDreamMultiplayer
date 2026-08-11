@@ -93,6 +93,28 @@ const COMBAT_LOS_GRACE: float = 0.3
 # retargeting between aerials with near-equal scores (one burst ≈ 120 score).
 const COMBAT_TARGET_STICKY_MARGIN: float = 25.0
 
+# --- Empower (avatar buffs, per DESIGN) ---
+
+# MCP: zoomba spawn rate +25% (cooldown x0.8), zoomba move/work speed +20%,
+# MCP damage reduction -25% while empowered.
+const EMPOWER_MCP_SPAWN_RATE_MULT: float = 0.8
+const EMPOWER_ZOOMBA_SPEED_MULT: float = 1.2
+const EMPOWER_MCP_DAMAGE_MULT: float = 0.75
+# Garage: TANK fire rate +25% vs aerial targets (fire interval x0.8) while the
+# player has a Garage empowered (type-wide buff).
+const EMPOWER_TANK_FIRE_INTERVAL_MULT: float = 0.8
+# Beacon: all the player's AERIALs get +30s lifetime (2m -> 2m30s) while a
+# Beacon is empowered (type-wide buff).
+const EMPOWER_AERIAL_LIFETIME_EXTRA: float = 30.0
+# Nest: all the player's VIRUS get +30% speed while a Nest is empowered
+# (type-wide buff); TANKs being attacked by those VIRUS are immobilized and
+# cannot fire against AERIAL.
+const EMPOWER_VIRUS_SPEED_MULT: float = 1.3
+# Vat: +50% capacity while empowered (stacks with adjacency bonus) and a 10%
+# discount on the player's construction/production energy drains.
+const EMPOWER_VAT_CAPACITY_MULT: float = 1.5
+const EMPOWER_VAT_SPEND_MULT: float = 0.9
+
 # Interception COMBAT_PERSUE job detection radii. All are multiples of
 # Cairo.UNIT (one tile = 10 world units). PATROL detects cloaked VIRUS at
 # 3 tiles; STRIKE only on direct overfly (1 tile). Detection uncloaks a
@@ -183,6 +205,11 @@ static var UNIT_MAX_HP: Dictionary = {
 	UnitManager.Type.AERIAL: 400.0,
 	UnitManager.Type.VIRUS: 150.0,
 	UnitManager.Type.AVATAR: 200.0,
+}
+
+# Finite unit lifetimes in seconds (DESIGN: aerials 2m, virus ~120s health-based).
+static var UNIT_LIFETIME: Dictionary = {
+	UnitManager.Type.AERIAL: 120.0,
 }
 
 static var HOME_TERRITORY_UNITS: Array[int] = [

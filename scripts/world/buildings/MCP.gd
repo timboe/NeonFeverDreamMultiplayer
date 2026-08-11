@@ -61,23 +61,35 @@ func _can_produce() -> bool:
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
 		return
+	# DESIGN: MCP avatar buff — zoomba spawn rate +25% while empowered.
+	var cooldown: float = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+	if is_empowered:
+		cooldown *= Config.EMPOWER_MCP_SPAWN_RATE_MULT
 	# Avatar takes priority
 	if Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
 		var uid: int = Global.UM.next_unit_id()
 		Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.AVATAR, self.id)
 		_production_energy = 0.0
-		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+		_production_timer = cooldown
 		return
 	# Then zoombas up to cap
 	if Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
 		var uid: int = Global.UM.next_unit_id()
 		Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.ZOOMBA, self.id)
 		_production_energy = 0.0
-		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
+		_production_timer = cooldown
 		return
 	# At cap — _can_produce() should prevent reaching here; hold defensively.
 	_production_timer = 0.0
 	_production_energy = 0.0
+
+# --- Damage ---
+
+# DESIGN: MCP avatar buff — 25% damage reduction while empowered.
+func _apply_damage(damage: float, attacker: Unit = null) -> void:
+	if state == State.CONSTRUCTED and is_empowered:
+		damage *= Config.EMPOWER_MCP_DAMAGE_MULT
+	super._apply_damage(damage, attacker)
 
 # --- Energy ---
 

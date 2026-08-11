@@ -277,10 +277,13 @@ func do_toggle_countdown(z: Unit) -> void:
 		return
 	var pnum = z.player_owner
 	assert(pnum not in _working_unit_dict)
+	# Empowered-MCP zoombas work faster: the countdown shortens with the
+	# work-speed multiplier, and the client sweep follows via the RPC payload.
+	var cd_time := TOGGLE_COUNTDOWN_TIME / z.work_speed_multiplier()
 	var t = create_tween()
-	t.tween_callback(begin_toggle.bind(pnum)).set_delay(TOGGLE_COUNTDOWN_TIME)
+	t.tween_callback(begin_toggle.bind(pnum)).set_delay(cd_time)
 	_working_unit_dict[pnum] = {"unit": z, "job_id": z.job["id"], "countdown_tween": t}
-	Global.TM.rpc("rpc_toggle_animation", id, 0, pnum) # MODE 0
+	Global.TM.rpc("rpc_toggle_animation", id, 0, pnum, cd_time) # MODE 0
 
 func cancel_toggle_countdown(pnum: int) -> void:
 	if not multiplayer.is_server():
@@ -354,6 +357,7 @@ func begin_toggle(active_pnum: int) -> void:
 
 # Called locally by TileManager.rpc_toggle_animation
 # For modes 0/1: pnum_or_a is the player number
+# For mode 0: b carries the server-side countdown duration (work-speed adjusted)
 # For mode 2: pnum_or_a is unused, b=thunk_distance, c=thunk_time, d=fall_time, e=dest
 func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float = 0, d: float = 0, e: float = 0) -> void:
 	if mode == 0: # Countdown
@@ -361,8 +365,9 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 		set_tile_mm_emission(0.4)
 		if _countdown_tweens.has(pnum_or_a) and _countdown_tweens[pnum_or_a] and _countdown_tweens[pnum_or_a].is_valid():
 			_countdown_tweens[pnum_or_a].kill()
+		var cd_time := b if b > 0.0 else TOGGLE_COUNTDOWN_TIME
 		_countdown_tweens[pnum_or_a] = create_tween()
-		_countdown_tweens[pnum_or_a].tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, TOGGLE_COUNTDOWN_TIME)\
+		_countdown_tweens[pnum_or_a].tween_method(set_tile_mm_color, SELECT_COLOR, HOVER_REMOVE_COLOR, cd_time)\
 			.set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	elif mode == 1: # Cancel
 		if _countdown_tweens.has(pnum_or_a):

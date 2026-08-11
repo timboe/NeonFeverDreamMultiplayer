@@ -53,4 +53,4 @@ func _process(delta: float) -> void:
 	health_bar.max_value = mcp.max_health
 	health_bar.value = mcp.health
 	health_value_label.text = str(int(mcp.health)) + " / " + str(int(mcp.max_health))
-	empower_indicator.visible = mcp.is_empowered
+	_set_empower_indicator(empower_indicator, mcp)

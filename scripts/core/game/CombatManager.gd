@@ -326,6 +326,11 @@ func _update_firing(delta: float) -> void:
 			continue
 		if u.type != UnitManager.Type.TANK and u.type != UnitManager.Type.AERIAL:
 			continue
+		if u.type == UnitManager.Type.TANK and u.virus_immobilized():
+			# DESIGN Nest avatar buff: a tank pinned by a VIRUS from an empowered
+			# Nest cannot fire against AERIAL (its only target type — full stop).
+			# It still queues kill-VIRUS PATROL support from the scan pass.
+			continue
 		if not u.combat_target or not is_instance_valid(u.combat_target):
 			continue
 		if not u.is_weapon_aligned():
@@ -354,7 +359,14 @@ func _update_firing(delta: float) -> void:
 			continue
 		u.combat_fire_timer -= delta
 		if u.combat_fire_timer <= 0.0:
-			u.combat_fire_timer = Config.COMBAT_FIRE_INTERVAL
+			# DESIGN Garage avatar buff: TANK fire rate +25% vs aerial targets
+			# while the player has a Garage empowered (type-wide, dynamic).
+			var interval := Config.COMBAT_FIRE_INTERVAL
+			if u.type == UnitManager.Type.TANK \
+				and target is Unit and target.type == UnitManager.Type.AERIAL \
+				and Global.BM.empowered_type(u.player_owner) == BuildingManager.Type.GARAGE:
+				interval *= Config.EMPOWER_TANK_FIRE_INTERVAL_MULT
+			u.combat_fire_timer = interval
 			u.combat_burst_timer = Config.WEAPON_BURST_DURATION
 			u.combat_damage_tick_timer = 0.0
 			if u.type == UnitManager.Type.TANK:

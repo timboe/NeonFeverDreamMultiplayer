@@ -11,6 +11,24 @@ const BEAM_UPDATE_INTERVAL := 0.05
 var _beam_node: MeshInstance3D
 var _beam_update_timer := 0.0
 
+# VIRUS units currently limpeted onto this tank (server only; multiple viruses
+# may attach). A tank with an attached VIRUS whose player has an empowered Nest
+# is immobilized and cannot fire against AERIAL (DESIGN Nest avatar buff).
+var _attached_virus: Array = []
+
+func register_virus(v: Virus) -> void:
+	if not _attached_virus.has(v):
+		_attached_virus.append(v)
+
+func unregister_virus(v: Virus) -> void:
+	_attached_virus.erase(v)
+
+func virus_immobilized() -> bool:
+	for v in _attached_virus:
+		if is_instance_valid(v) and Global.BM.empowered_type(v.player_owner) == BuildingManager.Type.NEST:
+			return true
+	return false
+
 func initialise(b: Building) -> void:
 	super.initialise(b)
 	type = UnitManager.Type.TANK

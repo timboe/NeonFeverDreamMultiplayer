@@ -56,7 +56,7 @@ func _process(_delta: float) -> void:
 	if total_tiles > 0:
 		avg = power / total_tiles
 	per_tile_label.text = str(snappedf(avg, 0.1))
-	empower_indicator.visible = building.is_empowered
+	_set_empower_indicator(empower_indicator, building)
 	var counts: Dictionary = building.catchment_bucket_counts()
 	var bucket_values: Array[int] = [counts[1], counts[2], counts[3], counts[4]]
 	for i in catchment_bars.size():

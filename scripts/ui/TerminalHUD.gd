@@ -226,6 +226,48 @@ func _empower_building(b: Building) -> void:
 	Global.send_command_me("empower", [b.id])
 	Global.VM.force_leave_fps()
 
+# --- Empowered status line ---
+
+# Short buff summary per building type, shown on the terminal's Empowered row.
+# Army-factory buffs (Garage/Beacon/Nest) are type-wide — they apply to all of
+# the player's units of that type while any one of the type is empowered.
+func _empower_buff_text(t: BuildingManager.Type) -> String:
+	match t:
+		BuildingManager.Type.MCP_1, BuildingManager.Type.MCP_2, BuildingManager.Type.MCP_3, BuildingManager.Type.MCP_4:
+			return "Zoomba rate +25%, work speed +20%, damage taken -25%"
+		BuildingManager.Type.GEN:
+			return "Influence radius +1"
+		BuildingManager.Type.VAT:
+			return "Capacity +50%, build/produce cost -10%"
+		BuildingManager.Type.GARAGE:
+			return "All TANKs: +25% fire rate vs aerial"
+		BuildingManager.Type.BEACON:
+			return "All AERIALs: +30s lifetime"
+		BuildingManager.Type.NEST:
+			return "All VIRUS: +30% speed, limpet TANKs pinned"
+	return ""
+
+# Drive the Empowered row: EMPOWERED (this building), BUFF ACTIVE (a same-type
+# building is empowered — army-wide types only), or the dimmed idle hint. Runs
+# at each HUD's refresh cadence on every peer, spying terminals included.
+func _set_empower_indicator(lbl: Label, b: Building) -> void:
+	if lbl == null or b == null or not is_instance_valid(b):
+		return
+	var text: String
+	var color: Color
+	if b.is_empowered:
+		text = "⚡ EMPOWERED — " + _empower_buff_text(b.type)
+		color = Config.UI_ACCENT
+	elif b.type in [BuildingManager.Type.GARAGE, BuildingManager.Type.BEACON, BuildingManager.Type.NEST] \
+		and Global.BM.empowered_type(b.player_owner) == b.type:
+		text = "⚡ BUFF ACTIVE — another of this type is empowered"
+		color = Config.UI_WARNING
+	else:
+		text = "⚡ Not empowered"
+		color = Config.UI_TEXT_DIM
+	lbl.text = text
+	lbl.add_theme_color_override("font_color", color)
+
 # Owned terminals are client-set only: the local player's button toggles and
 # slider position are authoritative on their own machine and must not be
 # overwritten by building state every frame. Other players' terminals (FPS

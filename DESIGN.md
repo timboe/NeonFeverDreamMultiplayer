@@ -75,7 +75,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Base capacity | 1000e (+10% per adjacent friendly Vat, additive 0-50%) |
 | HP | 1500 |
 | Cost | 400e |
-| Avatar buff | +20% storage while the Avatar is empowering this Vat (stacks with adjacency bonus). |
+| Avatar buff | +50% storage while the Avatar is empowering this Vat (stacks with adjacency bonus), plus a 10% discount on the player's construction and production energy drains. Immune to infection (see Cure). |
 | Avatar Interaction | None |
 | Special Function | **Adjacency bonus:** each Vat gains 10% additional capacity for each adjacent friendly Vat (1-hop on the tile graph, additive, 0%-50%). **Shared health pool:** adjacent Vats share HP (for each vat, 10% less per adjacent vat, additive, 0%-50%, then summed over all connected vats). **Infection cascade:** VIRUS infection spreads to all connected Vats in an adjacency chain. |
 
@@ -87,7 +87,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Function | Produces TANKs. Each TANK requires one Zoomba as pilot. TANK creation is relatively slow (1 per 6s). Each Garage has a ZOOMBA/TANK ratio slider (0–100%, default 50/50, minimum one zoomba). Each Garage tracks a target tank count = `roundi(ratio × total Zoombas)`. Garages compete for available Zoombas round-robin each tick. |
 | HP | 2000 |
 | Cost | 750e |
-| Avatar buff | TANK fire rate +25% against aerial targets for all TANKs created by any Garage while the Avatar is empowering that Garage (to be play tested, adjust if needed). |
+| Avatar buff | TANK fire rate +25% against aerial targets for all of the player's TANKs while the Avatar is empowering a Garage (type-wide buff; to be play tested, adjust if needed). |
 | Avatar Interaction | Avatar controls the fraction of Zoombas which should mount up in a tank. The setting is applied per Garage. Ratio is viewable from RTS mode, editable only in FPS mode at a garage. In addition, avatar can toggle tank production from each individual garage. |
 | Special Function | None |
 
@@ -99,7 +99,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Function | Produces AERIAL units (1 per 4s). Each Beacon has a **PATROL/STRIKE ratio slider** (0–100%, default 50/50). |
 | HP | 2000 |
 | Cost | 750e |
-| Avatar buff | All AERIAL units produced by any Beacon while the Avatar is empowering that Beacon: lifetime +30s from 2m to 2m30s (to be play tested) |
+| Avatar buff | All of the player's AERIAL units gain +30s lifetime (2m to 2m30s) while the Avatar is empowering a Beacon (type-wide buff, dynamic — mid-flight units benefit while the buff is up; to be play tested) |
 | Avatar Interaction | Avatar controls the ratio of ariel units created as Patrol units vs Strike units. The setting is applied per Beacon. Ratio is viewable from RTS mode, editable only in FPS mode at each beacon. In addition, avatar can toggle aerial production from each individual beacon. Diegetic UI at each Beacon includes PATROL stance controls (see Diegetic Building UI section). |
 | Special | None |
 
@@ -111,7 +111,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Function | Produces VIRUS units (1 per 5s). |
 | HP | 2000 |
 | Cost | 750e |
-| Avatar buff | VIRUS speed +30% while the Avatar is empowering this Nest. TANKs being attacked by VIRUS are immobilized and cannot fire against AERIAL. |
+| Avatar buff | All of the player's VIRUS gain +30% speed while the Avatar is empowering a Nest (type-wide buff). TANKs being attacked by those VIRUS are immobilized and cannot fire against AERIAL. |
 | Avatar Interaction | Avatar controls VIRUS targeting and production via the Nest's diegetic UI (see Diegetic Building UI section). Production toggle on/off available per Nest. Settings viewable (read-only) from RTS mode, editable only in FPS mode. |
 | Special | None |
 
@@ -295,7 +295,7 @@ The secondary capability is to fine-tune building settings via diegetic UI panel
 | Ping VIRUS | Crosshair click on a spotted VIRUS | Queues a kill-VIRUS job for nearest PATROL. Also works on VIRUS spotted by nearby PATROL/STRIKE (relayed to minimap). |
 | Prioritize target | Crosshair click on enemy building or unit | Marks it as priority target for the RALLY squad (+25% damage from rallied units). |
 | RALLY | Press R (~15s cooldown) | Gathers nearby friendly units (~8 tile radius) into a squad that follows the avatar. AERIAL auto-switch mode by territory. Multiple presses grow the squad. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Lasts until avatar death or exit from FPS. |
-| Empower building | Empower button on the building's terminal (FPS only, within terminal interaction range ~2 tiles) | That building's avatar buff becomes active. One per player — empowering another swaps. Cleared when re-entering FPS mode. |
+| Empower building | Empower button on the building's terminal (FPS only, within terminal interaction range ~2 tiles) | That building's avatar buff becomes active. One per player — empowering another swaps. Cleared when re-entering FPS mode. Army buffs (Garage/Beacon/Nest) are type-wide: while any one of the type is empowered, all of the player's units of that type benefit. Generator (radius +1), Vat (capacity +50%, spend discount) and MCP (zoomba production/speed, damage reduction) buffs apply to the empowered building itself. |
 | Cure infection | Touch an infected friendly building | Immediately removes all VIRUS infections from that building. The building the Avatar is currently empowering is immune to infection. |
 | Interact with building | Interact with its diegetic control panel (within ~2 tiles of the building) | Alter the building's settings and behavior. See Diegetic Building UI section below. |
 
@@ -426,6 +426,7 @@ No starting energy — the MCP's internal reactor provides initial income (27e/s
 | Solo Vat | **1000e** | Base capacity. |
 | +1 neighbor | 1100e | +10% per adjacent Vat. |
 | Max cluster (5 neighbors) | 1500e | +50% cap. |
+| Empowered Vat | **+50%** | ×1.5 on top of base + adjacency (e.g. solo 1500e, max cluster 2250e). Stacks with the adjacency bonus; also discounts construction/production drains by 10%. |
 
 1000e holds enough for: ~6 TANK conversions, ~10 AERIAL units, ~40 Zoombas, or 1 Generator + change.
 

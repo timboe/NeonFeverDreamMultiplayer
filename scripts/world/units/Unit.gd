@@ -245,6 +245,11 @@ func try_generate_offense_job() -> bool:
 func start_attack() -> void:
 	pass
 
+# Whether movement is suppressed by an empower effect. Tanks override (a VIRUS
+# limpet from an empowered Nest immobilizes them).
+func virus_immobilized() -> bool:
+	return false
+
 # Cleanup hook - called from _cleanup_working_state() when an ATTACK is
 # interrupted (job removed/abandoned/displaced). Overridden to cancel the attach.
 func cancel_attack() -> void:
@@ -562,6 +567,13 @@ func _consume_for_tank() -> void:
 
 # --- Movement ---
 
+# DESIGN: MCP avatar buff — zoombas work +20% faster (toggle countdowns,
+# construction drain, repair ticks) while their MCP is empowered.
+func work_speed_multiplier() -> float:
+	if type == UnitManager.Type.ZOOMBA and is_instance_valid(_mcp) and _mcp.is_empowered:
+		return Config.EMPOWER_ZOOMBA_SPEED_MULT
+	return 1.0
+
 func move(callback: Callable) -> void:
 	if not multiplayer.is_server():
 		return
@@ -571,6 +583,20 @@ func move(callback: Callable) -> void:
 		time *= Config.SCRAM_TIME_MULTIPLIER
 	elif state == State.IDLE:
 		time *= 2.0
+	# DESIGN empower buffs: zoomba move speed +20% (MCP empowered), VIRUS +30%
+	# (Nest empowered — type-wide). Time scales inversely with speed.
+	if type == UnitManager.Type.ZOOMBA and is_instance_valid(_mcp) and _mcp.is_empowered:
+		time /= Config.EMPOWER_ZOOMBA_SPEED_MULT
+	if type == UnitManager.Type.VIRUS and Global.BM.empowered_type(player_owner) == BuildingManager.Type.NEST:
+		time /= Config.EMPOWER_VIRUS_SPEED_MULT
+	# A tank pinned by a VIRUS from an empowered Nest holds in place instead of
+	# moving (DESIGN); re-invokes the callback so it resumes once freed.
+	if virus_immobilized():
+		if move_tween and move_tween.is_valid():
+			move_tween.kill()
+		move_tween = create_tween()
+		move_tween.tween_callback(callback).set_delay(0.5)
+		return
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
 	move_tween = create_tween()

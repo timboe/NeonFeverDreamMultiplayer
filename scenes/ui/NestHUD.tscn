@@ -67,10 +67,12 @@ layout_mode = 2
 
 [node name="EmpowerIndicator" type="Label" parent="Window/VBox/EmpowerRow" unique_id=232771277]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "⚡ EMPOWERED: +30% VIRUS SPEED"
+theme_override_font_sizes/font_size = 14
+text = "⚡ Not empowered"
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="ProdRow" type="HBoxContainer" parent="Window/VBox" unique_id=1596669898]
 layout_mode = 2

@@ -20,7 +20,6 @@ var _refresh_timer := 0.0
 func _ready() -> void:
 	if not empower_btn:
 		return
-	# Empower visual only for Vat until gameplay effect is wired
 	empower_btn.pressed.connect(_on_empower_pressed)
 
 func _on_empower_pressed() -> void:
@@ -44,4 +43,4 @@ func _process(delta: float) -> void:
 	hp_bar.max_value = building.max_health
 	hp_bar.value = building.health
 	hp_label.text = str(int(building.health)) + " / " + str(int(building.max_health))
-	empower_indicator.visible = building.is_empowered
+	_set_empower_indicator(empower_indicator, building)

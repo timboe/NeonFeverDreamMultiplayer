@@ -47,6 +47,15 @@ func clear_empowered_for_player(pnum: int) -> void:
 		prev.rpc("rpc_set_empowered", false)
 	_empowered_by_player.erase(pnum)
 
+# The type of building the player currently has empowered (NONE if none).
+# Army-wide empower buffs (Garage/Beacon/Nest) key off this; instance buffs
+# (Generator radius, Vat capacity, MCP) read the building's own is_empowered.
+func empowered_type(pnum: int) -> Type:
+	var b: Building = _empowered_by_player.get(pnum)
+	if b and is_instance_valid(b):
+		return b.type
+	return Type.NONE
+
 # --- Lifecycle ---
 
 func _ready() -> void:

@@ -147,6 +147,10 @@ func start_attack() -> void:
 	uncloak() # auto-uncloak when beginning an attack
 	_limpet_target = job["target"]
 	_limpet_is_building = _limpet_target is Building
+	# Register on a limpeted tank so the Nest empower immobilize buff can find
+	# us (see Tank.virus_immobilized).
+	if _limpet_target is Tank:
+		(_limpet_target as Tank).register_virus(self)
 	# TODO per DESIGN: enforce the infection cap — one active building infection
 	# per enemy player. Currently multiple VIRUS may channel the same building
 	# (personal jobs skip dedup) and the cap is unenforced.
@@ -157,6 +161,8 @@ func start_attack() -> void:
 	_infection_complete = false
 
 func cancel_attack() -> void:
+	if _limpet_target is Tank:
+		(_limpet_target as Tank).unregister_virus(self)
 	_limpet_target = null
 	_limpet_is_building = false
 	_limpet_delay = 0.0
