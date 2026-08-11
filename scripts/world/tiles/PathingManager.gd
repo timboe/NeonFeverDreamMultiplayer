@@ -101,15 +101,21 @@ func are_tiles_connected(a: TileElement, b: TileElement) -> bool:
 	return pathfind(a, b).size() > 0
 
 func pathfind(from: TileElement, to: TileElement) -> PackedInt64Array:
-	# The graph is undirected (all connect_points are bidirectional), so cache
-	# by canonical pair. PackedInt64Array is a value type — callers that resize
-	# their own copy cannot corrupt the cache.
-	var key := mini(from.get_id(), to.get_id()) * 100000 + maxi(from.get_id(), to.get_id())
+	# Directional key: a cached path always starts at `from`. A symmetric key
+	# would hand a unit the reverse-direction path — walking it to the end
+	# leaves progress == path.size() with path_dest unreached (assert fires in
+	# Unit.pathing_callback).
+	var key := from.get_id() * 100000 + to.get_id()
 	var cached = _path_cache.get(key)
 	if cached != null:
-		return cached
+		# GDScript packed arrays SHARE their buffer on assignment — a caller
+		# resizing its copy (e.g. Unit.path.resize(0)) would corrupt the cache
+		# entry and every other aliased copy. Never hand out the cached buffer.
+		return cached.duplicate()
 	var path := astar.get_id_path(from.get_id(), to.get_id())
-	_path_cache[key] = path
+	# Store a private copy; the caller receives the fresh array so it can
+	# mutate it freely.
+	_path_cache[key] = path.duplicate()
 	return path
 
 func get_point(id: int) -> Vector3:
