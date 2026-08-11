@@ -147,6 +147,9 @@ func start_attack() -> void:
 	uncloak() # auto-uncloak when beginning an attack
 	_limpet_target = job["target"]
 	_limpet_is_building = _limpet_target is Building
+	# TODO per DESIGN: enforce the infection cap — one active building infection
+	# per enemy player. Currently multiple VIRUS may channel the same building
+	# (personal jobs skip dedup) and the cap is unenforced.
 	_health_at_attach = health
 	_limpet_delay = Config.VIRUS_ATTACH_DELAY
 	_infection_duration = 0.0

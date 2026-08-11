@@ -363,7 +363,7 @@ func _update_firing(delta: float) -> void:
 					var delay := 0.0
 					if u.type == UnitManager.Type.AERIAL:
 						delay = u.update_projectile_delay()
-					u.combat_target.apply_damage(dmg, delay)
+					u.combat_target.apply_damage(dmg, delay, u)
 					Global.SM.record_damage_done(u.player_owner, dmg)
 					if u.type == UnitManager.Type.AERIAL:
 						u.combat_fire_event += 1

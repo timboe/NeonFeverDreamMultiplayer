@@ -8,7 +8,6 @@ const QUICK_ROTATE_TIME := 0.2
 const SPAWN_TIME := 2.0
 const SCRAM: int = 10
 const REPAIR_INTERVAL := 0.05
-const REPAIR_AMOUNT := 0.25
 const REPAIR_DELAY := 10.0
 
 # --- Types ---
@@ -32,6 +31,7 @@ var _repair_timer := 0.0
 # Lazy-cached per-frame lookups (type is set by subclasses after initialise).
 var _max_hp: float = -1.0
 var _self_heals := false
+var _heal_rate := 0.0
 
 # --- Pathfinding ---
 
@@ -192,6 +192,7 @@ func _process(delta: float) -> void:
 	if _max_hp < 0.0:
 		_max_hp = Config.UNIT_MAX_HP.get(type, 100.0)
 		_self_heals = type in Config.SELF_HEALING_UNITS
+		_heal_rate = Config.SELF_HEAL_RATE.get(type, 0.0)
 	if _health_bar:
 		_health_bar.set_health(health, _max_hp)
 
@@ -203,7 +204,7 @@ func _process(delta: float) -> void:
 		_repair_timer += delta
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL
-			health = minf(health + REPAIR_AMOUNT, _max_hp)
+			health = minf(health + _heal_rate * REPAIR_INTERVAL, _max_hp)
 
 # --- Job assignment ---
 
@@ -629,19 +630,23 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 
 # --- Damage ---
 
-func apply_damage(amount: float, delay: float = 0.0) -> void:
+func apply_damage(amount: float, delay: float = 0.0, attacker: Unit = null) -> void:
 	if not multiplayer.is_server():
 		return
 	if delay > 0.0:
 		var tween := create_tween()
-		tween.tween_callback(apply_damage.bind(amount)).set_delay(delay)
+		tween.tween_callback(apply_damage.bind(amount, 0.0, attacker)).set_delay(delay)
 		return
-	_apply_damage(amount)
+	_apply_damage(amount, attacker)
 
-func _apply_damage(damage: float) -> void:
+func _apply_damage(damage: float, attacker: Unit = null) -> void:
 	Global.SM.record_damage_received(player_owner, damage)
 	health -= damage
 	_repair_timer = -REPAIR_DELAY
 	if health <= 0:
 		health = 0
 		Global.UM.rpc("rpc_remove_unit", id)
+		return
+	# Scram when attacked (DESIGN): zoombas flee to the MCP under fire.
+	if type == UnitManager.Type.ZOOMBA:
+		scram()

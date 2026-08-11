@@ -10,6 +10,9 @@ const DEACCEL := 16.0
 const MAX_SLOPE_ANGLE := 40.0
 const JAGGIES_UPDATE := 0.05
 const MOUSE_SENSITIVITY := 0.4
+# Max distance from the avatar to a friendly building's tile for its terminal
+# to be interactive (DESIGN: FPS terminal interaction range, 2 tiles).
+const TERMINAL_INTERACT_RANGE: float = Cairo.UNIT * 2.0
 
 @onready var fps_body: CharacterBody3D = $FPSBody
 @onready var camera: Camera3D = $FPSBody/Rotation_Helper/FPSCamera
@@ -185,6 +188,9 @@ func _run_cursor_scan() -> void:
 			var screen_mesh := terminal.get_node_or_null("Screen") as MeshInstance3D
 			var building := terminal.get_parent() as Building
 			if screen_mesh and building and building.player_owner == Global.my_player_number:
+				if fps_body.global_position.distance_to(building.location.pathing_centre) > TERMINAL_INTERACT_RANGE:
+					_hide_all_hud_cursors()
+					return
 				var hud_root := building.get_node_or_null("BuildingHUD/Root")
 				if hud_root and hud_root.has_method("uv_from_collision"):
 					var uv: Vector2 = hud_root.uv_from_collision(screen_mesh, screen_ray.get_collision_point())

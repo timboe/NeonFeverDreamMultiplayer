@@ -182,7 +182,15 @@ static var HOME_TERRITORY_UNITS: Array[int] = [
 static var SELF_HEALING_UNITS: Array[int] = [
 	UnitManager.Type.ZOOMBA,
 	UnitManager.Type.TANK,
+	UnitManager.Type.AVATAR,
 ]
+
+# HP/s self-heal rate per self-healing type (DESIGN: zoomba 10, tank 25, avatar 10).
+static var SELF_HEAL_RATE: Dictionary = {
+	UnitManager.Type.ZOOMBA: 10.0,
+	UnitManager.Type.TANK: 25.0,
+	UnitManager.Type.AVATAR: 10.0,
+}
 
 # --- Players ---
 

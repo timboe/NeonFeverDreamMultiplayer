@@ -84,7 +84,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Property | Value |
 | --- | --- |
 | Influence radius | 3 tiles (33 tiles) |
-| Function | Produces TANKs. Each TANK requires one Zoomba as pilot. TANK creation is relatively slow (1 per 6s). Each Garage has a ZOOMBA/TANK ratio slider (0–100%, default 50/50, minimum one zoomba). Each Garage tracks a target tank count = its ratio × total free Zoombas. Garages compete for available Zoombas round-robin each tick. |
+| Function | Produces TANKs. Each TANK requires one Zoomba as pilot. TANK creation is relatively slow (1 per 6s). Each Garage has a ZOOMBA/TANK ratio slider (0–100%, default 50/50, minimum one zoomba). Each Garage tracks a target tank count = `roundi(ratio × total Zoombas)`. Garages compete for available Zoombas round-robin each tick. |
 | HP | 2000 |
 | Cost | 750e |
 | Avatar buff | TANK fire rate +25% against aerial targets for all TANKs created by any Garage while the Avatar is empowering that Garage (to be play tested, adjust if needed). |
@@ -95,7 +95,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 
 | Property | Value |
 | --- | --- |
-| Influence radius | 2 tiles (17 tiles) |
+| Influence radius | 3 tiles (33 tiles) |
 | Function | Produces AERIAL units (1 per 4s). Each Beacon has a **PATROL/STRIKE ratio slider** (0–100%, default 50/50). |
 | HP | 2000 |
 | Cost | 750e |
@@ -126,24 +126,24 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Territory | Anywhere on the map, including enemy territory. |
 | Max count | 1 |
 | HP | 200 |
-| Respawn time | 8s |
+| Respawn time | 10s |
 | Lifetime | Permanent, respawns when killed |
 | Cost | Free (respawn) |
-| Function | Player's avatar embodies their direct influence in the game world. Click on a friendly building within 1 tile to empower it (FPS only). That building's avatar buff becomes active. Empowerment cancels if the avatar moves more than 1 tile away. Empowerment status is preserved when leaving FPS mode. |
+| Function | Player's avatar embodies their direct influence in the game world. Use the empower button on a friendly building's diegetic terminal (FPS mode, within terminal interaction range) to empower it; that building's avatar buff becomes active. One empowered building per player — empowering another clears the previous. The buff persists while in RTS mode; re-entering FPS mode clears it. |
 | Interaction: Zoomba | When under active control, may tag enemy zoomba to direct attack. |
 | Interaction: Tank | When under active control, may tag enemy tanks to direct attack. |
 | Interaction: Aerial Patrol | When under active control, may tag enemy patrol units to direct attack. Vunerable to attack from enemy patrol units. |
 | Interaction: Aerial Strike | When under active control, may tag enemy strike units to direct attack. Vunerable to attack from enemy strike units. |
 | Interaction: Virus | When under active control, may tag enemy virus units to direct attack. Un-cloaks enemy virus units. |
 | Interaction: Buildings | When under active control, may tag enemy buildings to direct attack. |
-| Special | When under active control, has time-limited RALLY ability. Nearby friendly units join the Avatar's rally party and will follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Marking a priority target (crosshair click) causes the rallied squad to deal +25% damage against that target (ping amplifier). Recovers 10 HP/s when out of combat for 5s (similar to zoombas). |
+| Special | When under active control, has time-limited RALLY ability. Nearby friendly units join the Avatar's rally party and will follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Marking a priority target (crosshair click) causes the rallied squad to deal +25% damage against that target (ping amplifier). Recovers 10 HP/s when out of combat for 10s (similar to zoombas). |
 
 ### Zoomba (Worker — non-combat)
 
 | Property | Value |
 | --- | --- |
 | Territory | HOME only (never leaves owned/contested tiles) |
-| Max count | `floor(sqrt(tile_count × 8))` |
+| Max count | `floor(sqrt(player_aoe_totals))` (split AoE score; contested tiles count 1/N to each claimant) |
 | Lifetime | Permanent |
 | Cost | 25e |
 | HP | 50 |
@@ -154,7 +154,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | May encounter invading enemy strike units on home or contested tiles. Scrams if under fire. |
 | Interaction: Virus | May encounter invading enemy  virus on home or contested tiles. Does not interact with virus. Does not de-cloak virus. |
 | Interaction: Buildings | Does not interact with enemy buildings on contested tiles. |
-| Special | Only created at MCP. Heals 10 HP/s when out of combat for 5s (not being attacked, not in scram). **Scram:** when attacked by enemy STRIKE or PATROL on contested tiles, paths to MCP at high speed for 3s. After scram ends, resumes normal behavior. |
+| Special | Only created at MCP. Heals 10 HP/s when out of combat for 10s (not being attacked, not in scram). **Scram:** when attacked by enemy STRIKE or PATROL on contested tiles, paths to MCP at high speed for 3s. After scram ends, resumes normal behavior. |
 
 ### TANK (Ground Defender)
 
@@ -172,7 +172,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | Primary role is to intercepts enemy aerial strike units invading home / contested tiles. STRONG engagement against aerial enemy units (5x bonus). |
 | Interaction: Virus | Cannot detect cloaked VIRUS. When a VIRUS uncloaks to attack the TANK (~10s to destroy), the TANK can queue a kill-VIRUS job for nearby PATROL units. The TANK has no direct defense and relies on PATROL support during the 10s attack window. |
 | Interaction: Buildings | None |
-| Special | Each TANK requires 1 Zoomba pilot. Total TANK cap = current Zoombas − 1. Tank destroyed → explodes, leaving the pilot Zoomba at the center of the wreckage (returns to workforce immediately). Repairs 25 HP/s when out of combat for 5s (not taking damage, not firing). Follows the avatar if RALLYED, but will not leave home / contested territory. |
+| Special | Each TANK requires 1 Zoomba pilot. Total TANK cap = current Zoombas − 1. Tank destroyed → explodes, leaving the pilot Zoomba at the center of the wreckage (returns to workforce immediately). Repairs 25 HP/s when out of combat for 10s (not taking damage, not firing). Follows the avatar if RALLYED, but will not leave home / contested territory. |
 
 ### AERIAL — PATROL Mode (Air Defender)
 
@@ -219,7 +219,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Lifetime | 2m (self-depletes at 1.25 HP/s, ~120s from full health). Health stops depleting while channeling an attack (uncloaked). |
 | Cost | 100e |
 | HP | 150 |
-| Function | Offensive against enemy base. Chooses one enemy tank or building to target at random and begins to path towards it with a weighted random walk and A\* waypoints. If no tanks left then chooses a random enemy building. If its target tank is destroyed it then picks another target at random from the valid set. VIRUS remains cloaked while moving but must uncloak to attack a TANK (~10s kill) or infect a building (~10s channel). Infecting a building destroys the virus; infection duration is based on remaining health at the start of the channel: base 15s at full health (150 HP), prorated linearly (e.g. 75 HP = 7.5s infection). Multiple VIRUS infecting the same building stack durations. |
+| Function | Offensive against enemy base. Chooses one enemy tank or building to target at random and begins to path towards it with a weighted random walk and A\* waypoints. If no tanks left then chooses a random enemy building. If its target tank is destroyed it then picks another target at random from the valid set. VIRUS remains cloaked while moving but must uncloak to attack a TANK (~10s kill) or infect a building (~10s channel). Infecting a building destroys the virus; infection duration is based on remaining health at the start of the channel: base 10s at full health (150 HP), prorated linearly (e.g. 75 HP = 5s infection). Multiple VIRUS infecting the same building stack durations. |
 | Interaction: Zoomba | May encounter enemy zoomba on contested and enemy tiles. Does not interact with enemy zoomba. |
 | Interaction: Tank | Primary action to target enemy tanks on contested and enemy tiles. VIRUS must uncloak to attack (~10s to destroy a tank). STRONG against tanks. Tank cannot fight back but can queue a kill-VIRUS job for PATROL upon attack start. |
 | Interaction: Aerial Patrol | Detected by PATROL at 2-3 tile range while cloaked. WEAK to attack from PATROL if uncloaked. Virus unable to target aerial units. |
@@ -281,7 +281,7 @@ TANK ──(AA 5-6x)──→ STRIKE ──(height 2x)──→ PATROL ──(de
 
 ## Avatar (FPS Mode)
 
-The player's physical first-person representation. Entered via Tab/Enter. Can be killed (respawns at MCP after ~8s).
+The player's physical first-person representation. Entered via Tab/Enter. Can be killed (respawns at MCP after ~10s).
 
 ### Capabilities in FPS
 
@@ -295,13 +295,17 @@ The secondary capability is to fine-tune building settings via diegetic UI panel
 | Ping VIRUS | Crosshair click on a spotted VIRUS | Queues a kill-VIRUS job for nearest PATROL. Also works on VIRUS spotted by nearby PATROL/STRIKE (relayed to minimap). |
 | Prioritize target | Crosshair click on enemy building or unit | Marks it as priority target for the RALLY squad (+25% damage from rallied units). |
 | RALLY | Press R (~15s cooldown) | Gathers nearby friendly units (~8 tile radius) into a squad that follows the avatar. AERIAL auto-switch mode by territory. Multiple presses grow the squad. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Lasts until avatar death or exit from FPS. |
-| Empower building | Click on a friendly building within 1 tile (FPS only) | The Avatar empowers that building: its avatar buff becomes active. Cancels if the avatar moves more than 1 tile away. Status preserved on exit from FPS. |
+| Empower building | Empower button on the building's terminal (FPS only, within terminal interaction range ~2 tiles) | That building's avatar buff becomes active. One per player — empowering another swaps. Cleared when re-entering FPS mode. |
 | Cure infection | Touch an infected friendly building | Immediately removes all VIRUS infections from that building. The building the Avatar is currently empowering is immune to infection. |
-| Interact with building | Interact with its diegetic control panel | Alter the building's settings and behavior. See Diegetic Building UI section below. |
+| Interact with building | Interact with its diegetic control panel (within ~2 tiles of the building) | Alter the building's settings and behavior. See Diegetic Building UI section below. |
 
 ### Diegetic Building UI (FPS-mode only)
 
-Each production building has a diegetic control panel accessible in FPS mode. Settings are viewable (read-only) from RTS mode.
+Each production building has a diegetic control panel accessible in FPS mode. Settings are viewable (read-only) from RTS mode. Terminals are interactive only while the Avatar is within ~2 tiles of the building (in Cairo units: 2 × 10u).
+
+**Enemy terminals can be spied on:** all building settings are mirrored to every peer through the snapshot system, so in RTS mode pointing the camera at an enemy building's terminal reveals its ratios, targets and stance read-only. (The RTS hover tooltip only shows your own buildings.)
+
+**Settings inheritance:** newly constructed buildings inherit the player's current settings (ratios, targets, patrol stance) from the most recently placed sibling of the same type.
 
 For toggle choice options, a new option is chosen for each unit. E.g. if a nest has its slider at 50% Tanks / 50% Buildings, is targeting Blue and Yellow players, and has Generator toggled for buildings. Then on average 25% of created virus attack blue generators, 25% yellow generators, 25% blue tanks and 25% yellow tanks.  
 
@@ -343,7 +347,7 @@ The default command view. Commands are issued through the Zoomba job queue.
 
 | Action | How | Effect |
 | --- | --- | --- |
-| Lower tile | Click RAISED tile → select to LOWER | Queues `MODIFY_TERRAIN` job. A Zoomba paths there and works it (~10–15s). Tile becomes LOWERED (passable floor). |
+| Lower tile | Click RAISED tile → select to LOWER | Queues `MODIFY_TERRAIN` job. A Zoomba paths there and works it (~7–8s). Tile becomes LOWERED (passable floor). |
 | Raise tile | Click un-built LOWERED tile → select to RAISE | Same job in reverse. Tile becomes RAISED (impassable wall). |
 | Place building | Click UI button → click valid tile | Same as existing `BuildingManager` pattern. Validates tile, queues `CONSTRUCT_BUILDING` job. |
 | View Garage/Beacon/Nest ratios | Hover / UI readout | Shows current building settings. Read-only. |
@@ -356,6 +360,17 @@ The default command view. Commands are issued through the Zoomba job queue.
 - Ground-level spotting (avatar can still spot nearby VIRUS in RTS mode, but at only 1 tile vs 3-4 tiles in FPS mode)
 - RALLY troops (FPS-only)
 - Directly command combat unit movement via RALLY (they follow patrol/AI behavior when in RTS)
+
+* * *
+
+## World Presentation (non-gameplay)
+
+Pure visuals — no collision, no gameplay effect, no multiplayer sync beyond what each peer computes locally.
+
+- **Monorail**: LOWERED tiles are linked by animated monorail rail segments (with end caps) along the tile neighbor graph. Segments tween in when tiles lower and tween out when tiles raise, so the rail network mirrors the navigable playfield.
+- **Animated floor**: the 50×50 floor is decorative; mountains morph over time (per-instance vertex displacement driven by a timer) and monuments pulse a beacon light.
+- **Tile claim visualization**: each tile draws band stripes (per-instance MultiMesh custom data) showing which players' AoE covers it, plus a white edge-glow for hover/selection/state feedback driven by an emission-priority system (generator catchment > tile selected > hover > pulse animation).
+- **Generator catchment**: hovering a Generator tints its catchment tiles by per-tile output share (full 1e, half, third, or split further), and its terminal HUD shows the breakdown by bucket.
 
 * * *
 
@@ -438,7 +453,7 @@ No starting energy — the MCP's internal reactor provides initial income (27e/s
 | AERIAL (PATROL) | 100e | Produced at Beacon. 2-minute lifetime. |
 | AERIAL (STRIKE) | 100e | Produced at Beacon. 2-minute lifetime. |
 | VIRUS | 100e | Produced at Nest. 2-minute health-based lifetime. |
-| Avatar respawn | Free | 8s timer, no energy cost. |
+| Avatar respawn | Free | 10s timer, no energy cost. |
 
 ---
 
@@ -446,7 +461,7 @@ No starting energy — the MCP's internal reactor provides initial income (27e/s
 
 | Production Building | Rate | Steady-state cap (at max prod) |
 |--------------------|------|-------------------------------|
-| MCP | 1 Zoomba per 2s | Limited by zoomba cap (tile count). |
+| MCP | 1 Zoomba per 10s | Limited by zoomba cap (tile count). (Player-1 slot is currently 2s — a TESTING value.) |
 | Garage | 1 TANK per 6s | Limited by available free Zoombas. |
 | Beacon | 1 AERIAL per 4s | ~30 units at steady state (120s ÷ 4s). |
 | Nest | 1 VIRUS per 5s | ~24 units at steady state (120s ÷ 5s). |
@@ -459,11 +474,11 @@ At one fully-placed Generator's output (54e/sec), running all production at max 
 
 | Activity | Drain | % of 54e/sec |
 |----------|-------|--------------|
-| Max Zoomba production (1 per 2s × 25e) | 12.5e/sec | 23% |
+| Max Zoomba production (1 per 10s × 25e) | 2.5e/sec | 5% |
 | Max TANK production (1 per 6s × 150e) | 25e/sec | 46% |
 | Max AERIAL production (1 per 4s × 100e) | 25e/sec | 46% |
 | Max VIRUS production (1 per 5s × 100e) | 20e/sec | 37% |
-| All of the above simultaneously | 82.5e/sec | 153% |
+| All of the above simultaneously | 72.5e/sec | 134% |
 
 You cannot run everything from one Generator. With two Generators (~80-110e/sec), a full military becomes sustainable while leaving room for expansion. With three or more, you enter late-game territory — mass production, decisive pushes, and VIRUS/Generator theft become critical.
 
@@ -473,7 +488,7 @@ You cannot run everything from one Generator. With two Generators (~80-110e/sec)
 
 | Action | Cost | Rationale |
 |--------|------|-----------|
-| Terrain raise/lower | **Zoomba time only** (10-15s per tile) | Rate-limited by zoomba labor and a concurrent job cap of 3 per player. No energy cost — prevents rich-get-richer on map control. |
+| Terrain raise/lower | **Zoomba time only** (~7–8s per tile) | Rate-limited by zoomba labor and a concurrent job cap of 3 per player. No energy cost — prevents rich-get-richer on map control. |
 | Building repair | **Free** (one Zoomba visit) | Damaged buildings auto-queue a fix-me job. 50 HP/s per Zoomba assigned to repair. No additional energy cost. |
 | TANK self-repair | **Free** (internal pilot) | Repairs automatically when out of combat. No energy cost. |
 | Zoomba self-heal | **Free** (slow regen) | Heals over time when not in scram mode. |
@@ -490,7 +505,7 @@ You cannot run everything from one Generator. With two Generators (~80-110e/sec)
 
 ## Statistics (Telemetry)
 
-A server-side aggregator (`StatisticsManager`) samples the game once per second and keeps a per-player history, so a match can be re-plotted as graphs (graph UI is a TODO).
+A server-side aggregator (`StatisticsManager`) samples the game once per second and keeps a per-player history, so a match can be re-plotted as graphs (see the In-game Statistics Window below).
 
 | Stat | Source |
 | --- | --- |

@@ -426,16 +426,16 @@ func set_constructed() -> void:
 
 # --- Damage and Repair ---
 
-func apply_damage(amount: float, delay: float = 0.0) -> void:
+func apply_damage(amount: float, delay: float = 0.0, attacker: Unit = null) -> void:
 	if not multiplayer.is_server():
 		return
 	if delay > 0.0:
 		var tween := create_tween()
-		tween.tween_callback(apply_damage.bind(amount)).set_delay(delay)
+		tween.tween_callback(apply_damage.bind(amount, 0.0, attacker)).set_delay(delay)
 		return
-	_apply_damage(amount)
+	_apply_damage(amount, attacker)
 
-func _apply_damage(damage: float) -> void:
+func _apply_damage(damage: float, attacker: Unit = null) -> void:
 	Global.SM.record_damage_received(player_owner, damage)
 	if state == State.CONSTRUCTED:
 		# If built, specific health pool. Not energy based
@@ -443,6 +443,8 @@ func _apply_damage(damage: float) -> void:
 		if health <= 0:
 			health = 0
 			Global.BM.rpc("rpc_remove_building", id)
+			return
+		_call_for_defense(attacker)
 	else:
 		# If under construction, attacks directly deplete the energy being used to build
 		_construction_energy_spent -= damage
@@ -450,6 +452,22 @@ func _apply_damage(damage: float) -> void:
 			_construction_energy_spent = 0
 			rpc("rpc_constructed", id) # Remove blueprint as well
 			Global.BM.rpc("rpc_remove_building", id)
+
+# A building under attack calls for defense (DESIGN): queue a COMBAT_PERSUE job
+# on the attacker. A VIRUS attacker is answered by PATROL aerials (the only
+# units that can engage it — patrol_only + territory_only); any other attacker
+# (AERIAL) is answered by TANKs (territory_only). Job dedupe collapses repeated
+# damage ticks into a single defense order.
+func _call_for_defense(attacker: Unit) -> void:
+	if attacker == null or not is_instance_valid(attacker):
+		return
+	if attacker.player_owner == player_owner:
+		return
+	match attacker.type:
+		UnitManager.Type.VIRUS:
+			Global.JM.add_job(player_owner, JobManager.Type.COMBAT_PERSUE, attacker, null, false, [UnitManager.Type.AERIAL], true, true)
+		_:
+			Global.JM.add_job(player_owner, JobManager.Type.COMBAT_PERSUE, attacker, null, false, [UnitManager.Type.TANK], false, true)
 
 func start_repair(unit: Unit) -> void:
 	if not multiplayer.is_server():

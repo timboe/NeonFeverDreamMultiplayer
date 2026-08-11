@@ -4,6 +4,7 @@
 
 - **Godot 4.7**, Jolt Physics, D3D12 renderer, Forward Plus
 - Entrypoint: `scenes/menu/MainMenu.tscn`
+- `DESIGN.md` is the game design doc (unit/building tables, combat matrix, economy intent) — gameplay code comments cite it as "per DESIGN".
 - Autoloads (only two, see `project.godot`): `autoload/Global.gd` (holds `network_manager`, `game_config`, `my_player_number`, `level` preload) and `autoload/Config.gd` (all balance dicts + `get_damage()`).
 - `Global.level` is a preload of `levels/skirmish_01.gd` — tile IDs, MCP positions, LOWERED/IMMUTABLE/INVISIBLE sets, seed. This is the only level.
 - No tests, no lint, no typecheck config.
@@ -28,7 +29,8 @@ World
 │   └── OmniLight3D_RTS %
 ├── ProjectilesHolder
 ├── HUD                 CanvasLayer, group "hud"
-└── StatisticsWindow    CanvasLayer (layer 50), group "statistics_window"; modal stats graphs (M-key in RTS)
+├── StatisticsWindow    CanvasLayer (layer 50), group "statistics_window"; modal stats graphs (M-key in RTS)
+└── LoadingOverlay      group "loading_overlay"; World-load progress, hidden by GameManager at game start
 ```
 
 Managers are accessed via the typed `Global` aliases above (all null until World loads). `%ManagerName` unique-name lookup still works in scene-owned scripts but is deprecated in favour of the `Global` aliases. Dynamically created nodes (TileElements) miss the owner lookup — gameplay code should use the `Global` aliases or a stored ref instead.
@@ -37,7 +39,7 @@ Every manager registers itself in its `_ready()` on `Global` with a short alias:
 
 ### Manager null-safety — when guards are allowed
 
-Once World's `_ready()` cascade has completed, every `Global.X` alias is guaranteed non-null for any `_process`/`_physics_process`/RPC/input/signal handler. Godot runs all `_ready()`s synchronously during scene-tree entry (in scene order), before the first frame of `_process`/`_physics_process`; level setup (`TileManager` first-physics-frame generation, MCP placement, `recompute_aoe`, `recalculate_capacity`) runs after all managers have registered; server-only sims additionally gate on `Global.game_started`; and the game-start gate (`GameManager`) holds RPCs until every client confirms World is ready. **Do not write `if Global.X:` / `if not <manager-var>:` null guards in gameplay code — access `Global.X` directly.**
+Once World's `_ready()` cascade has completed, every `Global.X` alias is guaranteed non-null for any `_process`/`_physics_process`/RPC/input/signal handler. Godot runs all `_ready()`s synchronously during scene-tree entry (in scene order), before the first frame of `_process`/`_physics_process`; level setup (`TileManager` first-physics-frame generation, MCP placement, `recompute_aoe`, `recalculate_capacity`) runs after all managers have registered; server-only sims additionally gate on `Global.game_started`; and the game-start gate (`GameManager`) holds RPCs until every client confirms World is ready (server force-starts after `READY_TIMEOUT` 15s regardless). **Do not write `if Global.X:` / `if not <manager-var>:` null guards in gameplay code — access `Global.X` directly.**
 
 Guard only where a manager may genuinely be absent:
 
@@ -60,14 +62,14 @@ Every game action follows the same two-line pattern — no manual branching:
 ```gdscript
 # Any caller, host or remote, human or AI:
 Global.send_command_me("toggle_tile", [tile_id])
-Global.send_command(ai_pnum, "toggle_cell", [x, z])
+Global.send_command(ai_pnum, "toggle_tile", [tile.get_id()])  # AIController pattern
 ```
 
 **Route**:
 ```
 send_command_me / send_command
   ├─ Server exists? → Server.handle_command(pnum, command, args)
-  │                     └─ reflection → _cmd_toggle_cell / _cmd_toggle_tile / ...
+  │                     └─ reflection → _cmd_toggle_tile / _cmd_place_blueprint / ...
   └─ No server (remote client)? → rpc_id(1, "_on_remote_command", ...)
 								   └─ Server._on_remote_command()
 									  └─ peer_to_player[caller] → handle_command(pnum, ...)
@@ -78,7 +80,7 @@ send_command_me / send_command
 - `send_command(pnum, ...)` is for AI controllers that know their own player number (`AIController` uses it for `toggle_tile`).
 - The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`.
 - Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`; `handle_command` validates arg count against the method signature. The `_cmd_` prefix is the allowlist. Adding a command = add `_cmd_<name>(player_number, ...)` to `Server.gd`, call it via `Global.send_command_me("<name>", [...])`.
-- Full command surface (see `Server.gd`): `toggle_tile`, `place_blueprint`, `toggle_production`, `set_garage_ratio`, `set_beacon_ratio`, `set_nest_ratio`, `set_enemy_targets`, `set_building_targets`, `set_patrol_stance`, `empower`, `clear_empower`. Callers: `TileElement` mouse handlers, the building HUDs, `AIController`.
+- Full command surface (see `Server.gd`): `toggle_tile`, `place_blueprint`, `toggle_production`, `set_garage_ratio`, `set_beacon_ratio`, `set_nest_ratio`, `set_enemy_targets`, `set_building_targets`, `set_patrol_stance`, `empower`, `clear_empower`; plus `camera_mode` (clients report their camera state — drives the per-player avatar VIRUS-detect radius) and `debug_damage_unit`/`debug_damage_building` (server-authoritative debug keys). Callers: `TileElement` mouse handlers, the building HUDs, `VideoManager` (`camera_mode`), `AIController`, HUD debug keys.
 
 ### Server-only guard pattern
 
@@ -120,9 +122,9 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `StatisticsManager` | `scripts/core/game/StatisticsManager.gd` | Server-only 1s stats sampler; per-player history (`aoe_size`, energy, unit counts, damage done/received); `rpc_receive_stats` pushes each finalized record to the owning client (see Statistics) |
 | `AIController` | `scripts/core/ai/AIController.gd` | Random `toggle_tile` on a timer via `send_command(player_number, ...)` |
 | `BuildingManager` | `scripts/world/buildings/BuildingManager.gd` | `Type` enum (MCP_1..4, GEN, VAT, GARAGE, BEACON, NEST), blueprints, building dict, `place_blueprint`/`place_building`/`rpc_remove_building`, empower tracking, `recompute_aoe` hookups |
-| `Building` | `scripts/world/buildings/Building.gd` | Base: states BLUEPRINT→UNDER_CONSTRUCTION→CONSTRUCTED, `player_owner`, `get_aoe_radius()`, `check_work()` (adds REPAIR_BUILDING jobs), construction/production via energy, `apply_damage`, repair, terminal positioning, per-building HUD SubViewport |
+| `Building` | `scripts/world/buildings/Building.gd` | Base: states BLUEPRINT→UNDER_CONSTRUCTION→CONSTRUCTED, `player_owner`, `get_aoe_radius()`, `check_work()` (adds REPAIR_BUILDING jobs while production is enabled), construction/production via energy, `apply_damage`, repair, terminal positioning, per-building HUD SubViewport |
 | `MCP` | `scripts/world/buildings/MCP.gd` | Main Control Point: produces AVATAR first then ZOOMBA up to `zoomba_cap`; counts as generator+vat |
-| `Generator` | `scripts/world/buildings/Generator.gd` | Energy output = sum of `gen_count` over its AoE tiles; hover shows catchment |
+| `Generator` | `scripts/world/buildings/Generator.gd` | Energy output = Σ `1/gen_count` over its AoE tiles (each tile's output split N ways); hover shows catchment |
 | `Vat` | `scripts/world/buildings/Vat.gd` | Capacity = 1000 + 100/adjacent same-owner Vat, ×1.2 if empowered; liquid-level visual |
 | `Garage` | `scripts/world/buildings/Garage.gd` | Creates CONSUME_ZOOMBA jobs (zoomba → TANK conversion), `zoomba_tank_ratio`, patrol orders |
 | `Beacon` | `scripts/world/buildings/Beacon.gd` | Produces AERIAL, patrol/strike orders, `patrol_strike_ratio`, patrol stance |
@@ -133,7 +135,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `Unit` | `scripts/world/units/Unit.gd` | Base unit: IDLE/PATHING/WORKING, job lifecycle, health, self-heal, scram, combat aim/fire-event visuals, `apply_damage` |
 | `Zoomba` | `scripts/world/units/Zoomba.gd` | Basic unit, player-colour material |
 | `Tank` | `scripts/world/units/Tank.gd` | Anti-air unit (only damages AERIAL) |
-| `Aerial` | `scripts/world/units/Aerial.gd` | Flying, patrol/strike modes, projectile delay |
+| `Aerial` | `scripts/world/units/Aerial.gd` | Flying, patrol/strike modes, projectile delay, 120s lifetime (auto-removed); STRIKE self-generates personal COMBAT_PERSUE jobs |
 | `Virus` | `scripts/world/units/Virus.gd` | Cloaked limpet unit: personal `ATTACK` jobs from Nest orders, spawns uncloaked → re-cloaks after 5s, drains TANKs (dies with the tank) or channels a building infection (self-sacrifice, effect stubbed) |
 | `Avatar` | `scripts/world/units/Avatar.gd` | FPS character: `FPSBody` (CharacterBody3D + FPSCamera), ignores job system, screen-cursor terminal clicks |
 | `JobManager` | `scripts/world/units/JobManager.gd` | Job pool + worker-centric assignment, abandon timers, `personal` jobs, job-event notifications |
@@ -213,7 +215,7 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 - `REPAIR_BUILDING` → `building.start_repair(self)`
 - `CONSUME_ZOOMBA` → `_consume_for_tank()` (spawns a TANK at the garage, then removes this zoomba)
 - `COMBAT_PERSUE` → never WORKING — `pathing_callback()` diverts to `combat_pathing_callback()` (chase/orbit, see below)
-- `ATTACK` → `start_attack()` (no-op in base `Unit`; VIRUS overrides it for the limpet). Personal VIRUS jobs, generated by `Virus.try_generate_offense_job()`, go through the normal pathing flow and DO enter WORKING.
+- `ATTACK` → `start_attack()` (no-op in base `Unit`; VIRUS overrides it for the limpet). Personal VIRUS jobs, generated by `Virus.try_generate_offense_job()`, go through the normal pathing flow and DO enter WORKING. STRIKE aerials similarly self-derive a **personal `COMBAT_PERSUE`** job (`Aerial.try_generate_offense_job` → `choose_building_target`) after 1s idle.
 
 ### Unit.gd functions
 
@@ -235,11 +237,11 @@ All transitions are server-only (`if not multiplayer.is_server(): return` guard 
 
 **`move(callback)`** — Kills previous tween, slerps rotation + moves to `location.pathing_centre`, calls callback. IDLE moves at 2x speed; scram at 0.5x. `move_tween` is a plain var (Tween is RefCounted).
 
-**`scram()`** — `ui_scram` key (C): `scram_count = SCRAM`; if busy, `abandon_job()`. Scrambled units aren't assigned jobs and aren't eligible during `assign_jobs`.
+**`scram()`** — `ui_scram` key (C) or auto-triggered when a ZOOMBA takes damage: `scram_count = SCRAM`; if busy, `abandon_job()`. Scrambled units aren't assigned jobs and aren't eligible during `assign_jobs`.
 
 ### JobManager.gd
 
-- **`add_job(pnum, type, location, personal=false)`** — dedupes identical pnum/type/location jobs. `personal` jobs can't be reassigned — they're erased on abandon.
+- **`add_job(pnum, type, target, request_assign=null, personal=false, eligible_types=[], patrol_only=false, territory_only=false)`** — `target` is a TileElement/Unit/Building (resolve via `target_tile()`); dedupes identical pnum/type/target jobs (personal jobs exempt). Passing a `request_assign` Unit immediately tries to assign the job to it. `eligible_types`/`patrol_only`/`territory_only` gate which units `assign_jobs` may hand it to. `personal` jobs can't be reassigned — they're erased on abandon.
 - **`cancel_job`** — deselect → `remove_job`. **`remove_job(id)`** — permanent deletion; if assigned, calls `unit.remove_job()`. **`abandon_job(id)`** — stays in pool, `abandoned_n`++, timer `min(60, abandoned_n × 11)`, clears `assigned`; personal jobs are erased instead.
 - **`assign_jobs()`** (every 1s from GameManager) — two passes: decrement abandon timers, then for each idle unit (skipping AVATAR and `scram_count > 0`) → `assign_nearest_job(unit)` (shortest path length among eligible unassigned jobs for that player).
 - **`check_job_still_valid(job)`** — per-type: CONSTRUCT_BUILDING (blueprint present), TOGGLE_TILE (state RAISED/LOWERED + still `selected_by`), REPAIR_BUILDING (damaged), CONSUME_ZOOMBA (constructed GARAGE), COMBAT_PERSUE (target alive; a re-cloaked VIRUS is invalid — same as destroyed), ATTACK (target alive). New job types extend this `match`.
@@ -273,22 +275,22 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ### Job dict fields
 
-`id`, `pnum`, `type`, `location` (TileElement), `assigned` (Unit/null), `personal` (bool), `abandoned_by`, `abandoned_n`, `abandoned_timer`. Plus transient `path_dest` set during pathing.
+`id`, `pnum`, `type`, `target` (TileElement/Unit/Building — not `location`), `assigned` (Unit/null), `personal` (bool), `eligible_types`, `patrol_only`, `territory_only`, `abandoned_by`, `abandoned_n`, `abandoned_timer`. Plus transient `path_dest` set during pathing.
 
 ## Economy & production
 
-- **EnergyManager** (server-only): 0.05s tick sums `get_energy()` over CONSTRUCTED `generator`-group buildings (MCP=27 fixed, Generator=sum of `gen_count` on its AoE tiles), fills `energy[p]` up to `capacity[p]`; 1s tick computes `rate_of_change` and shortfall ratio. `request_energy(pnum, amount)` deducts (returns allocated). `recalculate_capacity()` sums CONSTRUCTED `vat`-group `get_capacity()`. Broadcasts `apply_energy` (unreliable) per player. **Dicts are 1-based** — iterate `range(1, Global.MAX_PLAYERS + 1)`, never `for p in Global.MAX_PLAYERS`.
+- **EnergyManager** (server-only): 0.05s tick sums `get_energy()` over CONSTRUCTED `generator`-group buildings (MCP=27 fixed, Generator=Σ `1/gen_count` over its AoE tiles), fills `energy[p]` up to `capacity[p]`; 1s rolling histories give per-second produced/consumed/requested rates and a supply ratio (`_produced/_requested`) used to ration consumers when the store runs dry (there is no `rate_of_change` var — see `get_player_energy()`). `request_energy(pnum, amount)` deducts (returns allocated). `recalculate_capacity()` sums CONSTRUCTED `vat`-group `get_capacity()`. Broadcasts `apply_energy` (unreliable) per player. **Dicts are 1-based** — iterate `range(1, Global.MAX_PLAYERS + 1)`, never `for p in Global.MAX_PLAYERS`.
 - **Construction**: BLUEPRINT building's `_process` consumes energy at `CONSTRUCTION_COST / CONSTRUCTION_TIME`; at full → `set_constructed()` (`rpc_constructed` removes the blueprint and reveals the building).
 - **Production**: CONSTRUCTED building accumulates `_production_energy` via `request_energy`; at `UNIT_COST` → spawn via `um.rpc("rpc_spawn_unit", uid, type, building_id)`; cooldown from `Config.PRODUCTION_COOLDOWNS`. MCP overrides: AVATAR first, then ZOOMBA up to `zoomba_cap = floor(sqrt(player_aoe_totals[pnum]))`. Garage overrides: issues CONSUME_ZOOMBA jobs instead of spawning directly. Beacon → AERIAL, Nest → VIRUS.
 - **Empower**: `BuildingManager.set_empowered_for_player` (one building per player, swap clears the previous), `rpc_set_empowered`, subclasses react in `_empower_changed` (Vat ×1.2 capacity).
-- Building HUDs: each building gets its own `SubViewport` + HUD scene (`_setup_hud`), rendered into the `Terminal/Screen` material; terminal positioned at the access tile nearest the MCP (`position_terminal`).
+- Building HUDs: each building gets its own `SubViewport` + HUD scene (`_setup_hud`), rendered into the `Terminal/Screen` material; terminal positioned at the access tile nearest the MCP (`position_terminal`). Building settings are mirrored to all peers through the snapshot system, so enemy terminals are spyable (`GameManager.refresh_foreign_building_terminals`, 4Hz).
 
 ## Combat
 
-- **CombatManager** (server-only): every 0.5s re-scans TANK/AERIAL/AVATAR units; score = `dmg × 10 - health`, must pass range (40) and line-of-sight (raycast that ignores LOWERED/FALLING tiles and self/target). Units without `orders["enemy"]` target any other player. Aerial roles: "patrol" = PATROL mode (home patrol, 3-tile VIRUS detect), "strike" = STRIKE mode (enemy overfly, 1-tile detect). Detection uncloaks a cloaked VIRUS (`c.uncloak()`); a cloaked VIRUS is never a fire target (`_update_firing` skips it). Kill-VIRUS jobs (`COMBAT_PERSUE`, `patrol_only` + `territory_only`) are executed only by PATROL aerials.
-- **Avatar uncloak**: `_scan_avatar` uncloaks cloaked enemy VIRUS within Avatar LoS — 40u in FPS, 10u in RTS (`AVATAR_VIRUS_DETECT_RADIUS_FPS/RTS`), per DESIGN.
+- **CombatManager** (server-only): every 0.5s re-scans TANK/AERIAL/AVATAR units; score = `dmg × 10 - health`, must pass range (40) and line-of-sight (raycast that ignores LOWERED/FALLING tiles and self/target; per-pair results are cached and invalidated on any tile/building change). Enemy targeting is **explicit-list only**: a unit attacks players in `orders["enemy"]` — an empty list means it attacks nothing (no "everyone" fallback), and its own team is never included. Aerial roles: "patrol" = PATROL mode (home patrol, 3-tile VIRUS detect), "strike" = STRIKE mode (enemy overfly, 1-tile detect). Detection uncloaks a cloaked VIRUS (`c.uncloak()`); a cloaked VIRUS is never a fire target (`_update_firing` skips it). Kill-VIRUS jobs (`COMBAT_PERSUE`, `patrol_only` + `territory_only`) are executed only by PATROL aerials.
+- **Avatar uncloak**: `_scan_avatar` uncloaks cloaked enemy VIRUS within Avatar LoS — 40u in FPS, 10u in RTS (`AVATAR_VIRUS_DETECT_RADIUS_FPS/RTS`), per DESIGN. Radius follows the owner's camera mode: local avatar reads `Global.VM.camera_status`, remote avatars use the mode their client reported via the `camera_mode` command.
 - Firing: when weapon aligned (`Unit.is_weapon_aligned()`, slerped in `update_weapon_aim`), bursts of `WEAPON_BURST_DURATION`(0.4) with damage ticks every 0.1s. TANK fires an instant burst; AERIAL applies a projectile delay (`update_projectile_delay`). `combat_fire_event` is bumped server-side and drives client visuals (`_update_combat_visuals`).
-- **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK) heal server-side.
+- **Damage** via `Config.get_damage(attacker_type, target, mode)`: TANK damages only AERIAL (×6 patrol / ×5 strike). AERIAL damages VIRUS ×5 (patrol) / BUILDING ×2 (strike), plus mode-vs-mode multipliers. `apply_damage(amount, delay, attacker)` on server → health; ≤0 removes unit/building. `SELF_HEALING_UNITS` (ZOOMBA, TANK, AVATAR) heal server-side at `Config.SELF_HEAL_RATE` (10/25/10 HP/s) after 10s out of combat. A damaged ZOOMBA scram(). A CONSTRUCTED building calls for defense: `_call_for_defense(attacker)` queues a `COMBAT_PERSUE` job on the attacker — VIRUS attacker → PATROL aerials (`patrol_only` + `territory_only`), any other (AERIAL) → TANKs (`territory_only`).
 - **VIRUS combat**: VIRUS doesn't fire — it generates a **personal `ATTACK` job** (`Virus.try_generate_offense_job`, like Aerial-strike) from its copied Nest orders (`enemy` / `target` / `tank_ratio`). Target = random enemy tank on the `tank_ratio` roll, else `CombatManager.choose_building_target()` (shared with Aerial-strike). An aerial spotting an enemy tank also queues a **pooled** `ATTACK` job (`eligible_types=[VIRUS]`) so a freshly spawned virus can be assigned it before it self-derives (the 1s `_idle_time` guard). On arrival `start_work()` → `start_attack()`: uncloak, attach (`_limpet_target`), `VIRUS_ATTACH_DELAY`(1s) pause, then tank drain at `VIRUS_TANK_DRAIN_DPS`(40) — the limpet **tracks the tank's position** each tick (snaps `location`/`global_position`) — or a building infection channel (`VIRUS_INFECTION_BASE_DURATION` 15s × health-at-attach/150; `_apply_building_effect()` is a stub). Ambient 1.25/s decay pauses while WORKING. Re-cloaks after `VIRUS_RECLOAK_COOLDOWN`(5s) when uncloaked & not attached (spawns uncloaked). Dies when its limpet TANK dies (any cause) or when a building infection completes (self-sacrifice); survives if the building is destroyed mid-channel → re-targets. Multiple VIRUS may limpet one target (personal jobs skip dedup).
 - Health bars: `HealthBar3D` for units and buildings. Debug keys in HUD: `ui_damage_building` (P), `ui_damage_unit` (L) deal 40% max health.
 - RTS cursor light (`OmniLight3D_RTS`): `ui_debug_light` (F3) toggles a wireframe gizmo (magenta sphere = `omni_range`, white axis = down direction, cyan cross = light origin) built by `OmniLight._build_debug_mesh()`. The light is omnidirectional — OmniLight3D has no cone/`omni_angle` property in this engine.
@@ -296,7 +298,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 ## Statistics
 
 - **StatisticsManager** (`Global.SM`, server-only): samples every 1s (`TICK_INTERVAL`), appends one record per player to a full history — `stats[pnum]` is an `Array` (newest last) on the server.
-- Record fields: `time` (monotonic seconds since engine start — x-axis for the graph TODO), `aoe_size` (split AoE score from `TileManager.player_aoe_totals`), `energy` {`stored`, `capacity`, `generated`, `used`} (trailing-1s rates from `EnergyManager.get_player_energy()`), `units` {`zoomba`, `tank`, `aerial_strike`, `aerial_patrol`, `virus`}, `damage` {`done`, `received`}.
+- Record fields: `time` (monotonic seconds since engine start — x-axis of the graphs), `aoe_size` (split AoE score from `TileManager.player_aoe_totals`), `energy` {`stored`, `capacity`, `generated`, `used`} (trailing-1s rates from `EnergyManager.get_player_energy()`), `units` {`zoomba`, `tank`, `aerial_strike`, `aerial_patrol`, `virus`}, `damage` {`done`, `received`}.
 - Damage hooks: `record_damage_done` (CombatManager at fire time) / `record_damage_received` (Unit/Building/Vat `_apply_damage` at impact time). Debug-key damage (P/L, attacker-less) counts as received only.
 - **Sync**: each finalized record is pushed to the owning remote client via `rpc_id(peer, "rpc_receive_stats", p, record)` (`@rpc("authority","call_remote","reliable")`). `Server.player_to_peer` only contains remote clients (peers > 1), so the host's local slot and AI slots are skipped — the server keeps full history for everyone, while a client only gets its own player-number key populated.
 - Query: `Global.SM.get_stats(pnum)` → the player's full history `Array`.
@@ -305,7 +307,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 ## Avatar / FPS camera
 
 - `Global.VM.CameraStatus` = OVERHEAD → TO_FPS → FPS → TO_OVERHEAD. Toggle via HUD button or `ui_capture_toggle`; 2s transition tween, mouse captured in FPS. Trauma/shake via `add_trauma`.
-- `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for interacting with terminal HUDs (`ScreenBody` collision → drives the 2D `TerminalCursor` in the building's SubViewport HUD, propagating hover + click).
+- `Avatar` (`scenes/world/units/Avatar.tscn`) = Unit with `FPSBody` (CharacterBody3D + `Rotation_Helper`/`FPSCamera`). WASD + `ui_movement_jump` movement, mouse look, ray for tile selection (jagged beam), `ScreenRay` for interacting with terminal HUDs (`ScreenBody` collision → drives the 2D `TerminalCursor` in the building's SubViewport HUD, propagating hover + click) — only within `TERMINAL_INTERACT_RANGE` (2 × `Cairo.UNIT`) of the building.
 - Avatars skip the job system entirely (`idle_callback` no-op; `assign_jobs` skips AVATAR; not in `HOME_TERRITORY_UNITS`). Avatar snapshots are relayed separately (see Snapshot section).
 - **The `Avatar` root (a `Unit`) never moves from its spawn tile — only its `FPSBody` (CharacterBody3D) travels the world.** Any system needing the avatar's real position must read the `FPSBody`'s transform (e.g. `avatar.get_node("FPSBody").global_position`), never the root's `global_position`/`location`. This drives combat aim (`CombatManager` aims at the body), snapshot/interpolation (avatar snapshots pack the `FPSBody` transform), and camera transitions.
 
@@ -318,6 +320,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - **ImmediateMesh**: `clear_surfaces()` / `surface_begin()` / `surface_add_vertex()` instead of ImmediateGeometry.
 - **Materials**: player colour at `res://materials/player/player<N>_material.tres` (1..4, matches `PLAYER_COLORS`). Floor: `res://materials/floor/grid_faces.tres` (lit) + `grid_edges.tres` (unshaded cyan, `use_instance_color`).
 - The whole codebase is converted — no Godot 3 syntax remains (this file's old "Remaining patterns" list is resolved).
+- `Config.UI_*` accent constants are mirrored by hand in `themes/neon_ui.tres` (Godot themes can't read GDScript constants) — keep the two in sync when changing the palette.
 
 ## Gotchas
 
@@ -329,15 +332,16 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 - `TileElement` has no `.player` — check `.selected_by` / `.aoe` / `player_owner` on buildings/units.
 - Server-only functions called from `_process`/`_physics_process` (which run on all peers) must self-guard.
 - `create_tween()` returns RefCounted — local var, `.kill()` + `.is_valid()` guard, no `@onready`.
-- Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client.
+- Unit/buildings are spawned/removed only via `@rpc("authority","call_local")` RPCs; never add children directly on a client. Sole exception: level-setup MCP placement (`TileManager.apply_loaded_level` → `BuildingManager.place_building`) is deterministic and runs locally on every peer — no RPC involved.
 - **Avatar root stays put** — the `Avatar` (Unit) node remains at its spawn tile; only its `FPSBody` child moves. Always read `avatar.get_node("FPSBody").global_position` for where the avatar actually is.
 - `EnergyManager`/job/player dicts are 1-based (1..`MAX_PLAYERS`). Loops: `range(1, Global.MAX_PLAYERS + 1)`.
 
 ## Lobby flow
 
 - When any REMOTE slot exists, "Start Lobby" loads `scenes/menu/Lobby.tscn`; otherwise straight to `World.tscn`. Remote clients always land on `Lobby.tscn` and wait.
-- Lobby waits until `Server.peer_to_player.size()` == REMOTE slot count, then host `rpc("remote_start_game")` + everyone loads World.
-- AI controllers check `/root/World/TileManager` existence and skip actions while it's absent (lobby).
+- `Server.accepting_clients` stays false until the host enters the Lobby — clients connecting earlier are disconnected so they see a connection failure instead of silently joining.
+- Host starts when `peer_to_player.size()` >= REMOTE slot count **and** every connected peer has confirmed it is inside the Lobby scene (`rpc_client_lobby_ready`; a 10s soft-lock fallback force-starts). Then host `rpc("rpc_start_game")` + everyone loads World.
+- AI controllers skip actions while `not Global.game_started` or `Global.TM` is null (lobby).
 - Back button: `Global.network_manager.stop()` + `queue_free()` + null it, then MainMenu.
 - `NetworkManager.stop()` closes the client ENet peer too (`multiplayer.multiplayer_peer.close()`), not just the server peer.
 
