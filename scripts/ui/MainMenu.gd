@@ -97,9 +97,23 @@ func _start_host():
 		config.slots[i] = slot_option_buttons[i].get_item_id(idx) as GameConfig.SlotType
 
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
+	# Deterministic node name — the server routes RPCs (e.g. set_my_player_number)
+	# to /root/NetworkManager on every peer. A generic .new() name would differ
+	# per instance and silently drop the RPC (spectator clients).
+	nm.name = "NetworkManager"
 	get_tree().root.add_child(nm)
 	Global.network_manager = nm
-	nm.start_server(config)
+	if not nm.start_server(config):
+		# Server failed to bind the port (e.g. another game instance — possibly
+		# a stale one from an earlier session — is already holding it). Abort
+		# instead of entering the lobby with a dead server, which would leave
+		# remote players connecting to the wrong instance.
+		Global.network_manager = null
+		nm.stop()
+		nm.queue_free()
+		_show_overlay("Could Not Start Server",
+			"The server could not listen on port " + str(config.port) + ". It may already be in use by another game instance — check for a second running copy of the game and close it before trying again.")
+		return
 
 	var has_remote = false
 	for slot in config.slots:
@@ -116,6 +130,9 @@ func _connect_to_server():
 	var ip = ip_line.text
 	var port = int(connect_port_line.text)
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
+	# Deterministic node name — the server's set_my_player_number RPC routes to
+	# /root/NetworkManager; a generic name would drop it (spectator client).
+	nm.name = "NetworkManager"
 	get_tree().root.add_child(nm)
 	Global.network_manager = nm
 	nm.connect_result.connect(_on_connect_result)
@@ -138,6 +155,11 @@ func _on_connect_result(success: bool):
 		get_tree().change_scene_to_file("res://scenes/menu/Lobby.tscn")
 		return
 	_handle_connect_failure()
+
+func _show_overlay(title: String, message: String) -> void:
+	connect_error_overlay.get_node("DialogPanel/VBox/Title").text = title
+	connect_error_overlay.get_node("DialogPanel/VBox/Message").text = message
+	connect_error_overlay.visible = true
 
 func _handle_connect_failure():
 	if _connect_timer:

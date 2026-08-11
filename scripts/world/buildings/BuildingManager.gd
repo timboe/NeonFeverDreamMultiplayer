@@ -345,6 +345,13 @@ func rpc_remove_building(id: int) -> void:
 		var bp := get_node_or_null("Blueprint_" + str(id))
 		if bp:
 			bp.queue_free()
+		# CONSTRUCTED buildings leave debris: their own meshes become physics
+		# chunks blasted out from the building centre + a particle burst. This
+		# RPC is call_local so every peer spawns the same effect simultaneously —
+		# purely cosmetic, no sync needed. Invisible blueprints/under-construction
+		# buildings skip it.
+		if b.state == Building.State.CONSTRUCTED:
+			DestructionFX.spawn(b)
 		b.queue_free()
 		Global.TM.recompute_aoe()
 		# A neighbour may have just been unblocked (freed access tile) or lost

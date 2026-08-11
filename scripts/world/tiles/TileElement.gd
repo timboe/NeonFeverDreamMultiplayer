@@ -393,6 +393,8 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 			_fire_toggle_burst(_vent_particles, VENT_BASE_AMOUNT, VENT_BASE_RADIUS, VENT_VEL_MIN, VENT_VEL_MAX, thunk_distance)
 		else:
 			_fire_toggle_burst(_raise_particles, PLUME_BASE_AMOUNT, PLUME_BASE_RADIUS, PLUME_VEL_MIN, PLUME_VEL_MAX, thunk_distance)
+		# Camera trauma while the tile moves (up or down), lingering through the fall.
+		Global.VM.add_trauma(0.2, global_position, fall_time)
 		toggle_tween = create_tween()
 		# Need to alter collision box and nav mesh
 		toggle_tween.tween_property(self, "position:y", thunk_pos, thunk_time)\

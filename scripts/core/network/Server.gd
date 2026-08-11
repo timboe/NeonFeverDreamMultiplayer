@@ -14,7 +14,10 @@ class_name Server
 var enet_peer: ENetMultiplayerPeer
 var peer_to_player: Dictionary = {}
 var player_to_peer: Dictionary = {}
-var next_player_num: int = 1
+# Player numbers reserved for REMOTE slots, in slot order (slot index + 1).
+# Populated by NetworkManager.start_server(); _on_peer_connected pops the next
+# one, _on_peer_disconnected pushes it back so a reconnect reclaims its slot.
+var remote_slot_pnums: Array[int] = []
 # Per-player camera mode (VideoManager.CameraStatus) reported by each client
 # via _cmd_camera_mode. Used by server sims that depend on the *owner's* camera
 # state (e.g. avatar VIRUS-detect radius). Defaults to OVERHEAD until a client
@@ -38,15 +41,19 @@ func _ready() -> void:
 			_command_table[method_name] = Callable(self, method_name)
 			_command_arg_counts[method_name] = maxi(int(m["args"].size()) - 1, 0)
 
-func start(config: GameConfig) -> void:
+func start(config: GameConfig) -> bool:
 	enet_peer = ENetMultiplayerPeer.new()
 	var err := enet_peer.create_server(config.port, config.player_count)
 	if err != OK:
 		push_error("Failed to start server: ", err)
-		return
+		# Leave enet_peer null so callers can detect the failure (e.g. a stale
+		# instance already holding the port) instead of silently proceeding.
+		enet_peer = null
+		return false
 	multiplayer.multiplayer_peer = enet_peer
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	return true
 
 func stop() -> void:
 	multiplayer.multiplayer_peer = null
@@ -73,8 +80,14 @@ func _on_peer_connected(peer_id: int) -> void:
 		# connection failure rather than silently joining.
 		enet_peer.disconnect_peer(peer_id)
 		return
-	var pnum := next_player_num
-	next_player_num += 1
+	if remote_slot_pnums.is_empty():
+		# No free slot for this peer — all player numbers are taken (or this is
+		# a client beyond the configured slots). Reject instead of inventing a
+		# player number past MAX_PLAYERS.
+		push_warning("Server._on_peer_connected: no free player slot for peer ", peer_id)
+		enet_peer.disconnect_peer(peer_id)
+		return
+	var pnum: int = remote_slot_pnums.pop_front()
 	peer_to_player[peer_id] = pnum
 	player_to_peer[pnum] = peer_id
 	print("Server._on_peer_connected  peer_id=", peer_id, "  assigned pnum=", pnum)
@@ -88,6 +101,10 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		print("Server._on_peer_disconnected  peer_id=", peer_id, "  pnum=", pnum)
 		peer_to_player.erase(peer_id)
 		player_to_peer.erase(pnum)
+		# Free the slot for a reconnecting client (push_front keeps the slot
+		# order stable — the same player number is reclaimed first).
+		if not remote_slot_pnums.has(pnum):
+			remote_slot_pnums.push_front(pnum)
 
 # --- Command handlers ---
 

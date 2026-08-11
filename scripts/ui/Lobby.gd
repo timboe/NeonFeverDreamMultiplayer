@@ -53,6 +53,18 @@ func _setup_client():
 	# Confirm we're inside the Lobby scene — the host won't broadcast state or
 	# start the game until every connected client has reported ready.
 	rpc_id(1, "rpc_client_lobby_ready")
+	# The server assigned our player number at connect (set_my_player_number
+	# RPC) — surface it once it arrives so the client can verify their slot.
+	_poll_client_player_number.call_deferred()
+
+func _poll_client_player_number() -> void:
+	if Global.my_player_number >= 0:
+		status_label.text = "You are Player %d. Connected. Waiting for host to start the game..." % Global.my_player_number
+		return
+	if multiplayer.multiplayer_peer == null:
+		return
+	var t := get_tree().create_timer(0.2)
+	t.timeout.connect(_poll_client_player_number)
 
 # Host only: a client has finished loading the Lobby scene. The host may now
 # broadcast state / start the game safely — every lobby RPC will find the
@@ -151,6 +163,8 @@ func _broadcast_state() -> void:
 func rpc_receive_lobby_state(slots: Array, connected_remote: int) -> void:
 	_populate_slots(slots, connected_remote)
 	status_label.text = str(connected_remote) + " / " + str(remote_needed) + " remote players connected"
+	if Global.my_player_number >= 0:
+		status_label.text = "You are Player " + str(Global.my_player_number) + ". " + status_label.text
 
 func _start_game():
 	# Called on the host when all remote slots are filled.

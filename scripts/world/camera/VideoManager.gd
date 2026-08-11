@@ -20,7 +20,7 @@ const RUMBLE_FALLOFF: float = 100.0
 
 @export var shake_speed: float = 1.0
 @export var shake_decay: float = 0.5
-@export var noise: FastNoiseLite
+@export var noise: FastNoiseLite = FastNoiseLite.new()
 
 # --- State ---
 
@@ -207,11 +207,16 @@ func jump_to(location: Vector3) -> void:
 # --- Trauma / Shake ---
 
 func add_trauma(amount: float, from, add_linger: float = 0.0) -> void:
-	var avatar_pos = avatar.global_position
-	var avatar_body = avatar.get_node_or_null("FPSBody")
-	if avatar_body:
-		avatar_pos = avatar_body.global_position
-	var c: Vector3 = overhead_camera.global_position if overhead_camera.current else avatar_pos
+	# Shake distance is measured from the viewer: in FPS (or heading there) from
+	# the avatar's FPSBody — the body travels the world, the root stays on its
+	# spawn tile; anywhere else from the RTS camera, which also covers
+	# spectators (they have no avatar — `avatar` is only cached on entering FPS
+	# and may be null or freed if the unit died).
+	var c: Vector3 = overhead_camera.global_position
+	if camera_status == CameraStatus.FPS or camera_status == CameraStatus.TO_FPS:
+		var body = avatar.get_node_or_null("FPSBody") if is_instance_valid(avatar) else null
+		if body:
+			c = body.global_position
 	var d: float = from.distance_to(c) if from is Vector3 else 0.0
 	linger = max(linger, add_linger)
 	if d > RUMBLE_FALLOFF:

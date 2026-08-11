@@ -52,7 +52,7 @@ When code legitimately needs a manager twice or more in one function, hoist it o
 ## Multiplayer architecture
 
 - ENet server-authoritative. `Server` node lives only on host (`scripts/core/network/Server.gd`).
-- `NetworkManager` is **not** in any scene — instantiated at runtime by `MainMenu` and added to root.
+- `NetworkManager` is **not** in any scene — instantiated at runtime by `MainMenu` and added to root with an **explicit name `"NetworkManager"`** (`nm.name = "NetworkManager"`). This is required: the server routes RPCs (e.g. `set_my_player_number`) to `/root/NetworkManager` on every peer, and a `.new()` default name ("Node", possibly auto-renamed to a random `@Node@<id>`) silently drops them.
 - Host path: `Global.network_manager.server` (NOT a node path lookup — `get_node` fails due to dynamic parent). Remote path: `Global.network_manager` exists but `.server` is null.
 
 ### Unified command relay: `Global.send_command_me()` / `send_command()`
@@ -109,8 +109,8 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 |---|---|---|
 | `Global` | `autoload/Global.gd` | Singleton: `network_manager`, `my_player_number`, `level` preload, command relay, `MAX_PLAYERS=4` |
 | `Config` | `autoload/Config.gd` | Static balance dicts (`BUILDING_AOE`, `BUILDING_MAX_HP`, `CONSTRUCTION_COST`, `UNIT_COST`, `PRODUCTION_COOLDOWNS`, `UNIT_SPEED`, `UNIT_MAX_HP`, `HOME_TERRITORY_UNITS`, `SELF_HEALING_UNITS`, `PLAYER_COLORS`, combat consts) + `get_damage()` |
-| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates `Server` + local AI controllers, or ENet client; assigns LOCAL/AI player numbers; `set_my_player_number` RPC |
-| `Server` | `scripts/core/network/Server.gd` | ENet server, `peer_to_player`/`player_to_peer`, `_cmd_*` dispatch |
+| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates `Server` + local AI controllers, or ENet client; player number = slot index + 1 (LOCAL → `my_player_number`, AI → `AIController`, REMOTE → reserved in `server.remote_slot_pnums`); `set_my_player_number` RPC |
+| `Server` | `scripts/core/network/Server.gd` | ENet server, `peer_to_player`/`player_to_peer`, `remote_slot_pnums` pool (remotes draw from it in slot order; freed on disconnect), `_cmd_*` dispatch |
 | `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon grid gen, `State` enum, `apply_toggle`, `recompute_aoe` (+`player_aoe_totals`/`player_aoe_rings`/`gen_count`), `remove_tile_from_pathing`, tile selection broadcast |
 | `TileElement` | `scripts/world/tiles/TileElement.gd` | One tile: state transitions, neighbours, `aoe`/`selected_by`, MultiMesh visuals, emission priority system, `_working_unit_dict` countdown chain, mouse input → `send_command_me` |
 | `PathingManager` | `scripts/world/tiles/PathingManager.gd` | AStar3D, `connect_tiles`/`disconnect_tiles`/`disconnect_tile`, `pathfind`, debug renderer |
@@ -130,6 +130,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 | `Beacon` | `scripts/world/buildings/Beacon.gd` | Produces AERIAL, patrol/strike orders, `patrol_strike_ratio`, patrol stance |
 | `Nest` | `scripts/world/buildings/Nest.gd` | Produces VIRUS, attack orders, `_virus_tank_building_ratio` |
 | `Zapper` | `scripts/world/buildings/Zapper.gd` | Laser beam visual (ImmediateMesh + RayCast3D) |
+| `DestructionFX` | `scripts/world/buildings/DestructionFX.gd` | One-shot building destruction: spawns the building's own `MeshInstance3D`s as `RigidBody3D` debris (blasted out from the building centre, own collision layer vs tiles only; the dying building is dropped out of physics first so depenetration can't eject the chunks), ember particle burst + `Global.VM.add_trauma`; chunks freeze and sink 18u below their resting spot before `queue_free`. Spawned locally by every peer in `rpc_remove_building` (call_local) for CONSTRUCTED buildings — cosmetic, no sync. TODO: MCP_2's CSGCombiner top sections bake no chunks yet |
 | `Blueprints` | `scripts/world/buildings/Blueprints.gd` | Ghost preview, material assignment, collision enable |
 | `UnitManager` | `scripts/world/units/UnitManager.gd` | `Type` enum (NONE, AVATAR, ZOOMBA, TANK, AERIAL, VIRUS), `spawn_unit` (via `rpc_spawn_unit`), `rpc_remove_unit`, `displace_units_on_tile`, `unit_count` |
 | `Unit` | `scripts/world/units/Unit.gd` | Base unit: IDLE/PATHING/WORKING, job lifecycle, health, self-heal, scram, combat aim/fire-event visuals, `apply_damage` |
@@ -324,7 +325,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 
 ## Gotchas
 
-- `Server.next_player_num` is set by `NetworkManager.start_server()` after LOCAL/AI slots claim numbers — do not hard-code it.
+- Player number = **slot index + 1** — the MainMenu slot the host assigns a role to IS the player number that slot plays as. Remotes draw from `Server.remote_slot_pnums` in slot order (first connector = lowest-numbered remote slot); a peer connecting with no free slot is rejected. Freed pnums go back into the pool on disconnect.
 - `rpc_id(1, ...)` targets the server (peer 1 is always the server in ENet).
 - `TileManager.apply_toggle` validates `tile.state == RAISED` and LOWERED-with-no-building before toggling. Never call it directly — use `Global.send_command*`.
 - `Global.my_player_number` = -1 for a host with no LOCAL slot (spectator); `send_command_me` no-ops and HUD energy reads 0.
@@ -339,6 +340,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → b
 ## Lobby flow
 
 - When any REMOTE slot exists, "Start Lobby" loads `scenes/menu/Lobby.tscn`; otherwise straight to `World.tscn`. Remote clients always land on `Lobby.tscn` and wait.
+- `NetworkManager.start_server()` returns `false` if the ENet bind fails (e.g. a stale game instance already holds the port) — `MainMenu` aborts with an error dialog instead of entering the lobby with a dead server (which previously made new clients connect to the stale instance and land in spectator).
 - `Server.accepting_clients` stays false until the host enters the Lobby — clients connecting earlier are disconnected so they see a connection failure instead of silently joining.
 - Host starts when `peer_to_player.size()` >= REMOTE slot count **and** every connected peer has confirmed it is inside the Lobby scene (`rpc_client_lobby_ready`; a 10s soft-lock fallback force-starts). Then host `rpc("rpc_start_game")` + everyone loads World.
 - AI controllers skip actions while `not Global.game_started` or `Global.TM` is null (lobby).

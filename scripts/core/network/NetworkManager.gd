@@ -14,33 +14,37 @@ signal connect_result(success: bool)
 
 # --- Server (host) ---
 
-func start_server(server_config: GameConfig) -> void:
+func start_server(server_config: GameConfig) -> bool:
 	# Called on the host machine. Creates an authoritative ENet server and
 	# spawns an AIController for each AI slot.
 	# Local (host human) players don't need a controller node -- they send
 	# commands directly via Global.send_command_me().
 	# Remote clients connect via ENet and send commands as RPCs.
+	# Returns false if the server could not bind the port (e.g. another game
+	# instance is already holding it) — the caller must abort the host flow.
 	self.config = server_config
 	server = Server.new()
 	add_child(server)
-	server.start(self.config)
+	if not server.start(self.config):
+		server.queue_free()
+		server = null
+		return false
 
-	# Assign player numbers: LOCAL and AI slots claim numbers first,
-	# then remote peers get numbers starting after them.
-	var player_num := 1
-	for slot in config.slots:
-		match slot:
+	# Player number = slot index + 1, so each slot's number always matches the
+	# "Player N" label in the MainMenu. LOCAL/AI slots claim their number
+	# directly; REMOTE slots are reserved and drawn by Server._on_peer_connected
+	# in slot order (first connector = lowest-numbered remote slot).
+	for i in range(config.slots.size()):
+		match config.slots[i]:
 			GameConfig.SlotType.LOCAL:
-				Global.my_player_number = player_num
-				player_num += 1
+				Global.my_player_number = i + 1
 			GameConfig.SlotType.AI:
-				var ai := AIController.new(player_num)
+				var ai := AIController.new(i + 1)
 				add_child(ai)
 				ai_controllers.append(ai)
-				player_num += 1
 			GameConfig.SlotType.REMOTE:
-				pass  # numbers assigned by Server._on_peer_connected
-	server.next_player_num = player_num
+				server.remote_slot_pnums.append(i + 1)
+	return true
 
 # --- Client (remote) ---
 
