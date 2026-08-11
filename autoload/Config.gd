@@ -84,6 +84,14 @@ const PROJECTILE_MAX_FLIGHT_TIME: float = 1.0
 const WEAPON_BURST_DURATION: float = 0.4
 const DAMAGE_TICK_DURATION: float = 0.1
 const COMBAT_LOS_MASK: int = 1
+# Keep a combat_target through brief LOS flicker (aerial crossing a wall edge,
+# LOS-cache recompute) — drop it only after this much *consecutive* failure so
+# the unit doesn't thrash into re-scan + re-aim downtime on every frame.
+const COMBAT_LOS_GRACE: float = 0.3
+# Target-selection stickiness: a candidate must beat the retained current target
+# by this much (score units = dmg*10 - health) to steal it. Stops ping-pong
+# retargeting between aerials with near-equal scores (one burst ≈ 120 score).
+const COMBAT_TARGET_STICKY_MARGIN: float = 25.0
 
 # Interception COMBAT_PERSUE job detection radii. All are multiples of
 # Cairo.UNIT (one tile = 10 world units). PATROL detects cloaked VIRUS at
@@ -164,6 +172,10 @@ static var UNIT_SPEED: Dictionary = {
 	UnitManager.Type.VIRUS: 1.0,
 	UnitManager.Type.AVATAR: 0.0,
 }
+
+# Scram movement is a time multiplier on UNIT_SPEED (<1 = faster than normal).
+# Was 0.5 (2x speed) — zoomba panics were too frantic; 0.75 ≈ 1.33x.
+const SCRAM_TIME_MULTIPLIER: float = 0.75
 
 static var UNIT_MAX_HP: Dictionary = {
 	UnitManager.Type.ZOOMBA: 50.0,

@@ -138,11 +138,13 @@ func _spawn_projectile() -> void:
 	projectile.material_override = _projectile_mat(player_owner)
 	var from = _get_muzzle_global()
 	var to = combat_manager.combat_target_position(combat_target)
-	projectile.global_position = from
 	var ph = get_node_or_null("/root/World/ProjectilesHolder")
 	if not ph:
 		return
 	ph.add_child(projectile)
+	# Position after entering the tree — global_position on an unattached node
+	# hits get_global_transform()'s !is_inside_tree() error path.
+	projectile.global_position = from
 	# On the server, CombatManager primes _projectile_delay right before incrementing
 	# combat_fire_event, so the cache is fresh here. Remote clients don't run
 	# CombatManager, so they must compute a fresh flight time each spawn.
@@ -169,10 +171,12 @@ func _spawn_projectile() -> void:
 static func _projectile_mat(pnum: int) -> StandardMaterial3D:
 	if _projectile_mats.is_empty():
 		for i in range(4):
+			var accent := Config.player_accent(i + 1)
 			var m := StandardMaterial3D.new()
 			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.albedo_color = accent
 			m.emission_enabled = true
-			m.emission = Config.player_accent(i + 1)
+			m.emission = accent
 			m.emission_energy_multiplier = 10.0
 			_projectile_mats.append(m)
 	return _projectile_mats[clampi(pnum - 1, 0, _projectile_mats.size() - 1)]

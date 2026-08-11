@@ -191,6 +191,10 @@ func _scan_tank(tank: Unit) -> void:
 		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(tank, t):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
+	# Target stickiness: only switch away from the retained current target when
+	# a candidate is clearly better — prevents ping-pong retargets between
+	# aerials with near-equal scores (each switch costs re-aim downtime).
+	var sticky := Config.COMBAT_TARGET_STICKY_MARGIN if best_target != null else 0.0
 	for c in Global.UM.units():
 		if c == tank or c.health <= 0:
 			continue
@@ -198,15 +202,16 @@ func _scan_tank(tank: Unit) -> void:
 			continue
 		match c.type:
 			UnitManager.Type.AERIAL:
-				# AA cover - only intercept aerial over own/contested territory
-				if tank.player_owner not in c.location.aoe:
-					continue
+				# Firing is territory-free: a tank shoots any enemy aerial it can
+				# see in range. The COMBAT_PERSUE patrol job is still queued only
+				# over own AoE — tanks patrol home territory but engage off-base.
 				var seen := _can_see(tank, c)
 				if seen:
-					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
+					if tank.player_owner in c.location.aoe:
+						Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
 					var dmg := Config.get_damage(tank.type, c)
 					var score := _score_for_damage(dmg, c.health)
-					if score > best_score:
+					if score > best_score + sticky:
 						best_score = score
 						best_target = c
 			UnitManager.Type.VIRUS:
@@ -216,6 +221,7 @@ func _scan_tank(tank: Unit) -> void:
 				if _can_see(tank, c):
 					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, null, false, [UnitManager.Type.AERIAL], true, true)
 	tank.combat_target = best_target
+	tank.combat_los_fail_time = 0.0
 
 func _scan_aerial(aerial: Unit) -> void:
 	if aerial.health <= 0:
@@ -324,11 +330,17 @@ func _update_firing(delta: float) -> void:
 			continue
 		if not u.is_weapon_aligned():
 			continue
-		# Drop targets that are no longer visible (moved behind a wall/out of
-		# range) — prevents stale-target fire between scans.
+		# Drop targets only after sustained visibility loss (behind a wall/out of
+		# range) — a single-frame LOS flicker must not dump the target into the
+		# re-scan + re-aim gap. The weapon keeps tracking while we wait.
 		if not _can_see(u, u.combat_target):
+			u.combat_los_fail_time += delta
+			if u.combat_los_fail_time < Config.COMBAT_LOS_GRACE:
+				continue
 			u.combat_target = null
+			u.combat_los_fail_time = 0.0
 			continue
+		u.combat_los_fail_time = 0.0
 		var target = u.combat_target
 		if target is Unit and target.health <= 0:
 			u.combat_target = null

@@ -58,6 +58,10 @@ var combat_fire_event: int = 0
 var combat_fire_timer: float = 0.0
 var combat_burst_timer: float = 0.0
 var combat_damage_tick_timer: float = 0.0
+# Server-only: consecutive time the current combat_target has failed _can_see.
+# CombatManager drops the target after COMBAT_LOS_GRACE rather than on the
+# first flicker, so brief visibility loss doesn't reset aim + reacquire.
+var combat_los_fail_time: float = 0.0
 var weapon_node: Node3D
 var muzzle_node: Node3D
 var weapon_forward_local: Vector3 = Vector3.FORWARD
@@ -564,7 +568,7 @@ func move(callback: Callable) -> void:
 	setup_rotation(location, null if job.is_empty() else _job_target_tile())
 	var time: float = Config.UNIT_SPEED[type]
 	if scram_count > 0:
-		time *= 0.5
+		time *= Config.SCRAM_TIME_MULTIPLIER
 	elif state == State.IDLE:
 		time *= 2.0
 	if move_tween and move_tween.is_valid():

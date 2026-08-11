@@ -15,4 +15,4 @@ emission_energy_multiplier = 10.0
 [node name="AerialProjectile" type="MeshInstance3D"]
 mesh = SubResource("SphereMesh_projectile")
 material_override = SubResource("StandardMaterial3D_projectile")
-scale = Vector3(0.2, 0.2, 0.2)
+scale = Vector3(0.6, 0.6, 0.6)
