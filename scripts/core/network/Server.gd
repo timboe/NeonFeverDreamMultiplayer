@@ -106,6 +106,21 @@ func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int) 
 		return
 	bm.place_blueprint(player_number, tile, building_type)
 
+func _cmd_remove_building(player_number: int, building_id: int) -> void:
+	var bm = Global.BM
+	if not bm:
+		push_warning("Server._cmd_remove_building: BuildingManager not found")
+		return
+	var b = bm.get_building_by_id(building_id)
+	if not _can_control_building(player_number, b):
+		push_warning("Server._cmd_remove_building: not owner of building ", building_id)
+		return
+	if b is MCP:
+		return
+	if bm._empowered_by_player.get(player_number) == b:
+		bm.clear_empowered_for_player(player_number)
+	bm.rpc("rpc_remove_building", building_id)
+
 func _cmd_toggle_tile(player_number: int, tile_id: int) -> void:
 	var tm = Global.TM
 	if not tm:

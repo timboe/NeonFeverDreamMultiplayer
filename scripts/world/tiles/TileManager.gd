@@ -307,11 +307,14 @@ func recompute_aoe() -> void:
 		v.update_capacity()
 	Global.EM.recalculate_capacity()
 
-	for t in touched: # Un-select anything no longer under AoE
+	# Un-select anything no longer under AoE and re-render every tile: a tile
+	# whose only claim just vanished (building removed) is not in `touched`,
+	# so it must be refreshed here or its tint/selection goes stale.
+	for t in tiles():
 		for s in t.selected_by:
 			if s not in t.aoe:
 				t.selected_by.erase(s)
-	for t in touched:
+	for t in tiles():
 		t.update_selection_and_aoe_visual()
 
 # --- Tile toggle (server only) ---

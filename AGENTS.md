@@ -80,7 +80,7 @@ send_command_me / send_command
 - `send_command(pnum, ...)` is for AI controllers that know their own player number (`AIController` uses it for `toggle_tile`).
 - The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`.
 - Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`; `handle_command` validates arg count against the method signature. The `_cmd_` prefix is the allowlist. Adding a command = add `_cmd_<name>(player_number, ...)` to `Server.gd`, call it via `Global.send_command_me("<name>", [...])`.
-- Full command surface (see `Server.gd`): `toggle_tile`, `place_blueprint`, `toggle_production`, `set_garage_ratio`, `set_beacon_ratio`, `set_nest_ratio`, `set_enemy_targets`, `set_building_targets`, `set_patrol_stance`, `empower`, `clear_empower`; plus `camera_mode` (clients report their camera state — drives the per-player avatar VIRUS-detect radius) and `debug_damage_unit`/`debug_damage_building` (server-authoritative debug keys). Callers: `TileElement` mouse handlers, the building HUDs, `VideoManager` (`camera_mode`), `AIController`, HUD debug keys.
+- Full command surface (see `Server.gd`): `toggle_tile`, `place_blueprint`, `remove_building`, `toggle_production`, `set_garage_ratio`, `set_beacon_ratio`, `set_nest_ratio`, `set_enemy_targets`, `set_building_targets`, `set_patrol_stance`, `empower`, `clear_empower`; plus `camera_mode` (clients report their camera state — drives the per-player avatar VIRUS-detect radius) and `debug_damage_unit`/`debug_damage_building` (server-authoritative debug keys). Callers: `TileElement` mouse handlers, the building HUDs, `VideoManager` (`camera_mode`), `AIController`, HUD debug keys.
 
 ### Server-only guard pattern
 

@@ -27,6 +27,10 @@ var _empowered_by_player: Dictionary = {}  # pnum -> Building
 # Building the mouse is currently over in RTS mode (for the main HUD tooltip).
 var hovered_building: Building = null
 
+# Building currently showing the remove-mode "doomed" ghost (null = none).
+var _remove_ghost_building: Building = null
+var _remove_ghost_captured: Array = []
+
 func set_empowered_for_player(pnum: int, building: Building) -> void:
 	var prev = _empowered_by_player.get(pnum)
 	if prev and prev != building and is_instance_valid(prev):
@@ -123,6 +127,88 @@ func update_blueprint(player_number: int, tile: TileElement, type: Type) -> void
 		disabled_blueprints[type].global_position.y = 0
 		enabled_blueprints[type].position.y = HIDE_DEPTH
 
+# --- Remove-mode hover ghost ---
+
+func is_remove_ghost_for(b: Building) -> bool:
+	return _remove_ghost_building == b
+
+# Remove-mode hover, painted in place so the hovered body never disappears
+# (hiding it would cancel the mouse hover and flicker):
+# - a CONSTRUCTED building has its own meshes swapped to the disabled (red)
+#   blueprint material, reverted on exit;
+# - a BLUEPRINT/UNDER_CONSTRUCTION building is invisible, so its placement
+#   ghost ("Blueprint_N") is switched from the enabled material to the
+#   disabled one (it is made pickable by set_remove_mode).
+# Never shown on MCPs (no ghost type).
+func show_remove_ghost(b: Building) -> void:
+	if b == _remove_ghost_building:
+		return
+	hide_remove_ghost()
+	# Never paint MCPs — there is no blueprint template for them (and they
+	# can't be removed server-side).
+	if b.type not in disabled_blueprints:
+		return
+	if b.state == Building.State.CONSTRUCTED:
+		_remove_ghost_building = b
+		_remove_ghost_captured.clear()
+		Blueprints.capture_mesh_materials(b, _remove_ghost_captured)
+		Blueprints.apply_mesh_material(b, _disabled_blueprint_material())
+	else:
+		var bp := get_node_or_null("Blueprint_" + str(b.id))
+		if bp == null:
+			return
+		_remove_ghost_building = b
+		Blueprints.apply_blueprint_material(bp, _disabled_blueprint_material())
+
+func hide_remove_ghost() -> void:
+	var b := _remove_ghost_building
+	_remove_ghost_building = null
+	# Swap, don't clear: captured is a reference, so clearing the member after
+	# aliasing it would empty the restore list before restore runs.
+	var captured := _remove_ghost_captured
+	_remove_ghost_captured = []
+	if b == null or not is_instance_valid(b):
+		return
+	if b.state == Building.State.CONSTRUCTED:
+		Blueprints.restore_mesh_materials(captured)
+	else:
+		var bp := get_node_or_null("Blueprint_" + str(b.id))
+		if bp:
+			Blueprints.apply_blueprint_material(bp, _enabled_blueprint_material())
+
+# While remove mode is active, give each placement ghost (BLUEPRINT /
+# UNDER_CONSTRUCTION stand-in) a pickable collider so it can be hovered and
+# clicked; everything else stays non-pickable as usual. The Terminal subtree is
+# skipped — its colliders must stay off until construction so it isn't an
+# invisible wall on the access tile.
+func set_remove_mode(active: bool) -> void:
+	hide_remove_ghost()
+	for child in get_children():
+		if not String(child.name).begins_with("Blueprint_"):
+			continue
+		# Building scene roots ship input_ray_pickable = false (except
+		# Generator) — the ghost must be explicitly pickable to receive
+		# hover/click events; collision still gates them in normal modes.
+		child.input_ray_pickable = active
+		if active:
+			_enable_collision_except_terminal(child)
+		else:
+			Blueprints._disable_collision_recursive(child)
+
+func _enable_collision_except_terminal(node: Node) -> void:
+	if node.name == "Terminal":
+		return
+	for c in node.get_children():
+		_enable_collision_except_terminal(c)
+	if node is CollisionShape3D:
+		node.disabled = false
+
+func _disabled_blueprint_material() -> ShaderMaterial:
+	var bp = get_node_or_null("BlueprintsDisabled")
+	if bp:
+		return bp.blueprint_disabled
+	return null
+
 # --- Building instances ---
 
 # Preloaded building scenes, instantiated per placement. Replaces duplicating
@@ -203,6 +289,17 @@ func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Typ
 	add_child(new_blueprint)
 	new_blueprint.global_transform = tile.get_global_transform()
 	new_blueprint.global_position.y = 0
+	# The ghost is a Building too — give it the placement identity so it can
+	# serve as the hover/click target in remove mode (set_remove_mode enables
+	# its collision then). Its own hover/click handlers re-route everything
+	# through the HUD's remove-mode guards, so they no-op in normal modes.
+	new_blueprint.id = bid
+	new_blueprint.player_owner = player_number
+	new_blueprint.type = type
+	new_blueprint.input_ray_pickable = true
+	new_blueprint.mouse_entered.connect(new_blueprint._on_hover_entered)
+	new_blueprint.mouse_exited.connect(new_blueprint._on_hover_exited)
+	new_blueprint.input_event.connect(new_blueprint._on_StaticBody_input_event)
 	enabled_blueprints[type].position.y = HIDE_DEPTH
 	disabled_blueprints[type].position.y = HIDE_DEPTH
 	if player_number == Global.my_player_number:
@@ -243,6 +340,11 @@ func rpc_remove_building(id: int) -> void:
 		var tile = b.location
 		if tile:
 			tile.building = null
+		# A BLUEPRINT-state removal leaves its placement ghost behind (the
+		# normal destruction path already freed it via rpc_constructed).
+		var bp := get_node_or_null("Blueprint_" + str(id))
+		if bp:
+			bp.queue_free()
 		b.queue_free()
 		Global.TM.recompute_aoe()
 		# A neighbour may have just been unblocked (freed access tile) or lost
@@ -253,3 +355,9 @@ func rpc_remove_building(id: int) -> void:
 			for n in tile.neighbours:
 				if n.state == TileManager.State.LOWERED and n.building == null:
 					Global.PM.connect_tiles(tile, n)
+		# Manual removal (not combat destruction) un-selects the remove button,
+		# mirroring broadcast_place_blueprint's clear_build_mode on placement.
+		if b.player_owner == Global.my_player_number:
+			var hud = get_tree().get_first_node_in_group("hud")
+			if hud and hud.is_removing():
+				hud.clear_build_mode()

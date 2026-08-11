@@ -9,7 +9,7 @@ signal toggle_camera
 
 # --- Types ---
 
-enum Mode {NONE, RAISE, LOWER, GEN, VAT, GARAGE, BEACON, NEST}
+enum Mode {NONE, RAISE, LOWER, GEN, VAT, GARAGE, BEACON, NEST, REMOVE}
 enum DragAction {NONE, SELECTING, UNSELECTING}
 
 # --- Constants ---
@@ -60,7 +60,10 @@ func building_being_placed() -> int:
 	return MODE_TO_BUILDING_TYPE.get(build_mode, BuildingManager.Type.NONE)
 
 func is_placing() -> bool:
-	return build_mode != Mode.NONE
+	return build_mode != Mode.NONE and build_mode != Mode.REMOVE
+
+func is_removing() -> bool:
+	return build_mode == Mode.REMOVE
 
 func can_toggle_tile(tile: TileElement) -> bool:
 	if build_mode != Mode.NONE:
@@ -79,7 +82,7 @@ func _ready() -> void:
 	_tile_buttons = {Mode.RAISE: %RaiseBtn, Mode.LOWER: %LowerBtn}
 	_build_buttons = {
 		Mode.GEN: %GenBtn, Mode.VAT: %VatBtn, Mode.GARAGE: %GarageBtn,
-		Mode.BEACON: %BeaconBtn, Mode.NEST: %NestBtn,
+		Mode.BEACON: %BeaconBtn, Mode.NEST: %NestBtn, Mode.REMOVE: %RemoveBtn,
 	}
 	for mode in _tile_buttons:
 		var btn: Button = _tile_buttons[mode]
@@ -167,8 +170,9 @@ func _update_tooltip() -> void:
 	var hovered: Building = Global.BM.hovered_building
 	var in_rts: bool = Global.VM.camera_status == Global.VM.CameraStatus.OVERHEAD
 	# Tooltip is only for the current player's buildings — no need to build the
-	# HUD preview for other players' local instances.
-	if in_rts and hovered and is_instance_valid(hovered) \
+	# HUD preview for other players' local instances. Hidden in remove mode —
+	# the hover there means "this building will be removed" (ghost overlay).
+	if in_rts and not is_removing() and hovered and is_instance_valid(hovered) \
 		and hovered.state == Building.State.CONSTRUCTED \
 		and hovered.player_owner == Global.my_player_number:
 		_set_tooltip_building(hovered)
@@ -252,11 +256,16 @@ func _on_mode_pressed(mode: Mode) -> void:
 		else:
 			build_mode = mode
 	_update_button_styles()
+	_sync_remove_mode()
 	mode_changed.emit(mode)
 
 func clear_build_mode() -> void:
 	build_mode = Mode.NONE
 	_update_button_styles()
+	_sync_remove_mode()
+
+func _sync_remove_mode() -> void:
+	Global.BM.set_remove_mode(is_removing())
 
 func _update_button_styles() -> void:
 	for mode in _tile_buttons:
@@ -328,17 +337,18 @@ func _apply_player_color() -> void:
 	for mode in _build_buttons:
 		_apply_hud_button_theme(_build_buttons[mode])
 	_apply_hud_button_theme(fps_button)
-	# Player-colour the ModeBar separator (a thin filled bar, like the theme's sep).
-	var sep := _root.get_node_or_null("ModeBar/HBox/Sep") as VSeparator
-	if sep:
-		var sep_sb := StyleBoxFlat.new()
-		sep_sb.content_margin_left = 1.0
-		sep_sb.content_margin_top = 1.0
-		sep_sb.content_margin_right = 1.0
-		sep_sb.content_margin_bottom = 1.0
-		sep_sb.bg_color = Color(c.r, c.g, c.b, 0.45)
-		sep_sb.set_corner_radius_all(1)
-		sep.add_theme_stylebox_override("separator", sep_sb)
+	# Player-colour the ModeBar separators (thin filled bars, like the theme's sep).
+	for sep_path in ["ModeBar/HBox/Sep", "ModeBar/HBox/BuildModes/Sep2"]:
+		var sep := _root.get_node_or_null(sep_path) as VSeparator
+		if sep:
+			var sep_sb := StyleBoxFlat.new()
+			sep_sb.content_margin_left = 1.0
+			sep_sb.content_margin_top = 1.0
+			sep_sb.content_margin_right = 1.0
+			sep_sb.content_margin_bottom = 1.0
+			sep_sb.bg_color = Color(c.r, c.g, c.b, Config.BUTTON_SEPARATOR_ALPHA)
+			sep_sb.set_corner_radius_all(1)
+			sep.add_theme_stylebox_override("separator", sep_sb)
 
 func _tinted_button(state: StringName, border: Color, glow: Color) -> StyleBoxFlat:
 	var base := _root.get_theme_stylebox(state, "Button") as StyleBoxFlat

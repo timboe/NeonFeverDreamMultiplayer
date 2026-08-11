@@ -66,10 +66,46 @@ static func apply_blueprint_material(node: Node, mat: ShaderMaterial) -> void:
 		return
 	for c in node.get_children():
 		apply_blueprint_material(c, mat)
+	apply_mesh_material(node, mat)
+	if node is GPUParticles3D or node is Zapper or node is CollisionShape3D:
+		node.visible = false
+
+# Mesh-only material swap (no Terminal/particle hiding) — used by the
+# remove-mode hover, which paints a live building red instead of overlaying a
+# ghost. Skipping the Terminal leaves the HUD screen material untouched.
+static func apply_mesh_material(node: Node, mat: ShaderMaterial) -> void:
+	if node.name == "Terminal":
+		return
+	for c in node.get_children():
+		apply_mesh_material(c, mat)
 	if node is MeshInstance3D and node.mesh:
 		for i in range(node.mesh.get_surface_count()):
 			node.set_surface_override_material(i, mat)
 	elif node is CSGCombiner3D:
 		node.material_override = mat
-	elif node is GPUParticles3D or node is Zapper or node is CollisionShape3D:
-		node.visible = false
+
+# Record every mesh material override under a live building, so the remove-mode
+# red paint can be reverted exactly (Vat sets a runtime player-material override
+# on its Liquid; a blanket null-restore would wipe it).
+static func capture_mesh_materials(node: Node, into: Array) -> void:
+	if node.name == "Terminal":
+		return
+	for c in node.get_children():
+		capture_mesh_materials(c, into)
+	if node is MeshInstance3D and node.mesh:
+		for i in range(node.mesh.get_surface_count()):
+			into.append([node, i, node.get_surface_override_material(i)])
+	elif node is CSGCombiner3D:
+		into.append([node, -1, node.material_override])
+
+static func restore_mesh_materials(captured: Array) -> void:
+	for entry in captured:
+		var mesh: Node = entry[0]
+		var surface: int = entry[1]
+		var mat = entry[2]
+		if not is_instance_valid(mesh):
+			continue
+		if surface >= 0:
+			mesh.set_surface_override_material(surface, mat)
+		else:
+			mesh.material_override = mat

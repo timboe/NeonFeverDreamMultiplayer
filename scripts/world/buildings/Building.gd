@@ -75,23 +75,49 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	input_ray_pickable = true
 	mouse_entered.connect(_on_hover_entered)
 	mouse_exited.connect(_on_hover_exited)
+	input_event.connect(_on_StaticBody_input_event)
 
 func _exit_tree() -> void:
 	if _health_bar and is_instance_valid(_health_bar):
 		_health_bar.queue_free()
 	if is_instance_valid(Global.BM) and Global.BM.hovered_building == self:
 		Global.BM.hovered_building = null
+	if is_instance_valid(Global.BM) and Global.BM.is_remove_ghost_for(self):
+		Global.BM.hide_remove_ghost()
+	# A generator freed while hovered (removal) never fires its mouse_exited,
+	# so its catchment glow would linger on the tiles — release it here.
+	if self is Generator:
+		for t in _aoe_tiles:
+			t.release_emission(TileElement.EmissionEffect.GENERATOR_CATCHMENT)
 
-# --- Mouse hover (RTS tooltip) ---
+# --- Mouse hover (RTS tooltip / remove ghost) ---
 
 func _on_hover_entered() -> void:
+	Global.BM.hovered_building = self
+	var hud = get_tree().get_first_node_in_group("hud") as HUD
+	if hud and hud.is_removing() and player_owner == Global.my_player_number:
+		Global.BM.show_remove_ghost(self)
+		return
 	if state != State.CONSTRUCTED:
 		return
-	Global.BM.hovered_building = self
 
 func _on_hover_exited() -> void:
 	if Global.BM.hovered_building == self:
 		Global.BM.hovered_building = null
+	if Global.BM.is_remove_ghost_for(self):
+		Global.BM.hide_remove_ghost()
+
+# --- Mouse click (RTS remove mode) ---
+
+func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx) -> void:
+	if not event is InputEventMouseButton or not event.is_pressed() or not event.button_index == MOUSE_BUTTON_LEFT:
+		return
+	var hud = get_tree().get_first_node_in_group("hud") as HUD
+	if not hud or not hud.is_removing():
+		return
+	if player_owner != Global.my_player_number:
+		return
+	Global.send_command_me("remove_building", [id])
 
 func _process(delta: float) -> void:
 	# Do construction - consumes energy

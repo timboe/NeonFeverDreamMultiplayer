@@ -37,11 +37,29 @@ var tile_mm_id: int # This tile's index within the MM
 var pathing_centre: Vector3 = Vector3.ZERO
 var pathing_manager: PathingManager
 
+# --- Toggle burst particles (visual) ---
+
+var _vent_particles: GPUParticles3D # lowering: dust vent burst at the surface
+var _raise_particles: GPUParticles3D # raising: quiet plume
+
 # --- Constants ---
 
 const SELECT_COLOR: Color = Color(1, 1, 1)
 const HOVER_REMOVE_COLOR: Color = Color(160 / 255.0, 0 / 255.0, 56 / 255.0)
 const TOGGLE_COUNTDOWN_TIME: float = 2.0
+
+# Burst magnitude scales with the thunk (0.1-0.15 of travel, 0.125 = 1.0 scale)
+const BURST_SCALE_MID: float = 0.125
+const BURST_SCALE_MIN: float = 0.8
+const BURST_SCALE_MAX: float = 1.2
+const VENT_BASE_AMOUNT: int = 128
+const VENT_BASE_RADIUS: float = 7.5
+const VENT_VEL_MIN: float = 5.0
+const VENT_VEL_MAX: float = 12.0
+const PLUME_BASE_AMOUNT: int = 64
+const PLUME_BASE_RADIUS: float = 7.5
+const PLUME_VEL_MIN: float = 1.5
+const PLUME_VEL_MAX: float = 3.5
 
 @onready var HEIGHT: float = Global.FLOOR_HEIGHT + Global.TILE_OFFSET
 
@@ -157,7 +175,13 @@ func delayed_ready() -> void:
 	mouse_exited.connect(_on_StaticBody_mouse_exited)
 	input_event.connect(_on_StaticBody_input_event)
 	# Only do this here as setup code depends on the ordering of the children
-	add_child($"../../../Particles".duplicate())
+	# Materials are duplicated per tile so per-burst scaling never leaks across tiles
+	_vent_particles = $"../../../Particles".duplicate() as GPUParticles3D
+	_vent_particles.process_material = _vent_particles.process_material.duplicate()
+	add_child(_vent_particles)
+	_raise_particles = $"../../../ParticlesRaise".duplicate() as GPUParticles3D
+	_raise_particles.process_material = _raise_particles.process_material.duplicate()
+	add_child(_raise_particles)
 
 # --- Visual: selection and AoE ---
 
@@ -316,7 +340,7 @@ func begin_toggle(active_pnum: int) -> void:
 	selected_by.clear()
 	Global.TM.rpc("broadcast_tile_selection", id, selected_by.duplicate())
 
-	var thunk_distance := Global.rand.randf_range(0.05, 0.2)
+	var thunk_distance := Global.rand.randf_range(0.1, 0.15)
 	var thunk_time := thunk_distance * 2
 	var fall_time := Global.rand.randf_range(4.5, 5.5)
 	var dest = -HEIGHT if state == TileManager.State.FALLING else -Global.TILE_OFFSET
@@ -363,7 +387,12 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 		var travel := absf(dest - start)
 		var dir := 1.0 if dest > start else -1.0
 		var thunk_pos : float = start + dir * thunk_distance * travel
-		$Particles.emitting = true
+		# Lowering vents dust from the surface (stress release); raising gets a quiet plume.
+		# Burst magnitude scales with the thunk so a bigger jerk reads bigger.
+		if dest < -Global.FLOOR_HEIGHT:
+			_fire_toggle_burst(_vent_particles, VENT_BASE_AMOUNT, VENT_BASE_RADIUS, VENT_VEL_MIN, VENT_VEL_MAX, thunk_distance)
+		else:
+			_fire_toggle_burst(_raise_particles, PLUME_BASE_AMOUNT, PLUME_BASE_RADIUS, PLUME_VEL_MIN, PLUME_VEL_MAX, thunk_distance)
 		toggle_tween = create_tween()
 		# Need to alter collision box and nav mesh
 		toggle_tween.tween_property(self, "position:y", thunk_pos, thunk_time)\
@@ -385,6 +414,17 @@ func rpc_toggle_animation(mode: int, pnum_or_a: int = 0, b: float = 0, c: float 
 			# (The server repositions in done_toggle after finalizing its own state.)
 			toggle_tween.tween_callback(_reposition_terminals_after_toggle)
 
+# One-shot burst fired at the start of the thunk. Runs on every peer — the
+# per-tile duplicated material keeps these mutations local to this tile.
+func _fire_toggle_burst(particles: GPUParticles3D, base_amount: int, base_radius: float, base_vel_min: float, base_vel_max: float, thunk_distance: float) -> void:
+	var k := clampf(thunk_distance / BURST_SCALE_MID, BURST_SCALE_MIN, BURST_SCALE_MAX)
+	var mat := particles.process_material as ParticleProcessMaterial
+	mat.emission_sphere_radius = base_radius * k
+	mat.initial_velocity_min = base_vel_min * k
+	mat.initial_velocity_max = base_vel_max * k
+	particles.amount = maxi(1, roundi(base_amount * k))
+	particles.emitting = true
+
 func done_toggle() -> void:
 	if not multiplayer.is_server():
 		return
@@ -396,6 +436,10 @@ func done_toggle() -> void:
 		t.origin.y = -Global.TILE_OFFSET
 		transform = t
 		set_tile_mm_height(-Global.TILE_OFFSET)
+		# begin_toggle cleared selected_by — drop the stale selection highlight
+		# (set_lowered does the same; without this a raised tile stays lit until re-hovered)
+		release_emission(EmissionEffect.TILE_SELECTED)
+		_apply_emission()
 	Global.BM.position_terminals_around(self)
 	var entries = _working_unit_dict.duplicate()
 	_working_unit_dict.clear()
@@ -439,6 +483,14 @@ func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, 
 		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if not hud:
+		return
+	if hud.is_removing():
+		# Remove-mode clicks land on the building body (its own input_event);
+		# this tile path is a fallback when the ray hits the tile first. The
+		# server re-validates ownership/type, so a double-send is harmless.
+		var b: Building = building
+		if b and b.player_owner == Global.my_player_number:
+			Global.send_command_me("remove_building", [b.id])
 		return
 	if hud.is_placing():
 		Global.send_command_me("place_blueprint", [id, hud.building_being_placed()])
