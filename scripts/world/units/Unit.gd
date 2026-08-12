@@ -9,6 +9,14 @@ const SPAWN_TIME := 2.0
 const SCRAM: int = 10
 const REPAIR_INTERVAL := 0.05
 const REPAIR_DELAY := 10.0
+# VIRUS/AERIAL drift off the monorail centres: move tween targets a random
+# point within this radius of the destination tile's pathing centre (6.0 stays
+# inside the pentagon's inscribed circle, ~7.3). Other unit types get no offset.
+const MOVE_OFFSET_RADIUS: float = Cairo.UNIT * 0.6
+# Time scaling bounds for offset hops — the ratio of actual-to-nominal distance
+# is clamped so near-teleport and long-skew hops stay visible but sane.
+const MOVE_TIME_RATIO_MIN: float = 0.25
+const MOVE_TIME_RATIO_MAX: float = 2.0
 
 # --- Types ---
 
@@ -574,6 +582,13 @@ func work_speed_multiplier() -> float:
 		return Config.EMPOWER_ZOOMBA_SPEED_MULT
 	return 1.0
 
+func _move_offset() -> Vector3:
+	if type != UnitManager.Type.VIRUS and type != UnitManager.Type.AERIAL:
+		return Vector3.ZERO
+	var ang := Global.rand.randf() * TAU
+	var rad := sqrt(Global.rand.randf()) * MOVE_OFFSET_RADIUS
+	return Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
+
 func _move(callback: Callable) -> void:
 	if not multiplayer.is_server():
 		return
@@ -601,8 +616,14 @@ func _move(callback: Callable) -> void:
 		move_tween.kill()
 	move_tween = create_tween()
 	var current_y := position.y
-	_move_target = location.pathing_centre
+	_move_target = location.pathing_centre + _move_offset()
 	_move_target.y = current_y
+	# The hop no longer spans centre-to-centre for offset units — scale the
+	# tween time by the actual distance travelled so average speed is preserved.
+	var nominal := position.distance_to(location.pathing_centre)
+	var actual := position.distance_to(_move_target)
+	if nominal > 0.001:
+		time *= clampf(actual / nominal, MOVE_TIME_RATIO_MIN, MOVE_TIME_RATIO_MAX)
 	if state == State.IDLE and type == UnitManager.Type.ZOOMBA:
 		# Rotate first, then move — gives a deliberate turn-then-walk feel
 		var rot_time := time / 4.0
