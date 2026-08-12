@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dc5m87ua675iw" path="res://scripts/world/units/Tank.gd" id="1_game"]
+[ext_resource type="Script" path="res://dev/TankModel5.gd" id="2_model"]
+
+[node name="Tank5" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="Body" type="Node3D" parent="."]
+script = ExtResource("2_model")
+
+[node name="CSG" type="MeshInstance3D" parent="Body"]
+[node name="Laser" type="Node3D" parent="Body"]
+[node name="Muzzle" type="Marker3D" parent="Body/Laser"]
+
+[node name="PreviewCamera" type="Camera3D" parent="."]
+position = Vector3(0, 4.5, 8.5)
+rotation_degrees = Vector3(-28, 0, 0)
+
+[node name="PreviewLight" type="DirectionalLight3D" parent="."]
+position = Vector3(0, 8, 0)
+rotation_degrees = Vector3(-55, -25, 0)
