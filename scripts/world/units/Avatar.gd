@@ -10,29 +10,27 @@ const JUMP_SPEED := 18.0
 const ACCEL := 4.5
 const DEACCEL := 16.0
 const MAX_SLOPE_ANGLE := 40.0
-const JAGGIES_UPDATE := 0.05
 const MOUSE_SENSITIVITY := 0.4
 # Max distance from the avatar to a friendly building's tile for its terminal
 # to be interactive (DESIGN: FPS terminal interaction range, 2 tiles).
 const TERMINAL_INTERACT_RANGE: float = Cairo.UNIT * 2.0
+# Max avatar-to-terminal distance for the empower beam. Wider than the FPS
+# interact range so the beam holds across the terminal's parking edge; still
+# short enough to hide the beam after a respawn at a distant MCP.
+const EMPOWER_BEAM_MAX_RANGE: float = TERMINAL_INTERACT_RANGE * 1.5
 
 # --- Nodes ---
 
 @onready var fps_body: CharacterBody3D = $FPSBody
 @onready var camera: Camera3D = $FPSBody/Rotation_Helper/FPSCamera
 @onready var rotation_helper: Node3D = $FPSBody/Rotation_Helper
-@onready var ray: RayCast3D = $FPSBody/Rotation_Helper/RayCast
 @onready var screen_ray: RayCast3D = $FPSBody/Rotation_Helper/FPSCamera/ScreenRay
-@onready var ray_render: MeshInstance3D = $FPSBody/Rotation_Helper/RayRender
-@onready var rand := RandomNumberGenerator.new()
+@onready var zapper: Zapper = $FPSBody/Zapper
 
 # --- State ---
 
-var ray_mesh := ImmediateMesh.new()
 var vel := Vector3()
 var dir := Vector3()
-var jaggies: float = 0
-var mouse_initial: bool = true
 var _prev_left_mouse: bool = false
 var _cursor_shown: bool = false
 var _cursor_ray_timer := 0
@@ -42,14 +40,15 @@ var server_spawn_time: float = 0.0
 
 # --- Lifecycle ---
 
-func _ready() -> void:
-	ray_render.mesh = ray_mesh
-
 func _physics_process(delta: float) -> void:
 	if not Global.game_started:
 		return
 	_process_input(delta)
 	_process_movement(delta)
+
+func _process(delta: float) -> void:
+	super._process(delta)
+	_update_empower_beam()
 
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
@@ -111,20 +110,6 @@ func _process_input(delta: float) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-
-	# Casting and selecting
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		jaggies += delta
-		ray.force_raycast_update()
-		if jaggies > JAGGIES_UPDATE:
-			jaggies -= JAGGIES_UPDATE
-			ray_mesh.clear_surfaces()
-			if ray.is_colliding():
-				var local = ray_render.global_transform.affine_inverse() * ray.get_collision_point()
-				_draw_jaggy_to(local.y)
-	else:
-		ray_mesh.clear_surfaces()
-		mouse_initial = true
 
 	# Screen cursor
 	_update_screen_cursor()
@@ -222,17 +207,48 @@ func _hide_all_hud_cursors() -> void:
 		if hud_root and hud_root.has_method("hide_cursor"):
 			hud_root.hide_cursor()
 
-func _draw_jaggy_to(dist: float) -> void:
-	ray_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	ray_mesh.surface_set_color(Color.WHITE)
-	ray_mesh.surface_add_vertex(Vector3.ZERO)
-	var pos := Vector3.ZERO
-	ray_mesh.surface_add_vertex(pos)
-	while pos.y > dist:
-		pos.x += rand.randf_range(-0.1, 0.1)
-		pos.z += rand.randf_range(-0.1, 0.1)
-		pos.y += rand.randf_range(-3.0, 1.0) if pos.y > -5.0 else rand.randf_range(-3.0, 0.0)
-		if pos.y <= dist:
-			pos = Vector3(0, dist, 0)
-		ray_mesh.surface_add_vertex(pos)
-	ray_mesh.surface_end()
+# --- Empower beam ---
+
+# While the player has a building empowered, fire the avatar's zapper into that
+# building's terminal screen. Runs on every peer: the empowered building
+# (is_empowered, synced via the reliable rpc_set_empowered), its terminal
+# transform (deterministic position_terminal), and the avatar's FPSBody
+# transform (locally driven or relayed via avatar snapshots) are all
+# identical everywhere, so every peer draws the same beam with no extra sync.
+func _update_empower_beam() -> void:
+	if zapper == null:
+		return
+	var target: Building = _find_empowered_building()
+	if target == null or not is_instance_valid(target) or not target.visible:
+		zapper.visible = false
+		return
+	var terminal := target.get_node_or_null("Terminal") as Node3D
+	if terminal == null:
+		zapper.visible = false
+		return
+	var screen := terminal.get_node_or_null("Screen") as Node3D
+	var terminal_pos: Vector3 = screen.global_position if screen else terminal.global_position
+	var origin := zapper.global_position
+	var dist := origin.distance_to(terminal_pos)
+	if dist <= 0.001 or dist > EMPOWER_BEAM_MAX_RANGE:
+		zapper.visible = false
+		return
+	zapper.visible = true
+	# Align the zapper's local +Y (its beam axis) on the terminal screen by
+	# building the basis explicitly — look_at's front-axis convention varies
+	# and got the beam pointing away from the terminal.
+	var dir := (terminal_pos - origin).normalized()
+	var up_ref := Vector3.UP if abs(dir.dot(Vector3.UP)) < 0.99 else Vector3.FORWARD
+	var x_axis := up_ref.cross(dir).normalized()
+	var z_axis := x_axis.cross(dir)
+	zapper.global_transform = Transform3D(Basis(x_axis, dir, z_axis), origin)
+	# The jaggy endpoint is snapped to (0, target_position.y, 0), so an exact
+	# distance parks the tip on the screen plane — any overreach punches
+	# through the terminal and out the other side.
+	zapper.target_position = Vector3(0.0, dist, 0.0)
+
+func _find_empowered_building() -> Building:
+	for b in Global.BM.buildings():
+		if b.player_owner == player_owner and b.is_empowered:
+			return b
+	return null

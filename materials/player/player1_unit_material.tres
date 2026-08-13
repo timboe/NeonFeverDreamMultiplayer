@@ -1,4 +1,4 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://brdjfs5p20u8u"]
 
 [ext_resource type="Texture2D" uid="uid://butfn8nn8u06q" path="res://images/metal/Metal012_2K_Normal.jpg" id="1"]
 [ext_resource type="Texture2D" uid="uid://dylkgjeqs0lwr" path="res://images/metal/Metal012_2K_Metalness.jpg" id="2"]

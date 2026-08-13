@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://4efjgde2341f"]
 
 [ext_resource type="Script" uid="uid://dg3ktsy8hd3xp" path="res://scripts/world/units/Avatar.gd" id="1"]
-[ext_resource type="Material" uid="uid://nxjeu82w4fsn" path="res://materials/floor/grid_edges.tres" id="3"]
+[ext_resource type="PackedScene" uid="uid://b1d53jlc4oj3s" path="res://scenes/world/buildings/Zapper.tscn" id="2"]
 
 [sub_resource type="CapsuleMesh" id="1"]
 radius = 1.2
@@ -28,15 +28,12 @@ shape = SubResource("4")
 [node name="Rotation_Helper" type="Node3D" parent="FPSBody" unique_id=1112214522]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
 
-[node name="RayRender" type="MeshInstance3D" parent="FPSBody/Rotation_Helper" unique_id=1988568896]
-transform = Transform3D(1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, -1.3, -2)
-material_override = ExtResource("3")
-
-[node name="RayCast" type="RayCast3D" parent="FPSBody/Rotation_Helper" unique_id=1147548449]
-transform = Transform3D(1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, -1.3, -2)
-
 [node name="FPSCamera" type="Camera3D" parent="FPSBody/Rotation_Helper" unique_id=1142734265]
 far = 8192.0
 
 [node name="ScreenRay" type="RayCast3D" parent="FPSBody/Rotation_Helper/FPSCamera" unique_id=638708160]
 target_position = Vector3(0, 0, -50)
+
+[node name="Zapper" parent="FPSBody" instance=ExtResource("2")]
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
