@@ -38,7 +38,7 @@ func initialise(b: Building) -> void:
 	health = Config.UNIT_MAX_HP.get(type, 100.0)
 	add_to_group("tank")
 	add_to_group("tank_player" + str(player_owner))
-	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
+	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_unit_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
 	weapon_node = $Body/Laser
 	muzzle_node = $Body/Laser/Muzzle

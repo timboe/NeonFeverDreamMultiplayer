@@ -84,11 +84,12 @@ func initialise(b: Building) -> void:
 	# Update orders based on strike or patrol. Copy the chosen orders dict so
 	# later building order changes don't retroactively affect already-spawned units.
 	orders = (b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]).duplicate()
-	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_material.tres")
+	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_unit_material.tres")
 	$Body/CSG.set_surface_override_material(0, updated_mat)
-	# Let the model brand its accent parts to match the hull (designs that opt in)
-	if $Body.has_method("set_player_color") and updated_mat is StandardMaterial3D:
-		$Body.set_player_color((updated_mat as StandardMaterial3D).albedo_color)
+	# Let the model brand its accent parts with the full player colour (the hull
+	# is the dark unit variant, so accents stay the bright identity colour).
+	if $Body.has_method("set_player_color"):
+		$Body.set_player_color(Config.player_accent(player_owner))
 	# Override the base class spawn tween — fly from building to initial tile at constant height
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()

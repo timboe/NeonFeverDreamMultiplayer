@@ -96,7 +96,10 @@ void fragment() {
 			}
 		}
 	}
-	ALBEDO *= band_tint.rgb;
+	// Desaturate the ownership bands (50% toward mid-grey) so units — which
+	// glow in the same hues — stay readable on home territory. Hue still
+	// identifies the owner; the tint is just no longer full-strength paint.
+	ALBEDO *= mix(vec3(0.5), band_tint.rgb, 0.5);
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
 	SPECULAR = specular;
