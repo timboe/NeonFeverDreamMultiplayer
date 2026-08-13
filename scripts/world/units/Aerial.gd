@@ -103,6 +103,8 @@ func initialise(b: Building) -> void:
 	weapon_node = $Body/Gun
 	muzzle_node = $Body/Gun/Muzzle
 	weapon_forward_local = Vector3.FORWARD
+	# Belly turret can sweep from straight down (tanks) up to 45° (aerials).
+	weapon_elevation_max = Config.AERIAL_WEAPON_ELEVATION_MAX
 
 func update_projectile_delay() -> float:
 	if not combat_target or not is_instance_valid(combat_target):
@@ -146,7 +148,7 @@ func _on_fire_event() -> void:
 func _spawn_projectile() -> void:
 	if not combat_target or not is_instance_valid(combat_target):
 		return
-	var projectile := PROJECTILE_SCENE.instantiate() as MeshInstance3D
+	var projectile : AerialProjectile = PROJECTILE_SCENE.instantiate() as AerialProjectile
 	projectile.material_override = _projectile_mat(player_owner)
 	var from = _get_muzzle_global()
 	var to = combat_manager.combat_target_position(combat_target)
@@ -163,22 +165,15 @@ func _spawn_projectile() -> void:
 	var flight_time := _projectile_delay
 	if not multiplayer.is_server() or flight_time <= 0.0:
 		flight_time = update_projectile_delay()
-	var target_node = combat_target # The unit might change target, but we don't change this projectile
+	projectile.setup(from)
 	projectile.set_meta("last_pos", to)
-	var tween = projectile.create_tween()
-	tween.tween_method(func(t: float):
-		# Track the target's live position so that if it's destroyed mid-flight we
-		# keep flying to its last-known position instead of snapping back to spawn.
-		if is_instance_valid(target_node):
-			var pos = combat_manager.combat_target_position(target_node)
-			if pos != Vector3.ZERO:
-				projectile.set_meta("last_pos", pos)
-		projectile.global_position = from.lerp(projectile.get_meta("last_pos"), t)
-	, 0.0, 1.0, flight_time)
+	projectile.set_meta("target_id", combat_target.get_instance_id())
+	# The projectile owns its flight tween (created on it, calling its own
+	# method), so the callable lives exactly as long as the projectile — a
+	# lambda on this Aerial would dangle once the shooter is freed mid-flight.
+	var tween := projectile.create_tween()
+	tween.tween_method(projectile._flight_step, 0.0, 1.0, flight_time)
 	tween.tween_callback(projectile.queue_free)
-	# Safety — free projectile if the tween gets killed early
-	var timer = get_tree().create_timer(Config.PROJECTILE_MAX_FLIGHT_TIME * 2.0)
-	timer.timeout.connect(func(): if is_instance_valid(projectile): projectile.queue_free(), CONNECT_ONE_SHOT)
 
 static func _projectile_mat(pnum: int) -> StandardMaterial3D:
 	if _projectile_mats.is_empty():

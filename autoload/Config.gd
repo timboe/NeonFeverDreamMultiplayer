@@ -80,6 +80,10 @@ const COMBAT_FIRE_INTERVAL: float = 0.8
 const COMBAT_RANGE: float = 40.0
 const WEAPON_TURN_SPEED: float = PI
 const WEAPON_ALIGN_THRESHOLD: float = 0.05
+# Aerial belly-turret elevation ceiling (radians from horizontal): the drone's
+# gun can sweep from straight down (tanks) up to 45° to engage same-level and
+# higher aerials (PATROL 10u vs STRIKE 16u = max ~39° at adjacent tiles).
+const AERIAL_WEAPON_ELEVATION_MAX: float = PI * 0.25
 const PROJECTILE_MAX_FLIGHT_TIME: float = 1.0
 const WEAPON_BURST_DURATION: float = 0.4
 const DAMAGE_TICK_DURATION: float = 0.1

@@ -470,14 +470,19 @@ func set_constructed() -> void:
 
 # --- Damage and Repair ---
 
-func apply_damage(amount: float, delay: float = 0.0, attacker: Unit = null) -> void:
+# attacker is untyped: the delayed-damage tween binds it via Callable.bind(),
+# which stores a generic Object Variant that a typed Unit param rejects. The
+# bound attacker may be freed before the delay elapses (attacker died) — null
+# it out so the typed _apply_damage param never receives a freed Object; the
+# projectile itself still lands.
+func apply_damage(amount: float, delay: float = 0.0, attacker = null) -> void:
 	if not multiplayer.is_server():
 		return
 	if delay > 0.0:
 		var tween := create_tween()
 		tween.tween_callback(apply_damage.bind(amount, 0.0, attacker)).set_delay(delay)
 		return
-	_apply_damage(amount, attacker)
+	_apply_damage(amount, attacker if is_instance_valid(attacker) else null)
 
 func _apply_damage(damage: float, attacker: Unit = null) -> void:
 	Global.SM.record_damage_received(player_owner, damage)

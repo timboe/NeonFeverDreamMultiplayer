@@ -156,7 +156,11 @@ func _build_sensor() -> void:
 	add_child(mi)
 
 func _build_gun() -> void:
-	$Gun.position = Vector3(0, -0.16, 0)
+	# Pivot droops below the hull so the barrel can swing from straight down
+	# (tanks) up to +45° (same-level and higher aerials) without clipping the
+	# hull: with the Body scale of 1.5 the pivot sits at -0.9 world, the hull
+	# bottom at -0.24, and the barrel tip at +45° elevation lands at ~-0.32.
+	$Gun.position = Vector3(0, -0.6, 0)
 	$Gun.rotation_degrees = Vector3(90, 0, 0)
 	$Gun/Muzzle.position = Vector3(0, 0, 0.55)
 	var barrel := MeshInstance3D.new()

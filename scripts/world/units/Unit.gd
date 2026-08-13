@@ -73,6 +73,10 @@ var combat_los_fail_time: float = 0.0
 var weapon_node: Node3D
 var muzzle_node: Node3D
 var weapon_forward_local: Vector3 = Vector3.FORWARD
+# Elevation ceiling for the weapon aim cone (radians above horizontal; 0 = aim
+# down only, PI/2 = unconstrained). The drone flies level, so clamping the
+# world-Y of the aim direction is an exact elevation clamp. Set by Aerial.
+var weapon_elevation_max: float = PI / 2.0
 
 # --- Combat visuals ---
 
@@ -106,6 +110,11 @@ func _update_weapon_aim(delta: float) -> bool:
 	if dir.length_squared() < 0.0001:
 		return false
 	dir = dir.normalized()
+	# Constrain the aim to the elevation cone (belly-turret drones can't point
+	# up through their hull; targets outside the cone never align -> no fire).
+	if dir.y > sin(weapon_elevation_max):
+		dir.y = sin(weapon_elevation_max)
+		dir = dir.normalized()
 	var parent = weapon_node.get_parent_node_3d()
 	if not parent:
 		return false
@@ -681,14 +690,19 @@ func setup_rotation(target: TileElement, look_at_from_target: TileElement) -> vo
 
 # --- Damage ---
 
-func apply_damage(amount: float, delay: float = 0.0, attacker: Unit = null) -> void:
+# attacker is untyped: the delayed-damage tween binds it via Callable.bind(),
+# which stores a generic Object Variant that a typed Unit param rejects. The
+# bound attacker may be freed before the delay elapses (attacker died) — null
+# it out so the typed _apply_damage param never receives a freed Object; the
+# projectile itself still lands.
+func apply_damage(amount: float, delay: float = 0.0, attacker = null) -> void:
 	if not multiplayer.is_server():
 		return
 	if delay > 0.0:
 		var tween := create_tween()
 		tween.tween_callback(apply_damage.bind(amount, 0.0, attacker)).set_delay(delay)
 		return
-	_apply_damage(amount, attacker)
+	_apply_damage(amount, attacker if is_instance_valid(attacker) else null)
 
 func _apply_damage(damage: float, _attacker: Unit = null) -> void:
 	Global.SM.record_damage_received(player_owner, damage)
