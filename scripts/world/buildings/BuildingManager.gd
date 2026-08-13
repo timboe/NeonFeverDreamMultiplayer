@@ -275,10 +275,10 @@ func place_blueprint(player_number: int, tile: TileElement, type: Type) -> void:
 	update_blueprint(player_number, tile, type)
 	Global.TM.remove_tile_from_pathing(tile)
 	var bid := _next_building_id()
-	rpc("broadcast_place_blueprint", bid, player_number, tile.id, type)
+	rpc("rpc_broadcast_place_blueprint", bid, player_number, tile.id, type)
 
 @rpc("authority", "call_local", "reliable")
-func broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Type) -> void:
+func rpc_broadcast_place_blueprint(bid: int, player_number: int, tid: int, type: Type) -> void:
 	var tm = Global.TM
 	var tile = tm.get_tile_by_id(tid)
 	var new_building := _new_building_instance(type)
@@ -374,7 +374,7 @@ func rpc_remove_building(id: int) -> void:
 				if n.state == TileManager.State.LOWERED and n.building == null:
 					Global.PM.connect_tiles(tile, n)
 		# Manual removal (not combat destruction) un-selects the remove button,
-		# mirroring broadcast_place_blueprint's clear_build_mode on placement.
+		# mirroring rpc_broadcast_place_blueprint's clear_build_mode on placement.
 		if b.player_owner == Global.my_player_number:
 			var hud = get_tree().get_first_node_in_group("hud")
 			if hud and hud.is_removing():

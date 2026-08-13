@@ -53,7 +53,7 @@ func start_server(server_config: GameConfig) -> bool:
 # --- Client (remote) ---
 
 @rpc("authority", "call_remote", "reliable")
-func set_my_player_number(pnum: int) -> void:
+func rpc_set_my_player_number(pnum: int) -> void:
 	Global.my_player_number = pnum
 
 func connect_to_server(ip: String, port: int) -> void:

@@ -78,7 +78,7 @@ func idle_callback() -> void:
 
 # --- Input ---
 
-func _process_input(delta: float) -> void:
+func _process_input(_delta: float) -> void:
 	if not camera.current:
 		return
 
@@ -237,11 +237,11 @@ func _update_empower_beam() -> void:
 	# Align the zapper's local +Y (its beam axis) on the terminal screen by
 	# building the basis explicitly — look_at's front-axis convention varies
 	# and got the beam pointing away from the terminal.
-	var dir := (terminal_pos - origin).normalized()
-	var up_ref := Vector3.UP if abs(dir.dot(Vector3.UP)) < 0.99 else Vector3.FORWARD
-	var x_axis := up_ref.cross(dir).normalized()
-	var z_axis := x_axis.cross(dir)
-	zapper.global_transform = Transform3D(Basis(x_axis, dir, z_axis), origin)
+	var zap_dir := (terminal_pos - origin).normalized()
+	var up_ref := Vector3.UP if abs(zap_dir.dot(Vector3.UP)) < 0.99 else Vector3.FORWARD
+	var x_axis := up_ref.cross(zap_dir).normalized()
+	var z_axis := x_axis.cross(zap_dir)
+	zapper.global_transform = Transform3D(Basis(x_axis, zap_dir, z_axis), origin)
 	# The jaggy endpoint is snapped to (0, target_position.y, 0), so an exact
 	# distance parks the tip on the screen plane — any overreach punches
 	# through the terminal and out the other side.

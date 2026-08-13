@@ -60,7 +60,7 @@ func _setup_client() -> void:
 	# Confirm we're inside the Lobby scene — the host won't broadcast state or
 	# start the game until every connected client has reported ready.
 	rpc_id(1, "rpc_client_lobby_ready")
-	# The server assigned our player number at connect (set_my_player_number
+	# The server assigned our player number at connect (rpc_set_my_player_number
 	# RPC) — surface it once it arrives so the client can verify their slot.
 	_poll_client_player_number.call_deferred()
 

@@ -103,7 +103,7 @@ func _start_host() -> void:
 		config.slots[i] = _slot_option_buttons[i].get_item_id(idx) as GameConfig.SlotType
 
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
-	# Deterministic node name — the server routes RPCs (e.g. set_my_player_number)
+	# Deterministic node name — the server routes RPCs (e.g. rpc_set_my_player_number)
 	# to /root/NetworkManager on every peer. A generic .new() name would differ
 	# per instance and silently drop the RPC (spectator clients).
 	nm.name = "NetworkManager"
@@ -136,7 +136,7 @@ func _connect_to_server() -> void:
 	var ip = ip_line.text
 	var port = int(connect_port_line.text)
 	var nm = preload("res://scripts/core/network/NetworkManager.gd").new()
-	# Deterministic node name — the server's set_my_player_number RPC routes to
+	# Deterministic node name — the server's rpc_set_my_player_number RPC routes to
 	# /root/NetworkManager; a generic name would drop it (spectator client).
 	nm.name = "NetworkManager"
 	get_tree().root.add_child(nm)

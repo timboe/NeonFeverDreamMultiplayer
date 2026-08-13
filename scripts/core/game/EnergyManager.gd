@@ -164,10 +164,10 @@ func _broadcast_energy() -> void:
 		data.append(capacity[p])
 		data.append(_produced[p])
 		data.append(_consumed[p])
-	rpc("apply_energy", data)
+	rpc("rpc_apply_energy", data)
 
 @rpc("authority", "call_remote", "unreliable")
-func apply_energy(data: PackedFloat64Array) -> void:
+func rpc_apply_energy(data: PackedFloat64Array) -> void:
 	var count := int(data[0])
 	var idx := 1
 	for _i in range(count):

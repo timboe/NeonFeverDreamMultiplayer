@@ -93,7 +93,7 @@ func _on_peer_connected(peer_id: int) -> void:
 	peer_to_player[peer_id] = pnum
 	player_to_peer[pnum] = peer_id
 	print("Server._on_peer_connected  peer_id=", peer_id, "  assigned pnum=", pnum)
-	Global.network_manager.rpc_id(peer_id, "set_my_player_number", pnum)
+	Global.network_manager.rpc_id(peer_id, "rpc_set_my_player_number", pnum)
 	# TODO: sync full tile state to reconnecting mid-game peer
 	#   tm.rpc_id(peer_id, "set_tile_selection", id, selected_by) for every tile with selectors
 

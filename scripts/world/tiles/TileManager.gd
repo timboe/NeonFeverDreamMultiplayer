@@ -347,7 +347,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 	else:
 		Global.JM.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
-	rpc("broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
+	rpc("rpc_broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
 	# Tile state changes alter sight lines — drop cached combat LOS.
 	Global.CM.invalidate_los()
 
@@ -356,7 +356,7 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 # NOTE - "selected by" is only strictly needed on the original client and server - not all other nodes.
 # But we don't want to be sending different payloads to different clients
 @rpc("authority", "call_remote", "reliable")
-func broadcast_tile_selection(update_tile_id: int, selected_by: Array) -> void:
+func rpc_broadcast_tile_selection(update_tile_id: int, selected_by: Array) -> void:
 	if not tile_dictionary.has(update_tile_id):
 		return
 	var tile: TileElement = tile_dictionary[update_tile_id]

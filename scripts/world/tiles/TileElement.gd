@@ -337,7 +337,7 @@ func _begin_toggle(active_pnum: int) -> void:
 		_set_rising()
 
 	selected_by.clear()
-	Global.TM.rpc("broadcast_tile_selection", id, selected_by.duplicate())
+	Global.TM.rpc("rpc_broadcast_tile_selection", id, selected_by.duplicate())
 
 	var thunk_distance := Global.rand.randf_range(0.1, 0.15)
 	var thunk_time := thunk_distance * 2

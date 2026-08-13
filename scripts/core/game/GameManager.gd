@@ -10,6 +10,14 @@ const INTERPOLATION_DELAY := 0.075
 const AVATAR_SEND_INTERVAL := 0.05
 const SLOT_COUNT := 10
 const MAX_SNAPSHOT_BUFFER := 4
+# Snapshots are split into chunks kept well below the ENet MTU (1392 bytes).
+# 256 float32s = 1024 bytes of payload per chunk; a dropped chunk costs the
+# whole snapshot, exactly like ENet fragmentation did, but without the
+# per-fragment loss multiplier of one giant packet.
+const SNAPSHOT_CHUNK_FLOATS := 256
+# Upper bound on partially-received snapshots buffered on the client; a lost
+# chunk would otherwise leak a never-completing entry.
+const CHUNK_BUFFER_MAX := 8
 # Foreign terminal UI refresh runs at 4 Hz instead of every frame/snapshot.
 const TERMINAL_REFRESH_INTERVAL := 0.25
 const READY_TIMEOUT: float = 15.0
@@ -28,9 +36,14 @@ var _terminal_refresh_timer := 0.0
 var _snapshots: Array = []
 var _avatar_snapshots: Dictionary = {}
 
+# Monotonic snapshot counter; clients use it to reassemble chunked snapshots.
+var _snapshot_seq := 0
+# seq -> {"total": int, "chunks": {idx: PackedFloat32Array}} (client only).
+var _chunk_buffer: Dictionary = {}
+
 # Scratch buffer reused by _pack_unit (server, 20 Hz) instead of allocating a
-# fresh 10-float array per unit per snapshot.
-var _pack_scratch: PackedFloat64Array
+# fresh 10-float array per unit per snapshot. float32 halves the wire size.
+var _pack_scratch: PackedFloat32Array
 # Client-side interpolation scratch (per unit per frame).
 var _interp_scratch: Array[float] = []
 
@@ -166,10 +179,10 @@ func rpc_game_start() -> void:
 func _broadcast_progress() -> void:
 	var ready_status := _ready_peers.size()
 	_set_overlay_progress(ready_status, _expected_clients)
-	rpc("ready_progress", ready_status, _expected_clients)
+	rpc("rpc_ready_progress", ready_status, _expected_clients)
 
 @rpc("authority", "call_remote", "reliable")
-func ready_progress(ready_status: int, expected: int) -> void:
+func rpc_ready_progress(ready_status: int, expected: int) -> void:
 	_set_overlay_progress(ready_status, expected)
 
 func _set_overlay_progress(ready_status: int, expected: int) -> void:
@@ -191,7 +204,7 @@ func _loading_overlay() -> Node:
 func _send_snapshot() -> void:
 	var ud: Dictionary = Global.UM.unit_dictionary
 	var bd: Dictionary = Global.BM.building_dictionary
-	var data := PackedFloat64Array()
+	var data := PackedFloat32Array()
 	data.append(bd.size())
 	for b in bd.values():
 		data.append(b.id)
@@ -201,7 +214,15 @@ func _send_snapshot() -> void:
 		data.append(u.id)
 		data.append(u.type)
 		_pack_unit(data, u)
-	rpc("apply_snapshot", data)
+	# Chunk the payload so no single unreliable packet exceeds the ENet MTU;
+	# ENet would otherwise fragment it and every lost fragment would drop the
+	# whole snapshot.
+	_snapshot_seq += 1
+	var total := maxi(1, int(ceil(float(data.size()) / SNAPSHOT_CHUNK_FLOATS)))
+	for i in range(total):
+		var start := i * SNAPSHOT_CHUNK_FLOATS
+		var n := mini(SNAPSHOT_CHUNK_FLOATS, data.size() - start)
+		rpc("rpc_apply_snapshot_chunk", _snapshot_seq, i, total, data.slice(start, start + n))
 
 func _send_avatar_snapshot() -> void:
 	var avatar := _get_avatar(Global.my_player_number)
@@ -209,11 +230,11 @@ func _send_avatar_snapshot() -> void:
 		return
 	if Global.VM.camera_status != Global.VM.CameraStatus.FPS:
 		return
-	var data := PackedFloat64Array()
+	var data := PackedFloat32Array()
 	_pack_unit(data, avatar)
-	rpc_id(1, "receive_avatar_snapshot", data)
+	rpc_id(1, "rpc_receive_avatar_snapshot", data)
 
-func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
+func _pack_unit(data: PackedFloat32Array, u: Unit) -> void:
 	if _pack_scratch.size() != SLOT_COUNT:
 		_pack_scratch.resize(SLOT_COUNT)
 	_pack_scratch.fill(0.0)
@@ -271,7 +292,7 @@ static func _encode_target(target: Variant) -> float:
 			return -float(target.id)
 	return 0.0
 
-func _pack_building(data: PackedFloat64Array, b: Building) -> void:
+func _pack_building(data: PackedFloat32Array, b: Building) -> void:
 	var slots: Array[float] = []
 	slots.resize(SLOT_COUNT)
 	slots[0] = b.state
@@ -347,7 +368,33 @@ static func _decode_building_targets(mask: int) -> Array[BuildingManager.Type]:
 # --- Client: receive ---
 
 @rpc("authority", "call_remote", "unreliable")
-func apply_snapshot(data: PackedFloat64Array) -> void:
+func rpc_apply_snapshot_chunk(seq: int, chunk_idx: int, total: int, data: PackedFloat32Array) -> void:
+	var entry = _chunk_buffer.get(seq)
+	if entry == null:
+		entry = {"total": total, "chunks": {}}
+		_chunk_buffer[seq] = entry
+		# A lost chunk would leave a partial entry that never completes; cap the
+		# buffer so stragglers can't accumulate.
+		while _chunk_buffer.size() > CHUNK_BUFFER_MAX:
+			var oldest := 1 << 62
+			for s in _chunk_buffer:
+				oldest = mini(oldest, s)
+			_chunk_buffer.erase(oldest)
+	entry["chunks"][chunk_idx] = data
+	if entry["chunks"].size() < total:
+		return
+	_chunk_buffer.erase(seq)
+	# A completed snapshot supersedes stragglers of older ones — parsing an old
+	# snapshot now would inject a stale world state with a fresh timestamp.
+	for s in _chunk_buffer.keys():
+		if s < seq:
+			_chunk_buffer.erase(s)
+	var full := PackedFloat32Array()
+	for i in range(total):
+		full.append_array(entry["chunks"][i])
+	_parse_snapshot(full)
+
+func _parse_snapshot(data: PackedFloat32Array) -> void:
 	var entry := {"time": Time.get_ticks_usec() / 1e6, "units": {}, "buildings": {}}
 	var idx := 0
 	var bcount := int(data[idx]); idx += 1
@@ -370,7 +417,7 @@ func apply_snapshot(data: PackedFloat64Array) -> void:
 		_snapshots.pop_front()
 
 @rpc("any_peer", "call_remote", "unreliable")
-func receive_avatar_snapshot(data: PackedFloat64Array) -> void:
+func rpc_receive_avatar_snapshot(data: PackedFloat32Array) -> void:
 	var caller := multiplayer.get_remote_sender_id()
 	var srv = Global.network_manager.server
 	if not srv:

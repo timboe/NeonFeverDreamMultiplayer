@@ -52,7 +52,7 @@ When code legitimately needs a manager twice or more in one function, hoist it o
 ## Multiplayer architecture
 
 - ENet server-authoritative. `Server` node lives only on host (`scripts/core/network/Server.gd`).
-- `NetworkManager` is **not** in any scene — instantiated at runtime by `MainMenu` and added to root with an **explicit name `"NetworkManager"`** (`nm.name = "NetworkManager"`). This is required: the server routes RPCs (e.g. `set_my_player_number`) to `/root/NetworkManager` on every peer, and a `.new()` default name ("Node", possibly auto-renamed to a random `@Node@<id>`) silently drops them.
+- `NetworkManager` is **not** in any scene — instantiated at runtime by `MainMenu` and added to root with an **explicit name `"NetworkManager"`** (`nm.name = "NetworkManager"`). This is required: the server routes RPCs (e.g. `rpc_set_my_player_number`) to `/root/NetworkManager` on every peer, and a `.new()` default name ("Node", possibly auto-renamed to a random `@Node@<id>`) silently drops them.
 - Host path: `Global.network_manager.server` (NOT a node path lookup — `get_node` fails due to dynamic parent). Remote path: `Global.network_manager` exists but `.server` is null.
 
 ### Unified command relay: `Global.send_command_me()` / `send_command()`
@@ -76,7 +76,7 @@ send_command_me / send_command
 ```
 
 **Key points**:
-- `send_command_me` uses `Global.my_player_number` and **no-ops when it's -1** (spectator / host with no LOCAL slot). Safe for host (set by `NetworkManager.start_server()` at LOCAL-slot creation) and remote (set by `NetworkManager.set_my_player_number` RPC).
+- `send_command_me` uses `Global.my_player_number` and **no-ops when it's -1** (spectator / host with no LOCAL slot). Safe for host (set by `NetworkManager.start_server()` at LOCAL-slot creation) and remote (set by `NetworkManager.rpc_set_my_player_number` RPC).
 - `send_command(pnum, ...)` is for AI controllers that know their own player number (`AIController` uses it for `toggle_tile`).
 - The remote client's `pnum` is never trusted — the server always derives it from `peer_to_player`.
 - Command handlers on `Server` are named `_cmd_<command>` and auto-dispatched via `callv` + `has_method`; `handle_command` validates arg count against the method signature. The `_cmd_` prefix is the allowlist. Adding a command = add `_cmd_<name>(player_number, ...)` to `Server.gd`, call it via `Global.send_command_me("<name>", [...])`.
@@ -93,14 +93,14 @@ func _process(delta):
 	...
 ```
 
-Spawn/remove never run directly on clients — they're `@rpc("authority", "call_local")` (e.g. `UnitManager.rpc_spawn_unit`, `rpc_remove_unit`, `BuildingManager.broadcast_place_blueprint`, `rpc_remove_building`, `Building.rpc_constructed`), called via `rpc(...)` so the server executes locally and mirrors to peers. `TileManager._physics_process` runs on all peers — anything server-only called from it must self-guard.
+Spawn/remove never run directly on clients — they're `@rpc("authority", "call_local")` (e.g. `UnitManager.rpc_spawn_unit`, `rpc_remove_unit`, `BuildingManager.rpc_broadcast_place_blueprint`, `rpc_remove_building`, `Building.rpc_constructed`), called via `rpc(...)` so the server executes locally and mirrors to peers. `TileManager._physics_process` runs on all peers — anything server-only called from it must self-guard.
 
 ### Snapshot / interpolation (`GameManager`)
 
-- Server packs all units+buildings into one `PackedFloat64Array` every 0.05s (`SNAPSHOT_INTERVAL`), `rpc("apply_snapshot")` unreliable. Each entity = `SLOT_COUNT`(10) floats.
+- Server packs all units+buildings into one `PackedFloat32Array` every 0.05s (`SNAPSHOT_INTERVAL`), split into MTU-safe chunks (256 floats = 1024 B, `SNAPSHOT_CHUNK_FLOATS`) and sent as `rpc("rpc_apply_snapshot_chunk", seq, chunk_idx, total, chunk)` unreliable; the client reassembles by seq in `_chunk_buffer` (`CHUNK_BUFFER_MAX` caps partials; a completed seq drops older stragglers) then parses via `_parse_snapshot`. A lost chunk costs only that snapshot — same as ENet fragmentation, minus the loss multiplier of one giant packet. Each entity = `SLOT_COUNT`(10) float32s.
 - Unit slots: pos x/y/z, rot.y, state, health, type-specific extras (ZOOMBA: zapper visible + target y; AERIAL: mode; VIRUS: cloaked), `combat_target` (0=none, +unit id, -building id), `combat_fire_event` (visual trigger). AVATAR packs its `FPSBody` transform, not the root.
 - Clients buffer up to `MAX_SNAPSHOT_BUFFER`(4) and interpolate with `INTERPOLATION_DELAY`(0.075) render time.
-- Avatars: each client sends `receive_avatar_snapshot` at 20Hz **only while `Global.VM.camera_status == FPS`**; the server interpolates per-pnum avatar snapshots for the other peers. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_entities` to avoid control cycles.
+- Avatars: each client sends `rpc_receive_avatar_snapshot` at 20Hz **only while `Global.VM.camera_status == FPS`**; the server interpolates per-pnum avatar snapshots for the other peers. Clients skip their own avatar in `_apply_interpolated`/`_apply_snapshot_entities` to avoid control cycles.
 - `_apply_unit` asserts type match and is client-only — the server never mutates client state.
 
 ## Key classes
@@ -109,7 +109,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 |---|---|---|
 | `Global` | `autoload/Global.gd` | Singleton: `network_manager`, `my_player_number`, `level` preload, command relay, `MAX_PLAYERS=4` |
 | `Config` | `autoload/Config.gd` | Static balance dicts (`BUILDING_AOE`, `BUILDING_MAX_HP`, `CONSTRUCTION_COST`, `UNIT_COST`, `PRODUCTION_COOLDOWNS`, `UNIT_SPEED`, `UNIT_MAX_HP`, `HOME_TERRITORY_UNITS`, `SELF_HEALING_UNITS`, `PLAYER_COLORS`, combat consts) + `get_damage()` |
-| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates `Server` + local AI controllers, or ENet client; player number = slot index + 1 (LOCAL → `my_player_number`, AI → `AIController`, REMOTE → reserved in `server.remote_slot_pnums`); `set_my_player_number` RPC |
+| `NetworkManager` | `scripts/core/network/NetworkManager.gd` | Creates `Server` + local AI controllers, or ENet client; player number = slot index + 1 (LOCAL → `my_player_number`, AI → `AIController`, REMOTE → reserved in `server.remote_slot_pnums`); `rpc_set_my_player_number` RPC |
 | `Server` | `scripts/core/network/Server.gd` | ENet server, `peer_to_player`/`player_to_peer`, `remote_slot_pnums` pool (remotes draw from it in slot order; freed on disconnect), `_cmd_*` dispatch |
 | `TileManager` | `scripts/world/tiles/TileManager.gd` | Cairo pentagon grid gen, `State` enum, `apply_toggle`, `recompute_aoe` (+`player_aoe_totals`/`player_aoe_rings`/`gen_count`), `remove_tile_from_pathing`, tile selection broadcast |
 | `TileElement` | `scripts/world/tiles/TileElement.gd` | One tile: state transitions, neighbours, `aoe`/`selected_by`, MultiMesh visuals, emission priority system, `_working_unit_dict` countdown chain, mouse input → `send_command_me` |
@@ -157,7 +157,7 @@ Spawn/remove never run directly on clients — they're `@rpc("authority", "call_
 ## Tile system
 
 - `TileManager.State` = RAISED, FALLING, LOWERED, RISING, DISABLED. Tiles are `StaticBody3D` + one MultiMesh instance (`enabled_tiles_to_multimesh`), 5 pentagon neighbours, `pathing_centre` for pathfinding, `location` for units/buildings.
-- `apply_toggle(pnum, tile_id)` (server only, **never called directly** — go through `send_command`) toggles a player's `selected_by` claim. RAISED/LOWERED only; LOWERED+has building is rejected; returns false on deselect → `JobManager.cancel_job`. Selection broadcast via `broadcast_tile_selection`.
+- `apply_toggle(pnum, tile_id)` (server only, **never called directly** — go through `send_command`) toggles a player's `selected_by` claim. RAISED/LOWERED only; LOWERED+has building is rejected; returns false on deselect → `JobManager.cancel_job`. Selection broadcast via `rpc_broadcast_tile_selection`.
 - Access tiles: `get_access_tiles(require_aoe=0)` — LOWERED neighbours with no building, optionally filtered to own AoE. Used everywhere (wandering, pathing targets, terminal placement, displacement).
 - AoE: `recompute_aoe()` BFS from each building's `get_aoe_radius()`, deterministic on all peers. Fills `tile.aoe`, `tile.gen_count` (for GEN), `player_aoe_totals` (split shares), `player_aoe_rings`, then pokes generators/vats + `EnergyManager.recalculate_capacity()` and un-selects tiles no longer under AoE. Re-run after building place/remove.
 
@@ -280,7 +280,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → _
 
 ## Economy & production
 
-- **EnergyManager** (server-only): 0.05s tick sums `get_energy()` over CONSTRUCTED `generator`-group buildings (MCP=27 fixed, Generator=Σ `1/gen_count` over its AoE tiles), fills `energy[p]` up to `capacity[p]`; 1s rolling histories give per-second produced/consumed/requested rates and a supply ratio (`_produced/_requested`) used to ration consumers when the store runs dry (there is no `rate_of_change` var — see `get_player_energy()`). `request_energy(pnum, amount)` deducts (returns allocated). `recalculate_capacity()` sums CONSTRUCTED `vat`-group `get_capacity()`. Broadcasts `apply_energy` (unreliable) per player. **Dicts are 1-based** — iterate `range(1, Global.MAX_PLAYERS + 1)`, never `for p in Global.MAX_PLAYERS`.
+- **EnergyManager** (server-only): 0.05s tick sums `get_energy()` over CONSTRUCTED `generator`-group buildings (MCP=27 fixed, Generator=Σ `1/gen_count` over its AoE tiles), fills `energy[p]` up to `capacity[p]`; 1s rolling histories give per-second produced/consumed/requested rates and a supply ratio (`_produced/_requested`) used to ration consumers when the store runs dry (there is no `rate_of_change` var — see `get_player_energy()`). `request_energy(pnum, amount)` deducts (returns allocated). `recalculate_capacity()` sums CONSTRUCTED `vat`-group `get_capacity()`. Broadcasts `rpc_apply_energy` (unreliable) per player. **Dicts are 1-based** — iterate `range(1, Global.MAX_PLAYERS + 1)`, never `for p in Global.MAX_PLAYERS`.
 - **Construction**: BLUEPRINT building's `_process` consumes energy at `CONSTRUCTION_COST / CONSTRUCTION_TIME`; at full → `set_constructed()` (`rpc_constructed` removes the blueprint and reveals the building).
 - **Production**: CONSTRUCTED building accumulates `_production_energy` via `request_energy`; at `UNIT_COST` → spawn via `um.rpc("rpc_spawn_unit", uid, type, building_id)`; cooldown from `Config.PRODUCTION_COOLDOWNS`. MCP overrides: AVATAR first, then ZOOMBA up to `zoomba_cap = floor(sqrt(player_aoe_totals[pnum]))`. Garage overrides: issues CONSUME_ZOOMBA jobs instead of spawning directly. Beacon → AERIAL, Nest → VIRUS.
 - **Empower**: `BuildingManager.set_empowered_for_player` (one building per player, swap clears the previous), `rpc_set_empowered` (reliable, call_local → every peer applies `_empower_changed`), `empowered_type(pnum)` for type-wide army buffs. Buffs per DESIGN: **Generator** +1 influence radius (instance); **Vat** ×1.5 capacity + ×0.9 drain discount (instance capacity, type-wide discount via `Building._vat_spend_mult`); **MCP** zoomba spawn rate ×0.8 cooldown, zoomba move/work speed ×1.2, damage reduction ×0.75 (instance); **Garage** all TANKs fire interval ×0.8 vs AERIAL (type-wide); **Beacon** all AERIALs +30s lifetime (type-wide, dynamic); **Nest** all VIRUS move time /1.3 + limpeted TANKs immobilized (type-wide). Terminal Empowered row shows per-type buff text + state (EMPOWERED / BUFF ACTIVE via another of the type / dim idle hint) via `TerminalHUD._set_empower_indicator`.
@@ -318,7 +318,7 @@ Two tweens per tile: `_countdown_tweens` (server-only per-player countdown → _
 - **Member variables and constants are declared at the top of each script**, grouped under `# --- ... ---` headers (Signals, Types, Constants, State, Nodes/`@onready` refs) — never inline mid-file near their only usage.
 - **Tween** is RefCounted, not a Node: `create_tween()`, chained `tween_property/tween_method/tween_callback`, auto-starts. Store in a local/plain var, kill with `tween.kill()` + guard `tween and tween.is_valid()`, never `@onready`.
 - **`setget` → set/get blocks** with underscore-backed var (`var _contains_val` backed by `contains`).
-- **`@rpc` annotations**: `@rpc("authority", "call_local")` (server call runs everywhere), `@rpc("any_peer", "call_remote")` (client→server, derive caller via `get_remote_sender_id()`), plus `"reliable"`/`"unreliable"`.
+- **`@rpc` annotations**: `@rpc("authority", "call_local")` (server call runs everywhere), `@rpc("any_peer", "call_remote")` (client→server, derive caller via `get_remote_sender_id()`), plus `"reliable"`/`"unreliable"`. **Every RPC function is named `rpc_<name>`** (e.g. `rpc_spawn_unit`, `rpc_apply_snapshot_chunk`, `rpc_set_my_player_number`) and is called by that exact string — `rpc("rpc_<name>", ...)` / `rpc_id(peer, "rpc_<name>", ...)`.
 - **ImmediateMesh**: `clear_surfaces()` / `surface_begin()` / `surface_add_vertex()` instead of ImmediateGeometry.
 - **Materials**: player colour at `res://materials/player/player<N>_material.tres` (1..4, matches `PLAYER_COLORS`). Floor: `res://materials/floor/grid_faces.tres` (lit) + `grid_edges.tres` (unshaded cyan, `use_instance_color`).
 - The whole codebase is converted — no Godot 3 syntax remains (this file's old "Remaining patterns" list is resolved).
