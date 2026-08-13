@@ -16,6 +16,18 @@ var _building_targets: Array[BuildingManager.Type] = Config.ALL_BUILDING_TARGETS
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
 
+# DESIGN: an infected Beacon drains the owner's power (EnergyManager handles the
+# store drain) and deals 25 DPS to every AERIAL the owner has in the air — the
+# beacon's fleet turns against itself. Magnitude scales with infection strength.
+func _tick_infection(delta: float) -> void:
+	super._tick_infection(delta)
+	for attacker in infections:
+		var strength: float = float(infections[attacker].get("strength", 1.0))
+		var dps: float = Config.VIRUS_BEACON_AERIAL_DPS * strength
+		for u in Global.UM.units():
+			if u.type == UnitManager.Type.AERIAL and u.player_owner == player_owner:
+				u.apply_damage(dps * delta)
+
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
 	type = BuildingManager.Type.BEACON

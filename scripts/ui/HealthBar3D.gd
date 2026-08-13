@@ -63,3 +63,6 @@ func set_health(current: float, maximum: float) -> void:
 
 func set_fill_color(color: Color) -> void:
 	_material.set_shader_parameter("fill_color", color)
+
+func set_bg_color(color: Color) -> void:
+	_material.set_shader_parameter("bg_color", color)

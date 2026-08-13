@@ -41,6 +41,12 @@ var _max_hp: float = -1.0
 var _self_heals := false
 var _heal_rate := 0.0
 
+# Server-only: an offense self-derive was requested from inside a move-tween
+# callback (see idle_callback). It is executed in _process — one frame later —
+# so the assigning tween has finished its step processing and assign_job's
+# "path while the tween is running" deferral can never strand the unit.
+var _offense_pending := false
+
 # --- Pathfinding ---
 
 var path: PackedInt64Array = []
@@ -207,7 +213,14 @@ func initialise(b: Building) -> void:
 		return
 	move_tween = create_tween()
 	move_tween.tween_property(self, "position:y", _move_target.y, SPAWN_TIME)
+	move_tween.tween_callback(_on_spawn_complete)
 	move_tween.tween_callback(idle_callback)
+
+# Spawn animation completed. Subclasses reset their offense idle-time
+# accumulator here so the spawn tween doesn't count toward the self-derive
+# delay (the pool gets first dibs on a fresh unit).
+func _on_spawn_complete() -> void:
+	pass
 
 func _process(delta: float) -> void:
 	if _max_hp < 0.0:
@@ -226,6 +239,15 @@ func _process(delta: float) -> void:
 		while _repair_timer >= REPAIR_INTERVAL:
 			_repair_timer -= REPAIR_INTERVAL
 			health = minf(health + _heal_rate * REPAIR_INTERVAL, _max_hp)
+
+	# Offense self-derive, deferred out of the move-tween callback (see
+	# idle_callback). One frame later the assigning tween is finished, so
+	# assign_job starts pathing immediately — or a fresh wander hop is running
+	# and its idle_callback dispatches the job.
+	if multiplayer.is_server() and _offense_pending:
+		_offense_pending = false
+		if job.is_empty() and state == State.IDLE and scram_count == 0:
+			try_generate_offense_job()
 
 # --- Job assignment ---
 
@@ -284,9 +306,12 @@ func idle_callback() -> void:
 		_pathing_callback()
 		return
 
-	# Offence hook - idle strike units generate their own combat job
-	if try_generate_offense_job():
-		return
+	# Offence hook - idle strike units generate their own combat job. Deferred
+	# to the next _process: running it here (inside the move tween's own final
+	# callback) makes assign_job defer pathing past the tween's lifetime and
+	# strands the unit in PATHING forever.
+	if multiplayer.is_server():
+		_offense_pending = true
 
 	# Get possible ways out of this tile. Only wander on to AoE tiles
 	var territory_check := player_owner if type in Config.HOME_TERRITORY_UNITS else 0
@@ -613,6 +638,9 @@ func _move(callback: Callable) -> void:
 		time /= Config.EMPOWER_ZOOMBA_SPEED_MULT
 	if type == UnitManager.Type.VIRUS and Global.BM.empowered_type(player_owner) == BuildingManager.Type.NEST:
 		time /= Config.EMPOWER_VIRUS_SPEED_MULT
+	# DESIGN: an infected Garage halves the owner's TANK patrol speed (type-wide).
+	if type == UnitManager.Type.TANK and Global.BM.player_has_infected_type(player_owner, BuildingManager.Type.GARAGE):
+		time *= Config.VIRUS_GARAGE_TANK_SPEED_MULT
 	# A tank pinned by a VIRUS from an empowered Nest holds in place instead of
 	# moving (DESIGN); re-invokes the callback so it resumes once freed.
 	if virus_immobilized():

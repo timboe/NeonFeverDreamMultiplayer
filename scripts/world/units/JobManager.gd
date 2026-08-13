@@ -306,12 +306,16 @@ func check_job_still_valid(job: Dictionary) -> bool:
 				if tile == null or pnum not in tile.aoe:
 					return false
 		Type.ATTACK:
-			# Personal VIRUS attack/limpet job. Valid while the target is alive.
+			# Personal VIRUS attack/limpet job. Valid while the target is alive;
+			# the empowered building is immune to infection (DESIGN), so a path
+			# to one is a wasted trip — invalidate before pathing starts.
 			var t = job["target"]
 			if t == null or not is_instance_valid(t):
 				return false
 			if t is Unit or t is Building:
 				if t.health <= 0:
+					return false
+				if t is Building and t.is_empowered:
 					return false
 			else:
 				return false

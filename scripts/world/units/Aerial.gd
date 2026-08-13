@@ -34,6 +34,11 @@ func _get_lifetime() -> float:
 func get_mode() -> int:
 	return mode
 
+# The fly-out to the spawn tile must not count toward the self-derive delay —
+# the pool gets first dibs on a freshly spawned aerial.
+func _on_spawn_complete() -> void:
+	_idle_time = 0.0
+
 func setup_rotation(target: TileElement, _look_at_from_target: TileElement) -> void:
 	if not multiplayer.is_server():
 		return
@@ -98,6 +103,7 @@ func initialise(b: Building) -> void:
 	var dest := Vector3(spawn_tile.pathing_centre.x, _move_target.y, spawn_tile.pathing_centre.z)
 	move_tween = create_tween()
 	move_tween.tween_property(self, "position", dest, SPAWN_TIME)
+	move_tween.tween_callback(_on_spawn_complete)
 	move_tween.tween_callback(idle_callback)
 	# Weapon setup
 	weapon_node = $Body/Gun
@@ -121,6 +127,8 @@ func update_projectile_delay() -> float:
 func try_generate_offense_job() -> bool:
 	if not multiplayer.is_server():
 		return false
+	if not job.is_empty():
+		return false # busy — a personal job would leak unassigned into the pool
 	if mode != Mode.STRIKE:
 		return false
 	if _idle_time < 1.0:

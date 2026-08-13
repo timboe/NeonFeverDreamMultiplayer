@@ -138,6 +138,21 @@ const VIRUS_ATTACH_DELAY: float = 1.0         # delay between attach and drain/e
 const VIRUS_INFECTION_BASE_DURATION: float = 15.0 # building infection at full 150 HP, prorated by health
 const VIRUS_RECLOAK_COOLDOWN: float = 5.0     # re-cloak delay after being uncloaked (spawn or detection)
 
+# VIRUS building infection effects (per DESIGN). No infection cap: an attacker
+# may infect any number of a defender's buildings; re-infecting an
+# already-infected building refreshes it (remaining time extends by the base
+# duration x new strength, strength is replaced). Effect magnitude scales with
+# the completing virus's strength (health at attach / 150).
+const VIRUS_INFECTION_DURATION: float = 60.0  # active effect expiry; refresh extends
+const VIRUS_VAT_DRAIN_DPS: float = 150.0      # per infected Vat in the chain (~7s to empty a solo 1000e store)
+const VIRUS_BEACON_POWER_DPS: float = 20.0    # infected Beacon drains the owner's energy store
+const VIRUS_BEACON_AERIAL_DPS: float = 25.0   # per DESIGN: DPS to all owner AERIALs
+const VIRUS_GARAGE_TANK_SPEED_MULT: float = 2.0   # move-time mult = halves TANK patrol speed
+const VIRUS_GARAGE_FIRE_INTERVAL_MULT: float = 5.0 # fire interval x5 = AA fire rate -80%
+const VIRUS_NEST_VIRUS_DPS: float = 10.0      # owner VIRUS DoT while on owner territory
+const VIRUS_MCP_AERIAL_DAMAGE_MULT: float = 2.0   # infected MCP takes x2 from AERIAL attackers
+const VIRUS_CURE_RADIUS: float = Cairo.UNIT * 2.0 # avatar touch range for curing (FPS mode)
+
 static var TANK_AERIAL_MODE_MULTIPLIERS: Dictionary = {
 	AERIAL_MODE_PATROL: 6.0,
 	AERIAL_MODE_STRIKE: 5.0,

@@ -36,6 +36,31 @@ var max_health: float = 0.0
 var _health_bar: HealthBar3D
 var _repair_timer := 0.0
 
+# --- VIRUS infection (per DESIGN) ---
+
+# Active infections: attacker pnum -> {strength: float, remaining: float}.
+# strength (0..1) = the completing virus's health-at-attach fraction — it
+# scales the effect magnitude. The server ticks remaining; the attacker key
+# list is mirrored to clients through the building snapshot (GameManager slot
+# 10) to drive the visual ring.
+var infections: Dictionary = {}
+
+# In-progress VIRUS channels pooling toward an infection (server only):
+# attacker -> {units: Array[Virus], done: float}. Multiple viruses channeling
+# the same building share the pool ("stack durations"); the pool requirement is
+# the fixed VIRUS_INFECTION_BASE_DURATION, so every joiner speeds completion.
+var _channels: Dictionary = {}
+
+var _infection_ring: MeshInstance3D = null
+# Ring bob phase (all peers, cosmetic) — sine-eased up/down over 80% of the
+# tile HEIGHT, centred on HEIGHT/2.
+var _ring_anim_t := 0.0
+
+# Infection status bars, shown alongside the health bar: pooled channel
+# progress (amber) and remaining duration of the active infection(s) (pink).
+var _bar_channel: HealthBar3D = null
+var _bar_remaining: HealthBar3D = null
+
 # --- Construction ---
 
 var working_unit: Unit = null
@@ -72,6 +97,24 @@ func initialise(pnum: int, tile: TileElement) -> void:
 	_health_bar.global_position.z = tile.pathing_centre.z
 	_health_bar.global_position.y = 3.0
 	_health_bar.set_bar_size(4.0, 0.4)
+	# Infection status bars, hidden until there is something to show. Positioned
+	# every frame below the health bar (its height varies by building type).
+	# Dark background + neon fill so they read vividly against the magenta sky
+	# and the health bar's white background.
+	_bar_channel = preload("res://scripts/ui/HealthBar3D.gd").new()
+	if container:
+		container.add_child(_bar_channel)
+	_bar_channel.set_bar_size(3.6, 0.22)
+	_bar_channel.set_fill_color(Color(0.25, 1, 0.3))
+	_bar_channel.set_bg_color(Color(0.03, 0.03, 0.08, 0.92))
+	_bar_channel.visible = false
+	_bar_remaining = preload("res://scripts/ui/HealthBar3D.gd").new()
+	if container:
+		container.add_child(_bar_remaining)
+	_bar_remaining.set_bar_size(3.6, 0.22)
+	_bar_remaining.set_fill_color(Color(0.85, 1, 0.2))
+	_bar_remaining.set_bg_color(Color(0.03, 0.03, 0.08, 0.92))
+	_bar_remaining.visible = false
 	input_ray_pickable = true
 	mouse_entered.connect(_on_hover_entered)
 	mouse_exited.connect(_on_hover_exited)
@@ -80,6 +123,10 @@ func initialise(pnum: int, tile: TileElement) -> void:
 func _exit_tree() -> void:
 	if _health_bar and is_instance_valid(_health_bar):
 		_health_bar.queue_free()
+	if _bar_channel and is_instance_valid(_bar_channel):
+		_bar_channel.queue_free()
+	if _bar_remaining and is_instance_valid(_bar_remaining):
+		_bar_remaining.queue_free()
 	if is_instance_valid(Global.BM) and Global.BM.hovered_building == self:
 		Global.BM.hovered_building = null
 	if is_instance_valid(Global.BM) and Global.BM.is_remove_ghost_for(self):
@@ -152,6 +199,30 @@ func _process(delta: float) -> void:
 				return
 			if _repair_heal():
 				return
+
+	# VIRUS infection expiry + per-type effect tick (server only). Status bars
+	# update every frame so they also hide the moment the last infection expires
+	# (the values are 0/empty then, even though _tick_infection just cleared it).
+	if multiplayer.is_server() and Global.game_started and state == State.CONSTRUCTED:
+		if not infections.is_empty():
+			_tick_infection(delta)
+		_update_infection_bars(channel_progress(), infection_remaining_max())
+
+	# Infection status bars follow the health bar (its height varies by type).
+	if _health_bar and is_instance_valid(_health_bar):
+		var hb := _health_bar.global_position
+		if _bar_channel and is_instance_valid(_bar_channel):
+			_bar_channel.global_position = Vector3(hb.x, hb.y - 0.55, hb.z)
+		if _bar_remaining and is_instance_valid(_bar_remaining):
+			_bar_remaining.global_position = Vector3(hb.x, hb.y - 1.05, hb.z)
+
+	# Infection ring spin + bob (all peers — cosmetic). Sine-eased rise and fall
+	# covering 80% of the tile HEIGHT, centred on HEIGHT/2. XZ is fixed at the
+	# pathing centre by _update_infection_visual.
+	if _infection_ring and is_instance_valid(_infection_ring):
+		_infection_ring.rotation.y += delta
+		_ring_anim_t += delta
+		_infection_ring.position.y = Cairo.HEIGHT * 0.5 + sin(_ring_anim_t * TAU * 0.25) * Cairo.HEIGHT * 0.4
 
 	if _health_bar:
 		match state:
@@ -540,6 +611,117 @@ func _repair_heal() -> bool:
 		finish_repair()
 		return true
 	return false
+
+# --- VIRUS infection (per DESIGN) ---
+
+func is_infected() -> bool:
+	return not infections.is_empty()
+
+# Server-only expiry tick. Subclasses with per-type effects (Beacon, Nest)
+# override and call super first. Iterates a keys() snapshot so entries can be
+# removed mid-loop (cure_infection mutates the dict).
+func _tick_infection(delta: float) -> void:
+	for attacker in infections.keys():
+		var entry: Dictionary = infections[attacker]
+		entry["remaining"] = float(entry.get("remaining", 0.0)) - delta
+		if entry["remaining"] <= 0.0:
+			Global.BM.cure_infection(self, attacker)
+
+# Clients mirror the server's infection key set through the snapshot mask.
+# Server-side data (strength/remaining) is preserved where present.
+func apply_infection_mask(mask: int) -> void:
+	var keys: Array[int] = []
+	for p in range(1, Global.MAX_PLAYERS + 1):
+		if mask & (1 << (p - 1)):
+			keys.append(p)
+	if keys.is_empty() and infections.is_empty():
+		return
+	if keys.size() == infections.size():
+		var same := true
+		for p in keys:
+			if not infections.has(p):
+				same = false
+				break
+		if same:
+			return
+	var rebuilt: Dictionary = {}
+	for p in keys:
+		rebuilt[p] = infections.get(p, {"strength": 1.0, "remaining": 0.0})
+	infections = rebuilt
+	_update_infection_visual()
+
+# Pooled VIRUS channel progress toward an infection, 0..1 (server data;
+# mirrored to clients via the building snapshot). The pool is a fixed
+# VIRUS_INFECTION_BASE_DURATION of channeling effort shared per attacker; the
+# bar shows the pool closest to completing.
+func channel_progress() -> float:
+	var best := 0.0
+	for attacker in _channels:
+		var entry: Dictionary = _channels[attacker]
+		best = maxf(best, float(entry.get("done", 0.0)))
+	if best <= 0.0:
+		return 0.0
+	return clampf(best / Config.VIRUS_INFECTION_BASE_DURATION, 0.0, 1.0)
+
+# Longest remaining duration across all active infections, in seconds (server
+# data; mirrored to clients via the building snapshot).
+func infection_remaining_max() -> float:
+	var best := 0.0
+	for attacker in infections:
+		best = maxf(best, float(infections[attacker].get("remaining", 0.0)))
+	return best
+
+# Clients mirror the server's channel/remaining values through the snapshot.
+func apply_infection_progress(fraction: float, remaining: float) -> void:
+	_update_infection_bars(fraction, remaining)
+
+func _update_infection_bars(fraction: float, remaining: float) -> void:
+	if _bar_channel and is_instance_valid(_bar_channel):
+		if fraction > 0.001:
+			_bar_channel.visible = true
+			_bar_channel.set_health(fraction, 1.0)
+		else:
+			_bar_channel.visible = false
+	if _bar_remaining and is_instance_valid(_bar_remaining):
+		if remaining > 0.001:
+			_bar_remaining.visible = true
+			# Refreshed infections can exceed the base duration — clamp the
+			# display so a fresh infection reads as a full bar.
+			_bar_remaining.set_health(minf(remaining, Config.VIRUS_INFECTION_DURATION), Config.VIRUS_INFECTION_DURATION)
+		else:
+			_bar_remaining.visible = false
+
+# Spinning emissive ring in the first attacker's colour, showing the infection.
+# XZ is anchored to the building's pathing centre (the tile origin differs from
+# it — see TileManager._set_neighbours); Y bobs in _process.
+func _update_infection_visual() -> void:
+	if infections.is_empty():
+		if _infection_ring and is_instance_valid(_infection_ring):
+			_infection_ring.queue_free()
+			_infection_ring = null
+		return
+	if _infection_ring == null or not is_instance_valid(_infection_ring):
+		_infection_ring = MeshInstance3D.new()
+		_infection_ring.name = "InfectionRing"
+		var torus := TorusMesh.new()
+		torus.inner_radius = 3.6
+		torus.outer_radius = 4.4
+		torus.rings = 16
+		torus.ring_segments = 32
+		_infection_ring.mesh = torus
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.emission_enabled = true
+		mat.emission_energy_multiplier = 4.0
+		_infection_ring.material_override = mat
+		add_child(_infection_ring)
+		var centre := to_local(location.pathing_centre)
+		_infection_ring.position = Vector3(centre.x, Cairo.HEIGHT * 0.5, centre.z)
+	var accent := Config.player_accent(int(infections.keys()[0]))
+	var mat2 := _infection_ring.material_override as StandardMaterial3D
+	mat2.albedo_color = Color(accent.r, accent.g, accent.b, 0.85)
+	mat2.emission = Color(accent.r, accent.g, accent.b, 1.0)
 
 # --- RPC ---
 

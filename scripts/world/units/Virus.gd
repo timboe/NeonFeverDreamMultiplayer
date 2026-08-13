@@ -34,9 +34,6 @@ var _limpet_target: Object = null
 var _limpet_is_building: bool = false
 var _limpet_delay: float = 0.0
 var _health_at_attach: float = 0.0
-var _infection_duration: float = 0.0
-var _infection_timer: float = 0.0
-var _infection_complete: bool = false
 
 # --- Cloak visuals ---
 
@@ -83,6 +80,11 @@ func initialise(b: Building) -> void:
 func _model() -> Node:
 	return get_node_or_null("Body")
 
+# The spawn rise must not count toward the self-derive delay — the pool gets
+# first dibs on a freshly spawned virus.
+func _on_spawn_complete() -> void:
+	_idle_time = 0.0
+
 func _update_cloak_visual() -> void:
 	var is_owner: bool = player_owner == Global.my_player_number
 	var k := 1.0
@@ -112,6 +114,8 @@ func _recloak() -> void:
 func try_generate_offense_job() -> bool:
 	if not multiplayer.is_server():
 		return false
+	if not job.is_empty():
+		return false # busy — a personal job would leak unassigned into the pool
 	if _idle_time < 1.0:
 		return false
 	var enemies: Array = []
@@ -126,7 +130,8 @@ func try_generate_offense_job() -> bool:
 	if randf() < tank_ratio:
 		target = _pick_enemy_tank(enemies)
 	if target == null:
-		target = Global.CM.choose_building_target(enemies, orders.get("target", []))
+		# Infection targets must be CONSTRUCTED — a blueprint can't be infected.
+		target = Global.CM.choose_building_target(enemies, orders.get("target", []), true)
 	if target == null:
 		return false
 	_idle_time = 0.0 # If the job is immediately abandoned, wait before re-targeting
@@ -155,28 +160,86 @@ func start_attack() -> void:
 	uncloak() # auto-uncloak when beginning an attack
 	_limpet_target = job["target"]
 	_limpet_is_building = _limpet_target is Building
-	# Register on a limpeted tank so the Nest empower immobilize buff can find
-	# us (see Tank.virus_immobilized).
-	if _limpet_target is Tank:
-		(_limpet_target as Tank).register_virus(self)
-	# TODO per DESIGN: enforce the infection cap — one active building infection
-	# per enemy player. Currently multiple VIRUS may channel the same building
-	# (personal jobs skip dedup) and the cap is unenforced.
 	_health_at_attach = health
 	_limpet_delay = Config.VIRUS_ATTACH_DELAY
-	_infection_duration = 0.0
-	_infection_timer = 0.0
-	_infection_complete = false
+	if _limpet_target is Tank:
+		# Register on a limpeted tank so the Nest empower immobilize buff can find
+		# us (see Tank.virus_immobilized).
+		(_limpet_target as Tank).register_virus(self)
+		return
+	# Building target: the empowered building is immune to infection (DESIGN)
+	# and only CONSTRUCTED buildings can be infected. No infection cap — any
+	# other target is fair game.
+	var b := _limpet_target as Building
+	if b.is_empowered or b.state != Building.State.CONSTRUCTED:
+		job_finished()
+		return
+	_join_building_channel(b)
 
 func cancel_attack() -> void:
 	if _limpet_target is Tank:
 		(_limpet_target as Tank).unregister_virus(self)
+	if _limpet_is_building and is_instance_valid(_limpet_target):
+		_leave_building_channel(_limpet_target as Building)
 	_limpet_target = null
 	_limpet_is_building = false
 	_limpet_delay = 0.0
-	_infection_duration = 0.0
-	_infection_timer = 0.0
-	_infection_complete = false
+	_health_at_attach = 0.0
+
+# --- Building channel (pooled, server only) ---
+
+# This virus's per-second contribution to the shared channel pool. The pool is
+# a fixed VIRUS_INFECTION_BASE_DURATION of channeling effort; a virus at health
+# fraction f pours into it at 1/f per second — its own channel is prorated
+# (75 HP = half the base duration, per DESIGN), so its seconds count double.
+# Clamped so a nearly-dead virus can't finish the pool in one tick.
+func channel_rate() -> float:
+	var f: float = _health_at_attach / Config.UNIT_MAX_HP.get(UnitManager.Type.VIRUS, 150.0)
+	return 1.0 / maxf(f, 0.1)
+
+# Multiple viruses channeling the same building share one per-attacker pool
+# (DESIGN: "Multiple VIRUS infecting the same building stack durations"). The
+# pool requirement is fixed, so every joiner strictly speeds completion — the
+# completed effort is never re-required.
+func _join_building_channel(b: Building) -> void:
+	var entry: Dictionary = b._channels.get(player_owner, {})
+	if entry.is_empty():
+		entry = {"units": [], "done": 0.0}
+		b._channels[player_owner] = entry
+	entry["units"].append(self)
+
+func _leave_building_channel(b: Building) -> void:
+	var entry: Dictionary = b._channels.get(player_owner, {})
+	if entry.is_empty():
+		return
+	entry["units"].erase(self)
+
+func _tick_building_channel(delta: float) -> void:
+	var b := _limpet_target as Building
+	var entry: Dictionary = b._channels.get(player_owner, {})
+	if entry.is_empty() or entry.get("units", []).is_empty():
+		job_finished()
+		return
+	entry["done"] = entry.get("done", 0.0) + delta * channel_rate()
+	if entry["done"] < Config.VIRUS_INFECTION_BASE_DURATION:
+		return
+	# Pool complete — this virus delivers the infection. Strength scales the
+	# effect magnitude with the virus's health at attach.
+	var strength: float = _health_at_attach / Config.UNIT_MAX_HP.get(UnitManager.Type.VIRUS, 150.0)
+	if not Global.BM.infect_building(player_owner, b, strength):
+		# The building became empowered mid-channel — the infection is wasted
+		# and the channelers stand down (they survive and re-target).
+		for v in entry["units"].duplicate():
+			if is_instance_valid(v):
+				v.job_finished()
+		return
+	entry["done"] = 0.0
+	# Other channelers of this pool stand down; the delivering virus
+	# self-sacrifices (infecting a building destroys the virus, per DESIGN).
+	for v in entry["units"].duplicate():
+		if v != self and is_instance_valid(v):
+			v.job_finished()
+	Global.UM.rpc("rpc_remove_unit", id)
 
 func _tick_limpet(delta: float) -> void:
 	var target = _limpet_target
@@ -192,7 +255,7 @@ func _tick_limpet(delta: float) -> void:
 		_limpet_delay -= delta
 		return
 	if _limpet_is_building:
-		_tick_building_infection(delta)
+		_tick_building_channel(delta)
 	else:
 		# Limpet tracks the tank — stay attached (on it) as it moves.
 		var tank: Unit = target as Unit
@@ -202,19 +265,3 @@ func _tick_limpet(delta: float) -> void:
 		var amount: float = Config.VIRUS_TANK_DRAIN_DPS * delta
 		target.apply_damage(amount)
 		Global.SM.record_damage_done(player_owner, amount)
-
-func _tick_building_infection(delta: float) -> void:
-	if _infection_duration <= 0.0:
-		# Channel duration is based on health at attach: base 15s at full 150 HP,
-		# prorated linearly (e.g. 75 HP = 7.5s).
-		_infection_duration = Config.VIRUS_INFECTION_BASE_DURATION * (_health_at_attach / Config.UNIT_MAX_HP.get(UnitManager.Type.VIRUS, 150.0))
-	_infection_timer += delta
-	if _infection_timer >= _infection_duration and not _infection_complete:
-		_infection_complete = true
-		_apply_building_effect()
-		Global.UM.rpc("rpc_remove_unit", id) # self-sacrifice on completed infection
-
-func _apply_building_effect() -> void:
-	# Stub: apply the building infection effect to _limpet_target here once the
-	# channel completes. DESIGN: infected Generator/Vat/Beacon/Garage/Nest/MCP.
-	pass

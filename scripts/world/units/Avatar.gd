@@ -38,11 +38,17 @@ var _cursor_ray_timer := 0
 # reject buffered avatar snapshots from the previous incarnation after respawn.
 var server_spawn_time: float = 0.0
 
+# Cure scan throttle (server only) — walking the avatar into an infected
+# friendly building clears it, so a 4 Hz proximity scan is plenty.
+var _cure_timer := 0.0
+
 # --- Lifecycle ---
 
 func _physics_process(delta: float) -> void:
 	if not Global.game_started:
 		return
+	if multiplayer.is_server():
+		_scan_cure(delta)
 	_process_input(delta)
 	_process_movement(delta)
 
@@ -75,6 +81,31 @@ func initialise(b: Building) -> void:
 
 func idle_callback() -> void:
 	pass # Avatar uses FPS controls, not the idle/pathing system
+
+# --- Cure (server only) ---
+
+# DESIGN: touching an infected friendly building in FPS mode immediately removes
+# all its infections (a Vat cure cascades to its whole shared-health pool).
+func _scan_cure(delta: float) -> void:
+	_cure_timer += delta
+	if _cure_timer < 0.25:
+		return
+	_cure_timer = 0.0
+	if _avatar_camera_mode(player_owner) != VideoManager.CameraStatus.FPS:
+		return
+	var body: Node3D = fps_body
+	for b in get_tree().get_nodes_in_group("building_player" + str(player_owner)):
+		if not b.infections.is_empty() \
+			and body.global_position.distance_to(b.location.pathing_centre) <= Config.VIRUS_CURE_RADIUS:
+			Global.BM.cure_building(b)
+
+func _avatar_camera_mode(pnum: int) -> int:
+	if pnum == Global.my_player_number:
+		return Global.VM.camera_status
+	var nm = Global.network_manager
+	if nm and nm.server:
+		return nm.server.get_camera_mode(pnum)
+	return VideoManager.CameraStatus.OVERHEAD
 
 # --- Input ---
 

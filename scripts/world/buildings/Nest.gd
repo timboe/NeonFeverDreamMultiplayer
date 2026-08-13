@@ -15,6 +15,20 @@ var _building_targets: Array[BuildingManager.Type] = Config.ALL_BUILDING_TARGETS
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
 
+# DESIGN: an infected Nest turns against its owner — every VIRUS the owner has
+# loses cloak and takes damage over time while on the owner's own territory.
+func _tick_infection(delta: float) -> void:
+	super._tick_infection(delta)
+	for attacker in infections:
+		var strength: float = float(infections[attacker].get("strength", 1.0))
+		var dps: float = Config.VIRUS_NEST_VIRUS_DPS * strength
+		for u in Global.UM.units():
+			if u.type != UnitManager.Type.VIRUS or u.player_owner != player_owner:
+				continue
+			if player_owner in u.location.aoe:
+				u.uncloak() # re-armed every tick so the DoT outlasts the 5s re-cloak
+				u.apply_damage(dps * delta)
+
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
 	type = BuildingManager.Type.NEST

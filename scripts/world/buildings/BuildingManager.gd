@@ -77,6 +77,82 @@ func empowered_type(pnum: int) -> Type:
 		return b.type
 	return Type.NONE
 
+# --- VIRUS infection (per DESIGN) ---
+
+# Whether the player owns any infected building of the given type. Drives the
+# type-wide infected-Garage penalties (TANK patrol speed, AA fire rate).
+func player_has_infected_type(pnum: int, type: Type) -> bool:
+	for b in building_dictionary.values():
+		if b.player_owner == pnum and b.type == type and not b.infections.is_empty():
+			return true
+	return false
+
+# Applies (or refreshes) an infection on a building. Returns false when the
+# building is immune (currently empowered). Re-infecting an already-infected
+# building from the same attacker refreshes: remaining time extends by the base
+# duration x new strength and strength is replaced (per DESIGN, agreed update).
+# A Vat infection cascades to its whole shared-health pool (adjacency chain),
+# skipping empowered pool members.
+func infect_building(attacker: int, building: Building, strength: float) -> bool:
+	if building.is_empowered:
+		return false
+	var first := not building.infections.has(attacker)
+	_apply_infection_entry(building, attacker, strength)
+	if building is Vat:
+		var master: Vat = building.pool_master if building.pool_master != null else building
+		for m in master.pool_members:
+			if m == building or m.is_empowered:
+				continue
+			_apply_infection_entry(m, attacker, strength)
+	if first:
+		var text := "Your " + building_type_name(building.type) + " has been infected by " + _player_name(attacker) + "!"
+		var loc := building.location.pathing_centre if building.location else Vector3.ZERO
+		Global.NM.rpc("rpc_add_job_notification", building.player_owner, "infected", text, loc.x, loc.y, loc.z)
+	return true
+
+func _apply_infection_entry(b: Building, attacker: int, strength: float) -> void:
+	var entry: Dictionary = b.infections.get(attacker, {})
+	if entry.is_empty():
+		b.infections[attacker] = {"strength": strength, "remaining": Config.VIRUS_INFECTION_DURATION}
+	else:
+		entry["strength"] = strength
+		entry["remaining"] = float(entry["remaining"]) + Config.VIRUS_INFECTION_DURATION * strength
+	b._update_infection_visual()
+
+# Avatar cure: removes every infection from the building. Curing one Vat in a
+# shared-health pool cures the whole connected chain (the infection cascaded,
+# so the cure does too).
+func cure_building(building: Building) -> void:
+	var targets: Array[Building] = [building]
+	if building is Vat:
+		var master: Vat = building.pool_master if building.pool_master != null else building
+		targets.append_array(master.pool_members)
+	for b in targets:
+		if is_instance_valid(b) and not b.infections.is_empty():
+			b.infections.clear()
+			b._update_infection_visual()
+
+# Per-attacker removal, used when an infection expires on its own.
+func cure_infection(building: Building, attacker: int) -> void:
+	if not is_instance_valid(building):
+		return
+	if building.infections.erase(attacker):
+		building._update_infection_visual()
+
+func building_type_name(t: Type) -> String:
+	match t:
+		Type.GEN: return "Generator"
+		Type.VAT: return "Vat"
+		Type.GARAGE: return "Garage"
+		Type.BEACON: return "Beacon"
+		Type.NEST: return "Nest"
+		_: return "MCP"
+
+func _player_name(pnum: int) -> String:
+	if pnum >= 1 and pnum <= Config.PLAYER_NAMES.size():
+		return Config.PLAYER_NAMES[pnum - 1]
+	return "Player " + str(pnum)
+
 # --- Lifecycle ---
 
 func _ready() -> void:

@@ -8,7 +8,11 @@ const SNAPSHOT_INTERVAL := 0.05
 const JOB_TICK_INTERVAL := 1.0
 const INTERPOLATION_DELAY := 0.075
 const AVATAR_SEND_INTERVAL := 0.05
-const SLOT_COUNT := 10
+# Snapshot per-entity float slots. Buildings use slot 10 for the VIRUS
+# infection attacker bitmask, slot 11 for pooled channel progress and slot 12
+# for the longest remaining infection duration (see _pack_building); units
+# leave them zero.
+const SLOT_COUNT := 13
 const MAX_SNAPSHOT_BUFFER := 4
 # Snapshots are split into chunks kept well below the ENet MTU (1392 bytes).
 # 256 float32s = 1024 bytes of payload per chunk; a dropped chunk costs the
@@ -322,8 +326,21 @@ func _pack_building(data: PackedFloat32Array, b: Building) -> void:
 			slots[6] = n._virus_tank_building_ratio
 			slots[7] = _encode_enemy_targets(n._enemy_targets)
 			slots[8] = _encode_building_targets(n._building_targets)
+	slots[10] = _encode_infection_mask(b)
+	slots[11] = b.channel_progress()
+	slots[12] = b.infection_remaining_max()
 	for s in slots:
 		data.append(s)
+
+# VIRUS infection attackers packed as a bitmask (bit n = player n+1), mirrored
+# to every peer so the infection ring visual shows on all clients.
+static func _encode_infection_mask(b: Building) -> float:
+	var mask := 0
+	for p in b.infections:
+		var idx := int(p) - 1
+		if idx >= 0 and idx < 4:
+			mask |= 1 << idx
+	return float(mask)
 
 # Enemy targets are player numbers 1..4; pack them as a 4-bit mask (bit n = player n+1).
 static func _encode_enemy_targets(targets: Array) -> float:
@@ -606,6 +623,8 @@ func _apply_building(b: Building, slots: Array) -> void:
 	b.max_health = slots[3]
 	b._production_enabled = slots[4] > 0.5
 	b._production_energy = slots[5]
+	b.apply_infection_mask(int(slots[10]))
+	b.apply_infection_progress(slots[11], slots[12])
 	# Mirror the per-type settings packed by _pack_building so foreign building
 	# terminals (spying) and owned building vars stay in sync with the server.
 	match b.type:

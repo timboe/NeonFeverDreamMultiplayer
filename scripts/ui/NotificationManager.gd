@@ -12,6 +12,7 @@ const EVENT_COLORS := {
 	"assigned": Color(0.3, 1, 0.5, 1),
 	"abandoned": Color(1, 0.7, 0.2, 1),
 	"finished": Color(0.7, 1, 1, 1),
+	"infected": Color(1, 0.3, 0.5, 1),
 }
 
 # --- State ---

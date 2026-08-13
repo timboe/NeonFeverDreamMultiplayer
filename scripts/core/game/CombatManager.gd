@@ -66,19 +66,39 @@ func _attacker_mode(unit: Unit) -> int:
 
 # Shared enemy-building target selection (VIRUS attack jobs + AERIAL STRIKE
 # personal jobs). Picks a random living enemy building of the allowed types.
-func choose_building_target(enemies: Array, target_types: Array) -> Building:
+# require_constructed: VIRUS infection targets must be CONSTRUCTED (a
+# blueprint/under-construction building can't be infected); AERIAL strikes keep
+# the looser filter so they can shell construction sites.
+func choose_building_target(enemies: Array, target_types: Array, require_constructed: bool = false) -> Building:
 	var candidates: Array = []
 	for b in Global.BM.buildings():
 		if b.player_owner not in enemies:
 			continue
 		if b.health <= 0:
 			continue
-		if not target_types.is_empty() and b.type not in target_types:
+		if require_constructed and b.state != Building.State.CONSTRUCTED:
+			continue
+		if not target_types.is_empty() and not _type_in_targets(b.type, target_types):
 			continue
 		candidates.append(b)
 	if candidates.is_empty():
 		return null
 	return candidates[Global.rand.randi() % candidates.size()]
+
+# The building-type toggles use MCP_1 as a stand-in for all enemy MCPs (see
+# Config.ALL_BUILDING_TARGETS), but a real MCP has its own type (MCP_2..4) —
+# normalize both sides so an enemy MCP matches the MCP_1 toggle.
+static func _type_in_targets(btype: BuildingManager.Type, targets: Array) -> bool:
+	var norm := btype
+	if btype >= BuildingManager.Type.MCP_1 and btype <= BuildingManager.Type.MCP_4:
+		norm = BuildingManager.Type.MCP_1
+	for t in targets:
+		var tn := int(t)
+		if tn >= BuildingManager.Type.MCP_1 and tn <= BuildingManager.Type.MCP_4:
+			tn = BuildingManager.Type.MCP_1
+		if tn == int(norm):
+			return true
+	return false
 
 func _in_range(from: Vector3, to: Vector3) -> bool:
 	return from.distance_squared_to(to) < Config.COMBAT_RANGE * Config.COMBAT_RANGE
@@ -375,11 +395,15 @@ func _update_firing(delta: float) -> void:
 		if u.combat_fire_timer <= 0.0:
 			# DESIGN Garage avatar buff: TANK fire rate +25% vs aerial targets
 			# while the player has a Garage empowered (type-wide, dynamic).
+			# DESIGN: an infected Garage cuts the owner's AA fire rate by 80%
+			# (type-wide) — the two can stack against the same tank fleet.
 			var interval := Config.COMBAT_FIRE_INTERVAL
 			if u.type == UnitManager.Type.TANK \
-				and target is Unit and target.type == UnitManager.Type.AERIAL \
-				and Global.BM.empowered_type(u.player_owner) == BuildingManager.Type.GARAGE:
-				interval *= Config.EMPOWER_TANK_FIRE_INTERVAL_MULT
+				and target is Unit and target.type == UnitManager.Type.AERIAL:
+				if Global.BM.empowered_type(u.player_owner) == BuildingManager.Type.GARAGE:
+					interval *= Config.EMPOWER_TANK_FIRE_INTERVAL_MULT
+				if Global.BM.player_has_infected_type(u.player_owner, BuildingManager.Type.GARAGE):
+					interval *= Config.VIRUS_GARAGE_FIRE_INTERVAL_MULT
 			u.combat_fire_timer = interval
 			u.combat_burst_timer = Config.WEAPON_BURST_DURATION
 			u.combat_damage_tick_timer = 0.0

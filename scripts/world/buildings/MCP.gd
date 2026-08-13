@@ -54,6 +54,11 @@ func zoomba_cap() -> int:
 # --- Production ---
 
 func _can_produce() -> bool:
+	if not infections.is_empty():
+		# DESIGN: an infected MCP halts ZOOMBA production. The Avatar still
+		# respawns — it is the only cure, so blocking respawn would lock the
+		# player out of curing.
+		return Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1
 	if Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
 		return true
 	return Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap()
@@ -86,10 +91,21 @@ func _produce_unit() -> void:
 # --- Damage ---
 
 # DESIGN: MCP avatar buff — 25% damage reduction while empowered.
+# DESIGN: an infected MCP becomes significantly more vulnerable to aerial
+# attack; the extra damage scales with the infection's strength.
 func _apply_damage(damage: float, attacker: Unit = null) -> void:
 	if state == State.CONSTRUCTED and is_empowered:
 		damage *= Config.EMPOWER_MCP_DAMAGE_MULT
+	if state == State.CONSTRUCTED and not infections.is_empty() and attacker is Aerial:
+		var mult: float = 1.0 + (Config.VIRUS_MCP_AERIAL_DAMAGE_MULT - 1.0) * _max_infection_strength()
+		damage *= mult
 	super._apply_damage(damage, attacker)
+
+func _max_infection_strength() -> float:
+	var best := 0.0
+	for a in infections:
+		best = maxf(best, float(infections[a].get("strength", 1.0)))
+	return best
 
 # --- Energy ---
 

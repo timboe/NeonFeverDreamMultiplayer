@@ -89,7 +89,20 @@ func _energy_tick() -> void:
 			continue
 		var gen: float = b.get_energy() * TICK_INTERVAL
 		if gen > 0.0:
-			tick_rates[b.player_owner] = tick_rates.get(b.player_owner, 0.0) + gen
+			if b is Generator and not b.infections.is_empty():
+				# DESIGN: an infected Generator generates power for the virus
+				# owner(s) instead of the generator owner. Multiple attackers
+				# split the output by infection strength. An infected MCP (also
+				# in the "generator" group) keeps its power — theft is
+				# Generator-only.
+				var total_strength := 0.0
+				for a in b.infections:
+					total_strength += float(b.infections[a].get("strength", 1.0))
+				for a in b.infections:
+					var share: float = float(b.infections[a].get("strength", 1.0)) / total_strength
+					tick_rates[a] = tick_rates.get(a, 0.0) + gen * share
+			else:
+				tick_rates[b.player_owner] = tick_rates.get(b.player_owner, 0.0) + gen
 	for p in range(1, Global.MAX_PLAYERS + 1):
 		if capacity[p] <= 0.0:
 			continue
@@ -103,7 +116,35 @@ func _energy_tick() -> void:
 		_requested_tick[p] = 0.0
 		# Refresh the supply ratio from the trailing 1s of data.
 		_ratio[p] = _produced[p] / _requested[p] if _requested[p] > 0.0 else 1.0
+	_infection_drains()
 	_broadcast_energy()
+
+# DESIGN: infection drains on the owner's stored energy. Each infected Vat in a
+# chain drains at the base rate (cascade = more vats, faster drain); an infected
+# Beacon drains its owner's store as a parasite. The drained energy is
+# destroyed, and counted as consumed so it shows up in the stats "used" rate.
+func _infection_drains() -> void:
+	for b in Global.BM.buildings():
+		if b.state != Building.State.CONSTRUCTED or b.infections.is_empty():
+			continue
+		var rate := 0.0
+		match b.type:
+			BuildingManager.Type.VAT:
+				rate = Config.VIRUS_VAT_DRAIN_DPS
+			BuildingManager.Type.BEACON:
+				rate = Config.VIRUS_BEACON_POWER_DPS
+			_:
+				continue
+		var drained := 0.0
+		for a in b.infections:
+			drained += rate * float(b.infections[a].get("strength", 1.0)) * TICK_INTERVAL
+		if drained <= 0.0:
+			continue
+		var stored: float = energy.get(b.player_owner, 0.0)
+		var actual := minf(drained, stored)
+		if actual > 0.0:
+			energy[b.player_owner] = stored - actual
+			_consumed_tick[b.player_owner] += actual
 
 # --- Public API ---
 
