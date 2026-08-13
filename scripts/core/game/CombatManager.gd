@@ -344,6 +344,8 @@ func _update_firing(delta: float) -> void:
 			# It still queues kill-VIRUS PATROL support from the scan pass.
 			continue
 		if not u.combat_target or not is_instance_valid(u.combat_target):
+			u.combat_target = null
+			u.combat_los_fail_time = 0.0
 			continue
 		if not u.is_weapon_aligned():
 			continue

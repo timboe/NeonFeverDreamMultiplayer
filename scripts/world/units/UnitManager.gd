@@ -144,6 +144,12 @@ func rpc_remove_unit(unit_id: int) -> void:
 			# If the local player's avatar died while in FPS, snap back to the RTS camera.
 			if u.player_owner == Global.my_player_number:
 				Global.VM.exit_fps_immediate()
+			# A dead avatar can't keep empowering — clear the player's empower.
+			# Server-only: the _empowered_by_player dict is server state, and
+			# clear_empowered_for_player broadcasts rpc_set_empowered(false) to
+			# every peer so the beam (and buffs) drop everywhere at once.
+			if multiplayer.is_server():
+				Global.BM.clear_empowered_for_player(u.player_owner)
 		# Unit debris: its own meshes become physics chunks blasted from the unit
 		# (unit scale, no particle burst). This RPC is call_local so every peer
 		# spawns the same effect simultaneously — cosmetic, no sync. Cloaked

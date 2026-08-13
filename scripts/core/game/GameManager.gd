@@ -263,7 +263,7 @@ func _pack_unit(data: PackedFloat64Array, u: Unit) -> void:
 	slots[9] = float(u.combat_fire_event)
 	data.append_array(_pack_scratch)
 
-static func _encode_target(target: Node3D) -> float:
+static func _encode_target(target: Variant) -> float:
 	if target and is_instance_valid(target):
 		if target is Unit:
 			return float(target.id)
