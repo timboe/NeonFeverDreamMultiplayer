@@ -75,15 +75,21 @@ const BASE_DPS: float = 5.0
 const AERIAL_MODE_PATROL := 0
 const AERIAL_MODE_STRIKE := 1
 
+# Flight altitudes (world units above ground): PATROL skims the canyon floor,
+# STRIKE flies just below the raised wall tops (~21u) — a 12u gap that reads
+# from the RTS camera.
+const AERIAL_PATROL_HEIGHT: float = 8.0
+const AERIAL_STRIKE_HEIGHT: float = 20.0
+
 const COMBAT_SCAN_INTERVAL: float = 0.5
 const COMBAT_FIRE_INTERVAL: float = 0.8
 const COMBAT_RANGE: float = 40.0
 const WEAPON_TURN_SPEED: float = PI
 const WEAPON_ALIGN_THRESHOLD: float = 0.05
 # Aerial belly-turret elevation ceiling (radians from horizontal): the drone's
-# gun can sweep from straight down (tanks) up to 45° to engage same-level and
-# higher aerials (PATROL 10u vs STRIKE 16u = max ~39° at adjacent tiles).
-const AERIAL_WEAPON_ELEVATION_MAX: float = PI * 0.25
+# gun can sweep from straight down (tanks) up to 60° to engage same-level and
+# higher aerials (PATROL 8u vs STRIKE 20u = max ~50° at adjacent tiles).
+const AERIAL_WEAPON_ELEVATION_MAX: float = PI * 0.33
 const PROJECTILE_MAX_FLIGHT_TIME: float = 1.0
 const WEAPON_BURST_DURATION: float = 0.4
 const DAMAGE_TICK_DURATION: float = 0.1

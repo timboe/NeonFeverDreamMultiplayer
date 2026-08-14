@@ -106,6 +106,11 @@ var _mcp: Building
 func get_mode() -> int:
 	return -1
 
+# Visual-only mode hook (AERIAL): called whenever a snapshot corrects the
+# unit's mode so every peer re-brands its model. No-op in the base unit.
+func apply_mode_visual() -> void:
+	pass
+
 # --- Combat aiming ---
 
 func _update_weapon_aim(delta: float) -> bool:

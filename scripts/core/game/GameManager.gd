@@ -595,6 +595,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.state = slots[4]
 			u.health = slots[5]
 			u.mode = int(slots[6])
+			u.apply_mode_visual()
 		UnitManager.Type.VIRUS:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
 			u.rotation.y = slots[3]

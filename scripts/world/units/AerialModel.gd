@@ -5,7 +5,10 @@ class_name AerialModel
 # "Hexdrone": a rugged hex-bodied quadcopter. Four outrigger arms
 # carry big spinning rotors. Radial symmetry is the theme: a centre dot caps the
 # hull and a belly cannon hangs from the bottom centre, so the craft reads the
-# same from every heading. Everything wears the owner's colour.
+# same from every heading. Everything wears the owner's colour; a mode beacon
+# glows under the belly (cyan = PATROL, amber = STRIKE) and STRIKE rakes its
+# rotor assembly backward (apply_mode), so the two Beacon outputs read apart
+# at RTS zoom.
 #
 # This is the production AERIAL model (scenes/world/units/Aerial.tscn). The
 # root runs Aerial.gd for gameplay; this node builds and animates the full
@@ -21,24 +24,34 @@ class_name AerialModel
 # MultiMesh against the local tree. Draw-call lean: all repeated geometry is
 # instanced via MultiMesh — four arms share one mesh, four rotor hubs one mesh,
 # four blades one mesh. Total meshes rendered: CSG hull + arms + hubs + blades
-# + sensor + gun barrel = 6 draw calls.
+# + sensor + gun barrel + mode beacon = 7 draw calls.
 
 # --- Constants ---
 
 const ROTOR_SPEED := 20.0
 const ROTOR_DIRS := [1.0, -1.0, 1.0, -1.0]
-const ROTOR_POS := [
-	Vector3(0.95, 0.12, 0.95),
-	Vector3(0.95, 0.12, -0.95),
-	Vector3(-0.95, 0.12, -0.95),
-	Vector3(-0.95, 0.12, 0.95),
-]
+# Arm/rotor layout is defined by radial angles (deg, +Z = forward). The default
+# PATROL square sits at 45/135/225/315; STRIKE rakes the whole assembly backward
+# by STRIKE_ROTOR_RAKE so the airframe reads as diving. All three MultiMeshes
+# (arms, hubs, blades) share the one angle table so rotor tips never detach.
+const ARM_ANGLES: Array[float] = [45.0, 135.0, 225.0, 315.0]
+const STRIKE_ROTOR_RAKE: float = 30.0
+const ARM_RADIUS: float = 0.849
+const ROTOR_RADIUS: float = 1.3436 # matches the PATROL arm tips (0.849 + 0.5)
+const ROTOR_HEIGHT: float = 0.12
+const ARM_HEIGHT: float = 0.06
+# Mode beacon under the belly: cyan = PATROL, amber = STRIKE.
+const BEACON_POS: Vector3 = Vector3(0, -0.32, 0)
+const PATROL_BEACON_COLOR: Color = Color(0.2, 0.9, 1.0, 1.0)
+const STRIKE_BEACON_COLOR: Color = Color(1.0, 0.55, 0.1, 1.0)
 # Rotor buffer writes at 30 Hz instead of per frame — 4 set_instance_transform
 # calls per airframe per frame were dirtying the MultiMesh buffer 60×/s.
 const ROTOR_INTERVAL := 0.033
 
 # --- State ---
 
+var _rotor_angles: Array[float] = ARM_ANGLES.duplicate()
+var _mode: int = -1 # last mode branded (see apply_mode)
 var _blade_mmi: MultiMeshInstance3D
 var _blade_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _rotor_timer := 0.0
@@ -55,6 +68,7 @@ static var _hub_mesh_cache: BoxMesh
 static var _sensor_mesh_cache: SphereMesh
 static var _barrel_mesh_cache: CylinderMesh
 static var _blade_mesh_cache: ArrayMesh
+static var _beacon_mesh_cache: SphereMesh
 static var _dark_mat_cache: StandardMaterial3D
 static var _chrome_mat_cache: StandardMaterial3D
 
@@ -74,10 +88,36 @@ func _process(delta: float) -> void:
 	_rotor_timer += delta
 	if _rotor_timer < ROTOR_INTERVAL:
 		return
-	for i in ROTOR_POS.size():
+	for i in _rotor_angles.size():
 		_blade_angles[i] += _rotor_timer * ROTOR_SPEED * ROTOR_DIRS[i]
-		_blade_mmi.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, _blade_angles[i]), ROTOR_POS[i]))
+		_blade_mmi.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, _blade_angles[i]), _rotor_pos(i)))
 	_rotor_timer = 0.0
+
+# --- Mode branding (called by Aerial.gd on every peer) ---
+
+# Rake the rotor assembly backward for STRIKE and recolour the belly beacon.
+# Idempotent — re-calls (snapshot mode correction) are no-ops.
+func apply_mode(mode: int) -> void:
+	if mode == _mode:
+		return
+	_mode = mode
+	var rake := STRIKE_ROTOR_RAKE if mode != 0 else 0.0
+	for i in _rotor_angles.size():
+		_rotor_angles[i] = ARM_ANGLES[i] - rake
+		var a := deg_to_rad(_rotor_angles[i])
+		$Arms.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, a), Vector3(cos(a) * ARM_RADIUS, ARM_HEIGHT, sin(a) * ARM_RADIUS)))
+		$Hubs.multimesh.set_instance_transform(i, Transform3D(Basis(), _rotor_pos(i)))
+		_blade_mmi.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, _blade_angles[i]), _rotor_pos(i)))
+	_set_beacon(mode)
+
+func _rotor_pos(i: int) -> Vector3:
+	var a := deg_to_rad(_rotor_angles[i])
+	return Vector3(cos(a) * ROTOR_RADIUS, ROTOR_HEIGHT, sin(a) * ROTOR_RADIUS)
+
+func _set_beacon(mode: int) -> void:
+	var beacon := get_node_or_null("Beacon")
+	if beacon:
+		beacon.material_override = _beacon_mat(STRIKE_BEACON_COLOR if mode != 0 else PATROL_BEACON_COLOR)
 
 # --- Player branding (called by Aerial.gd after the hull is painted) ---
 
@@ -95,6 +135,7 @@ func _build() -> void:
 	_build_rotors()
 	_build_sensor()
 	_build_gun()
+	_build_beacon()
 	var m := _new_brand_mat(Color(0.1, 0.9, 0.7, 1.0))
 	$Arms.material_override = m
 	$Hubs.material_override = m
@@ -114,10 +155,10 @@ func _build_arms() -> void:
 	var am := MultiMesh.new()
 	am.transform_format = MultiMesh.TRANSFORM_3D
 	am.mesh = _arm_mesh()
-	am.instance_count = 4
-	for i in 4:
-		var a := deg_to_rad(45.0 + i * 90.0)
-		var p := Vector3(cos(a) * 0.849, 0.06, sin(a) * 0.849)
+	am.instance_count = _rotor_angles.size()
+	for i in _rotor_angles.size():
+		var a := deg_to_rad(_rotor_angles[i])
+		var p := Vector3(cos(a) * ARM_RADIUS, ARM_HEIGHT, sin(a) * ARM_RADIUS)
 		am.set_instance_transform(i, Transform3D(Basis(Vector3.UP, a), p))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Arms"
@@ -128,9 +169,9 @@ func _build_rotors() -> void:
 	var hm := MultiMesh.new()
 	hm.transform_format = MultiMesh.TRANSFORM_3D
 	hm.mesh = _hub_mesh()
-	hm.instance_count = ROTOR_POS.size()
-	for i in ROTOR_POS.size():
-		hm.set_instance_transform(i, Transform3D(Basis(), ROTOR_POS[i]))
+	hm.instance_count = _rotor_angles.size()
+	for i in _rotor_angles.size():
+		hm.set_instance_transform(i, Transform3D(Basis(), _rotor_pos(i)))
 	var hub_mmi := MultiMeshInstance3D.new()
 	hub_mmi.name = "Hubs"
 	hub_mmi.multimesh = hm
@@ -139,9 +180,9 @@ func _build_rotors() -> void:
 	var bm := MultiMesh.new()
 	bm.transform_format = MultiMesh.TRANSFORM_3D
 	bm.mesh = _blade_mesh()
-	bm.instance_count = ROTOR_POS.size()
-	for i in ROTOR_POS.size():
-		bm.set_instance_transform(i, Transform3D(Basis(), ROTOR_POS[i]))
+	bm.instance_count = _rotor_angles.size()
+	for i in _rotor_angles.size():
+		bm.set_instance_transform(i, Transform3D(Basis(), _rotor_pos(i)))
 	_blade_mmi = MultiMeshInstance3D.new()
 	_blade_mmi.name = "Blades"
 	_blade_mmi.multimesh = bm
@@ -170,6 +211,14 @@ func _build_gun() -> void:
 	barrel.material_override = _chrome_mat()
 	barrel.name = "Barrel"
 	$Gun.add_child(barrel)
+
+func _build_beacon() -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Beacon"
+	mi.mesh = _beacon_mesh()
+	mi.material_override = _beacon_mat(PATROL_BEACON_COLOR)
+	mi.position = BEACON_POS
+	add_child(mi)
 
 # --- Cached primitives (shared across every Hexdrone instance) ---
 
@@ -212,6 +261,24 @@ static func _barrel_mesh() -> CylinderMesh:
 		_barrel_mesh_cache.height = 0.55
 		_barrel_mesh_cache.radial_segments = 12
 	return _barrel_mesh_cache
+
+static func _beacon_mesh() -> SphereMesh:
+	if _beacon_mesh_cache == null:
+		_beacon_mesh_cache = SphereMesh.new()
+		_beacon_mesh_cache.radius = 0.11
+		_beacon_mesh_cache.height = 0.22
+		_beacon_mesh_cache.radial_segments = 12
+		_beacon_mesh_cache.rings = 6
+	return _beacon_mesh_cache
+
+static func _beacon_mat(c: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = c
+	m.emission_enabled = true
+	m.emission = c
+	m.emission_energy_multiplier = 3.0
+	return m
 
 static func _blade_mesh() -> ArrayMesh:
 	if _blade_mesh_cache:

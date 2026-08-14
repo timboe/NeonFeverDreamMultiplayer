@@ -6,6 +6,10 @@ class_name Aerial
 
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/world/effects/AerialProjectile.tscn")
 
+# Mode branding: lifetime-bar fill colour per mode (cyan = PATROL defender,
+# amber = STRIKE bomber). The model applies the same palette to its belly beacon.
+const MODE_BAR_COLORS: Array[Color] = [Color(0.2, 0.9, 1.0, 0.95), Color(1.0, 0.55, 0.1, 0.95)]
+
 # --- Types ---
 
 enum Mode {PATROL, STRIKE}
@@ -17,6 +21,7 @@ enum Mode {PATROL, STRIKE}
 static var _projectile_mats: Array[StandardMaterial3D] = []
 
 var mode: Mode = Mode.PATROL
+var _visual_mode: int = -1 # last mode branded on the model (all peers)
 var _lifetime_timer: float = 0.0
 var _lifetime_bar: HealthBar3D
 var _projectile_delay := 0.0
@@ -33,6 +38,18 @@ func _get_lifetime() -> float:
 
 func get_mode() -> int:
 	return mode
+
+# Brand the model + lifetime bar for the current mode. Runs on every peer at
+# spawn, and again when a snapshot corrects the client's randf-picked mode
+# (server mode is authoritative — see GameManager._apply_unit).
+func apply_mode_visual() -> void:
+	if mode == _visual_mode:
+		return
+	_visual_mode = mode
+	if _lifetime_bar:
+		_lifetime_bar.set_fill_color(MODE_BAR_COLORS[mode])
+	if $Body.has_method("apply_mode"):
+		$Body.apply_mode(mode)
 
 # The fly-out to the spawn tile must not count toward the self-derive delay —
 # the pool gets first dibs on a freshly spawned aerial.
@@ -79,13 +96,12 @@ func initialise(b: Building) -> void:
 	_lifetime_bar.position.y = 2.6
 	add_child(_lifetime_bar)
 	_lifetime_bar.set_bar_size(1.6, 0.15)
-	_lifetime_bar.set_fill_color(Color(0.3, 0.5, 0.9, 0.95))
 	add_to_group("aerial")
 	add_to_group("aerial_player" + str(player_owner))
 	# Assign strike or patrol
 	if b is Beacon:
 		mode = Mode.STRIKE if randf() > b.patrol_strike_ratio else Mode.PATROL
-	_move_target.y = 10.0 if mode == Mode.PATROL else 16.0
+	_move_target.y = Config.AERIAL_PATROL_HEIGHT if mode == Mode.PATROL else Config.AERIAL_STRIKE_HEIGHT
 	# Update orders based on strike or patrol. Copy the chosen orders dict so
 	# later building order changes don't retroactively affect already-spawned units.
 	orders = (b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]).duplicate()
@@ -95,6 +111,7 @@ func initialise(b: Building) -> void:
 	# is the dark unit variant, so accents stay the bright identity colour).
 	if $Body.has_method("set_player_color"):
 		$Body.set_player_color(Config.player_accent(player_owner))
+	apply_mode_visual()
 	# Override the base class spawn tween — fly from building to initial tile at constant height
 	if move_tween and move_tween.is_valid():
 		move_tween.kill()
