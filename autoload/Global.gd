@@ -41,6 +41,22 @@ func get_server() -> Server:
 		return network_manager.server
 	return null
 
+# Tear down the network session and return to the main menu. Used by the Lobby
+# back button and by the end-of-game flow (statistics window dismissal). The
+# host's server may close before its clients disconnect — stop() closes both
+# peer types, and network_manager is nulled first so any signal re-entry
+# (e.g. server_disconnected fired by our own peer close) no-ops.
+func leave_game() -> void:
+	var nm := network_manager
+	network_manager = null
+	if nm:
+		if nm.server:
+			nm.server.accepting_clients = false
+		nm.stop()
+		nm.queue_free()
+	my_player_number = -1
+	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+
 func send_command_me(command: String, args: Array) -> void:
 	if my_player_number < 0:
 		return

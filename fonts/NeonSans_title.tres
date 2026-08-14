@@ -1,6 +1,6 @@
-[gd_resource type="FontVariation" format=3]
+[gd_resource type="FontVariation" format=3 uid="uid://6j4or2snhtys"]
 
-[ext_resource type="FontFile" path="res://fonts/NeonSans.ttf" id="1_neon"]
+[ext_resource type="FontFile" uid="uid://dn7afp8dvua7g" path="res://fonts/NeonSans.ttf" id="1_neon"]
 
 [resource]
 base_font = ExtResource("1_neon")

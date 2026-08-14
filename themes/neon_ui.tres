@@ -2,7 +2,7 @@
 
 [ext_resource type="FontFile" uid="uid://bkfp2b6dpxk3t" path="res://fonts/Tomorrow-Bold.ttf" id="1_font_general"]
 [ext_resource type="FontFile" uid="uid://c2y0sgix2cw6q" path="res://fonts/ShareTechMono-Regular.ttf" id="2_font_mono"]
-[ext_resource type="FontVariation" path="res://fonts/NeonSans_title.tres" id="3_font_title"]
+[ext_resource type="FontVariation" uid="uid://6j4or2snhtys" path="res://fonts/NeonSans_title.tres" id="3_font_title"]
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 14.0

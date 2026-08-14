@@ -33,6 +33,9 @@ const WINDOW_OPTIONS := {30: "30s", 600: "10m", 1800: "30m"}
 
 var _refresh_timer := 0.0
 var _window_size := 30
+# True when the window was opened by the end-of-game flow: dismissing it
+# returns to the main menu instead of just closing.
+var end_of_game: bool = false
 
 var _btn_normal: StyleBoxFlat
 var _btn_hover: StyleBoxFlat
@@ -90,8 +93,16 @@ func open() -> void:
 	visible = true
 	_refresh_graphs()
 
+# End-of-game entry point: opens the modal and marks it so dismissal returns
+# to the main menu (the game is finished, the lobby is gone).
+func open_end_of_game() -> void:
+	end_of_game = true
+	open()
+
 func close() -> void:
 	visible = false
+	if end_of_game:
+		Global.leave_game()
 
 func _can_open() -> bool:
 	return Global.VM.camera_status == Global.VM.CameraStatus.OVERHEAD

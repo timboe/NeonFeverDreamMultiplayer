@@ -200,10 +200,4 @@ func rpc_start_game() -> void:
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
 func _on_back() -> void:
-	if Global.network_manager:
-		if Global.network_manager.server:
-			Global.network_manager.server.accepting_clients = false
-		Global.network_manager.stop()
-		Global.network_manager.queue_free()
-		Global.network_manager = null
-	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+	Global.leave_game()

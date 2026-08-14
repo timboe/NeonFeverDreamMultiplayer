@@ -421,6 +421,9 @@ func place_building(pnum: int, tile: TileElement, type: Type) -> void:
 func rpc_remove_building(id: int) -> void:
 	var b = building_dictionary.get(id)
 	if b:
+		# Read identity before the node is freed at the end of the function.
+		var was_mcp: bool = b is MCP and b.state == Building.State.CONSTRUCTED
+		var owner: int = b.player_owner
 		if multiplayer.is_server() and is_instance_valid(b.working_unit):
 			b.working_unit.job_finished()
 		building_dictionary.erase(id)
@@ -455,3 +458,8 @@ func rpc_remove_building(id: int) -> void:
 			var hud = get_tree().get_first_node_in_group("hud")
 			if hud and hud.is_removing():
 				hud.clear_build_mode()
+		# A destroyed MCP eliminates its player: the rest of their buildings and
+		# units are removed too, and if only one MCP remains the game is over.
+		# Server-only — the removals below are call_local RPCs synced to peers.
+		if multiplayer.is_server() and was_mcp:
+			Global.GM.on_player_eliminated(owner)

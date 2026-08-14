@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://ch34vxro25x2k"]
+
+[ext_resource type="Script" uid="uid://db76ft3bpa5w5" path="res://scripts/ui/VictoryBanner.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
+
+[node name="VictoryBanner" type="CanvasLayer" unique_id=478020468]
+layer = 60
+visible = false
+script = ExtResource("1_script")
+
+[node name="Root" type="Control" parent="." unique_id=419147243]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+
+[node name="Backdrop" type="ColorRect" parent="Root" unique_id=1126395796]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="Root" unique_id=424258096]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WinnerLabel" type="Label" parent="Root/Center" unique_id=591021956]
+layout_mode = 2
+theme_type_variation = &"Title"
+theme_override_font_sizes/font_size = 120
+text = "PLAYER 1 WINS!"

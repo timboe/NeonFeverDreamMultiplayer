@@ -25,6 +25,10 @@ const RUMBLE_FALLOFF: float = 100.0
 # --- State ---
 
 var camera_status: CameraStatus = CameraStatus.OVERHEAD
+# While true, entering FPS is blocked (set by GameManager.rpc_game_over right
+# after exit_fps_immediate, so players kicked out at game over can't hop back
+# in during the victory banner). Cleared implicitly by World teardown.
+var fps_locked: bool = false
 var avatar: Node3D = null
 var quat_from: Quaternion
 var quat_to: Quaternion
@@ -113,6 +117,8 @@ func exit_fps_immediate() -> void:
 	call_deferred("_show_mouse")
 
 func _to_fps_cam_start() -> void:
+	if fps_locked:
+		return
 	avatar = get_tree().get_first_node_in_group("avatar_player" + str(Global.my_player_number))
 	if not avatar:
 		return

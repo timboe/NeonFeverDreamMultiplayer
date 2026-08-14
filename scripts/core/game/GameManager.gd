@@ -25,6 +25,9 @@ const CHUNK_BUFFER_MAX := 8
 # Foreign terminal UI refresh runs at 4 Hz instead of every frame/snapshot.
 const TERMINAL_REFRESH_INTERVAL := 0.25
 const READY_TIMEOUT: float = 15.0
+# How long the victory banner stays up before the game stops and the
+# statistics window opens (runs on every peer via a local timer).
+const GAME_OVER_BANNER_DURATION: float = 5.0
 # Cached per-player avatar nodes: group lookups with string concat were running
 # every server frame (_interpolate_avatars) and at 20 Hz client-side
 # (_send_avatar_snapshot). Entries expire after AVATAR_CACHE_TTL seconds.
@@ -59,6 +62,14 @@ var _expected_clients: int = 0
 var _ready_peers: Dictionary = {}  # pnum -> true
 var _start_timeout: float = 0.0
 
+# --- End-of-game ---
+
+var _game_over: bool = false
+var _game_over_winner: int = 0
+# 0 = no game over, 1 = victory banner showing, 2 = banner done, stats open.
+var _game_over_phase: int = 0
+var _game_over_timer: float = 0.0
+
 # --- Avatar cache ---
 
 func _get_avatar(pnum: int) -> Unit:
@@ -76,6 +87,7 @@ func _ready() -> void:
 	Global.GM = self
 	Global.game_started = false
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	# Deferred so it runs after every manager has finished _ready (incl. the
 	# tile grid generation and MCP placement).
 	call_deferred("_on_world_ready")
@@ -83,6 +95,17 @@ func _ready() -> void:
 # --- Main loop ---
 
 func _process(delta: float) -> void:
+	# End-of-game countdown (all peers): the banner runs GAME_OVER_BANNER_DURATION,
+	# then the game stops and the statistics window opens.
+	if _game_over_phase == 1:
+		_game_over_timer += delta
+		if _game_over_timer >= GAME_OVER_BANNER_DURATION:
+			_game_over_phase = 2
+			Global.game_started = false
+			var banner := _victory_banner()
+			if banner and banner.has_method("hide_banner"):
+				banner.hide_banner()
+			_show_end_of_game_stats()
 	if not multiplayer.is_server():
 		if Global.game_started:
 			_avatar_snapshot_timer += delta
@@ -94,6 +117,9 @@ func _process(delta: float) -> void:
 		return
 	# Server
 	if not Global.game_started:
+		if _game_over:
+			# Never re-start a finished game.
+			return
 		if _server_ready:
 			_start_timeout += delta
 			if _start_timeout >= READY_TIMEOUT:
@@ -179,6 +205,77 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func rpc_game_start() -> void:
 	Global.game_started = true
 	_hide_loading_overlay()
+
+# --- End of game ---
+
+# Server only: a player's MCP was destroyed. Remove everything they still own,
+# then check whether a single MCP remains — that owner wins the game. The
+# cleanup always runs (the sim keeps going during the banner, so a second MCP
+# can fall); only the win check is skipped once the game is decided.
+func on_player_eliminated(pnum: int) -> void:
+	if not multiplayer.is_server():
+		return
+	Global.BM.clear_empowered_for_player(pnum)
+	var bm := Global.BM
+	var um := Global.UM
+	var bids: Array[int] = []
+	for b in bm.buildings():
+		if b.player_owner == pnum:
+			bids.append(b.id)
+	for bid in bids:
+		bm.rpc("rpc_remove_building", bid)
+	var uids: Array[int] = []
+	for u in um.units():
+		if u.player_owner == pnum:
+			uids.append(u.id)
+	for uid in uids:
+		um.rpc("rpc_remove_unit", uid)
+	var alive: Array[int] = []
+	for b in bm.buildings():
+		if b is MCP and b.state == Building.State.CONSTRUCTED:
+			if b.player_owner not in alive:
+				alive.append(b.player_owner)
+	if _game_over:
+		return
+	if alive.size() == 1:
+		_game_over = true
+		rpc("rpc_game_over", alive[0])
+
+@rpc("authority", "call_local", "reliable")
+func rpc_game_over(winner: int) -> void:
+	if _game_over_phase > 0:
+		return
+	_game_over = true
+	_game_over_winner = winner
+	_game_over_phase = 1
+	_game_over_timer = 0.0
+	# Stable backdrop behind the banner: snap FPS players back to the RTS camera
+	# (no-op when already overhead / spectator) and lock them out of re-entering
+	# FPS while the banner is up.
+	Global.VM.exit_fps_immediate()
+	Global.VM.fps_locked = true
+	var banner := _victory_banner()
+	if banner and banner.has_method("show_winner"):
+		banner.show_winner(winner)
+
+func _show_end_of_game_stats() -> void:
+	var win := get_tree().get_first_node_in_group("statistics_window")
+	if win and win.has_method("open_end_of_game"):
+		win.open_end_of_game()
+
+func _victory_banner() -> Node:
+	return get_tree().get_first_node_in_group("victory_banner")
+
+# The host closed down (returned to the menu or crashed). If the game already
+# ended, stay on the statistics screen and let the player dismiss it to return
+# to the menu themselves; otherwise drop straight back to the menu. Guarded
+# against re-entry while our own leave_game() teardown runs.
+func _on_server_disconnected() -> void:
+	if Global.network_manager == null:
+		return
+	if _game_over_phase > 0:
+		return
+	Global.leave_game()
 
 func _broadcast_progress() -> void:
 	var ready_status := _ready_peers.size()
