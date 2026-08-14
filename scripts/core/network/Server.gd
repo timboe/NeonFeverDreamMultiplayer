@@ -22,9 +22,12 @@ var player_to_peer: Dictionary = {}
 var remote_slot_pnums: Array[int] = []
 # Per-player camera mode (VideoManager.CameraStatus) reported by each client
 # via _cmd_camera_mode. Used by server sims that depend on the *owner's* camera
-# state (e.g. avatar VIRUS-detect radius). Defaults to OVERHEAD until a client
-# reports FPS.
+# state (e.g. avatar VIRUS-detect radius, rally legality). Defaults to OVERHEAD
+# until a client reports FPS.
 var camera_mode: Dictionary = {}
+# Rally call cooldown per player (pnum -> ready tick in ms). Enforced on the
+# server; the client shows its own approximation in the HUD.
+var _rally_cooldowns: Dictionary = {}
 # False until the host has set up and entered the lobby; clients connecting
 # before that are rejected so they get a connection failure instead of joining.
 var accepting_clients: bool = false
@@ -242,9 +245,37 @@ func _cmd_clear_empower(player_number: int) -> void:
 
 func _cmd_camera_mode(player_number: int, mode: int) -> void:
 	camera_mode[player_number] = mode
+	# Leaving FPS disbands the rally squad immediately (DESIGN: the rally lasts
+	# until the avatar dies or the player exits FPS).
+	if mode != VideoManager.CameraStatus.FPS and mode != VideoManager.CameraStatus.TO_FPS:
+		if Global.JM:
+			Global.JM.cancel_player_rally(player_number)
 
 func get_camera_mode(player_number: int) -> int:
 	return camera_mode.get(player_number, VideoManager.CameraStatus.OVERHEAD)
+
+# --- Avatar rally (FPS-only, per DESIGN) ---
+
+func _cmd_rally(player_number: int) -> void:
+	var jm = Global.JM
+	if not jm:
+		return
+	var um = Global.UM
+	if not um:
+		return
+	var avatar = get_tree().get_first_node_in_group("avatar_player" + str(player_number))
+	if not avatar or avatar.health <= 0:
+		return
+	if camera_mode.get(player_number, VideoManager.CameraStatus.OVERHEAD) != VideoManager.CameraStatus.FPS:
+		return # RALLY is an FPS ability — a cheated RTS press is rejected
+	var now := Time.get_ticks_msec()
+	if _rally_cooldowns.get(player_number, 0) > now:
+		return
+	_rally_cooldowns[player_number] = now + int(Config.RALLY_COOLDOWN * 1000.0)
+	jm.start_rally(player_number)
+	var body: Node3D = avatar.fps_body_node
+	var origin: Vector3 = body.global_position if body else avatar.global_position
+	um.rpc("rpc_rally_fx", player_number, origin.x, origin.y, origin.z, Config.RALLY_RADIUS)
 
 # --- Debug helpers (server-authoritative so they work from any peer) ---
 

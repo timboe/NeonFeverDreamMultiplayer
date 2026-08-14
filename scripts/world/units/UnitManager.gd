@@ -58,6 +58,8 @@ func _count_remove(u: Unit) -> void:
 	var by_type = _player_type_counts.get(u.player_owner)
 	if by_type == null:
 		return
+
+
 	var c: int = by_type.get(u.type, 0)
 	if c <= 1:
 		by_type.erase(u.type)
@@ -120,6 +122,9 @@ func _displace_unit(unit: Unit, tile: TileElement) -> void:
 		if unit.move_tween and unit.move_tween.is_valid():
 			unit.move_tween.kill()
 		unit.move_tween = null
+	# This path bypasses unit.abandon_job() — drop the squad flag explicitly.
+	if unit.rallied:
+		unit.set_rallied(false)
 	# Find first adjacent valid tile
 	var best_tile: TileElement = null
 	for n in tile.get_access_tiles():
@@ -150,6 +155,8 @@ func rpc_remove_unit(unit_id: int) -> void:
 			# every peer so the beam (and buffs) drop everywhere at once.
 			if multiplayer.is_server():
 				Global.BM.clear_empowered_for_player(u.player_owner)
+				# DESIGN: the rally lasts until the avatar dies — disband now.
+				Global.JM.cancel_player_rally(u.player_owner)
 		# Unit debris: its own meshes become physics chunks blasted from the unit
 		# (unit scale, no particle burst). This RPC is call_local so every peer
 		# spawns the same effect simultaneously — cosmetic, no sync. Cloaked
@@ -158,3 +165,12 @@ func rpc_remove_unit(unit_id: int) -> void:
 			DestructionFX.spawn_unit(u)
 		_count_remove(u)
 		u.queue_free()
+
+# One-shot rally shockwave at the avatar — cosmetic, spawned on every peer via
+# the call_local RPC (same pattern as the destruction FX).
+@rpc("authority", "call_local")
+func rpc_rally_fx(pnum: int, origin_x: float, origin_y: float, origin_z: float, radius: float) -> void:
+	var ph := get_node_or_null("/root/World/ProjectilesHolder")
+	if not ph:
+		return
+	RallyRing.spawn(ph, Vector3(origin_x, origin_y, origin_z), radius, pnum)

@@ -38,6 +38,9 @@ var _btn_disabled: StyleBoxFlat
 var _energy_fill_sb: StyleBoxFlat
 var _low_energy := false
 var _tooltip_tween: Tween
+# Client-side rally cooldown display (ms epoch when R becomes usable again).
+# The server enforces the real cooldown — this only drives the HUD readout.
+var _rally_ready_ms: int = 0
 
 # --- Nodes ---
 
@@ -48,6 +51,7 @@ var _tooltip_tween: Tween
 @onready var energy_cons_label: Label = %EnergyConsLabel
 @onready var fps_button: Button = %FPSButton
 @onready var crosshair: Control = $HUDRoot/Crosshair
+@onready var rally_ring: RallyCooldownRing = $HUDRoot/Crosshair/RallyCooldown
 @onready var mode_bar: PanelContainer = $HUDRoot/ModeBar
 @onready var tooltip: PanelContainer = $HUDRoot/Tooltip
 @onready var tooltip_viewport: SubViewport = $HUDRoot/Tooltip/SubViewportContainer/Viewport
@@ -134,6 +138,11 @@ func _process(_delta: float) -> void:
 			_energy_fill_sb.bg_color = Config.UI_ACCENT
 			_energy_fill_sb.shadow_color = Color(0, 1, 1, 0.4)
 
+	# Rally cooldown ring (child of the crosshair, so FPS-visible only). Drawn
+	# only while the countdown is live: full arc on press, drains to nothing.
+	var remaining := maxi(0, _rally_ready_ms - Time.get_ticks_msec())
+	rally_ring.set_fraction(float(remaining) / (Config.RALLY_COOLDOWN * 1000.0))
+
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
 		return
@@ -149,6 +158,11 @@ func _input(event: InputEvent) -> void:
 		end_drag()
 	if event.is_action_pressed("ui_capture_toggle"):
 		toggle_camera.emit()
+	if event.is_action_pressed("ui_rally"):
+		# RALLY is an FPS ability (DESIGN); the server re-validates.
+		if Global.VM.camera_status == Global.VM.CameraStatus.FPS:
+			_send_rally()
+		return
 	if event.is_action_pressed("ui_scram"):
 		for zoomba in get_tree().get_nodes_in_group("zoomba"):
 			zoomba.scram()
@@ -163,6 +177,17 @@ func _update_camera_ui() -> void:
 	var is_fps: bool = Global.VM.camera_status == Global.VM.CameraStatus.FPS
 	crosshair.visible = is_fps
 	mode_bar.visible = not is_fps
+
+# --- Rally ---
+
+func _send_rally() -> void:
+	Global.send_command_me("rally", [])
+	# Only (re)start the visual cooldown if the previous one has finished — the
+	# server rejects presses during an active cooldown, so the ring must keep
+	# draining instead of resetting.
+	var now := Time.get_ticks_msec()
+	if now >= _rally_ready_ms:
+		_rally_ready_ms = now + int(Config.RALLY_COOLDOWN * 1000.0)
 
 # --- RTS building tooltip ---
 

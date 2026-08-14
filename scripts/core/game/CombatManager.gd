@@ -103,7 +103,10 @@ static func _type_in_targets(btype: BuildingManager.Type, targets: Array) -> boo
 func _in_range(from: Vector3, to: Vector3) -> bool:
 	return from.distance_squared_to(to) < Config.COMBAT_RANGE * Config.COMBAT_RANGE
 
-func _has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
+# Public line-of-sight query — combat scans and the rally gather scan share it.
+# Same raycast + graze-guard logic; the caller supplies the positions (which
+# may be an avatar's FPSBody position) and any nodes to exclude from the cast.
+func has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
 	var space = get_world_3d().direct_space_state if get_world_3d() else null
 	if not space:
 		return true
@@ -175,7 +178,7 @@ func _can_see(attacker: Unit, target: Node3D) -> bool:
 	if entry != null and entry["from"].distance_squared_to(from) < LOS_CACHE_TOL2 \
 		and entry["to"].distance_squared_to(to) < LOS_CACHE_TOL2:
 		return entry["los"]
-	var los := _has_los(from, to, [attacker, target])
+	var los := has_los(from, to, [attacker, target])
 	by_attacker[key] = {"from": from, "to": to, "los": los}
 	return los
 
@@ -338,7 +341,7 @@ func _scan_avatar(avatar: Unit) -> void:
 		var to := combat_target_position(c)
 		if Vector2(origin.x, origin.z).distance_to(Vector2(to.x, to.z)) > radius:
 			continue
-		if _has_los(origin, to, [avatar, c]):
+		if has_los(origin, to, [avatar, c]):
 			c.uncloak()
 
 func _avatar_camera_mode(pnum: int) -> int:
@@ -410,29 +413,43 @@ func _update_firing(delta: float) -> void:
 			if u.type == UnitManager.Type.TANK:
 				u.combat_fire_event += 1
 
-		if u.combat_burst_timer > 0.0:
-			u.combat_burst_timer -= delta
-			u.combat_damage_tick_timer -= delta
-			while u.combat_damage_tick_timer <= 0.0 and u.combat_burst_timer > 0.0:
-				u.combat_damage_tick_timer += Config.DAMAGE_TICK_DURATION
-				if not u.combat_target or not is_instance_valid(u.combat_target):
-					continue
-				if not u.is_weapon_aligned():
-					continue
-				var mode = _attacker_mode(u)
-				var dmg = Config.get_damage(u.type, u.combat_target, mode)
-				if dmg > 0:
-					# DESIGN: Desperation Meter — offensive units (STRIKE) deal
-					# +3% per stack while behind; PATROL/TANK are defensive and
-					# excluded.
-					if u.type == UnitManager.Type.AERIAL and mode == Config.AERIAL_MODE_STRIKE:
-						dmg *= Global.GM.desperation_damage_mult(u.player_owner)
-					var delay := 0.0
-					if u.type == UnitManager.Type.AERIAL:
-						delay = u.update_projectile_delay()
-					u.combat_target.apply_damage(dmg, delay, u)
-					Global.SM.record_damage_done(u.player_owner, dmg)
-					if u.type == UnitManager.Type.AERIAL:
-						u.combat_fire_event += 1
-			if u.combat_burst_timer <= 0.0:
-				u.combat_burst_timer = 0.0
+			if u.combat_burst_timer > 0.0:
+				u.combat_burst_timer -= delta
+				u.combat_damage_tick_timer -= delta
+				while u.combat_damage_tick_timer <= 0.0 and u.combat_burst_timer > 0.0:
+					u.combat_damage_tick_timer += Config.DAMAGE_TICK_DURATION
+					if not u.combat_target or not is_instance_valid(u.combat_target):
+						continue
+					if not u.is_weapon_aligned():
+						continue
+					var mode = _attacker_mode(u)
+					var dmg = Config.get_damage(u.type, u.combat_target, mode)
+					if dmg > 0:
+						# DESIGN: Desperation Meter — offensive units (STRIKE) deal
+						# +3% per stack while behind; PATROL/TANK are defensive and
+						# excluded.
+						if u.type == UnitManager.Type.AERIAL and mode == Config.AERIAL_MODE_STRIKE:
+							dmg *= Global.GM.desperation_damage_mult(u.player_owner)
+						# DESIGN: rally tether — a rallied unit within 4 tiles of
+						# the avatar deals +10% damage.
+						if u.rallied and _rally_tethered(u):
+							dmg *= Config.RALLY_TETHER_DAMAGE_MULT
+						var delay := 0.0
+						if u.type == UnitManager.Type.AERIAL:
+							delay = u.update_projectile_delay()
+						u.combat_target.apply_damage(dmg, delay, u)
+						Global.SM.record_damage_done(u.player_owner, dmg)
+						if u.type == UnitManager.Type.AERIAL:
+							u.combat_fire_event += 1
+				if u.combat_burst_timer <= 0.0:
+					u.combat_burst_timer = 0.0
+
+# Whether a rallied unit is within the tether radius of its player's avatar
+# (measured from the avatar's FPSBody — the root never moves).
+func _rally_tethered(u: Unit) -> bool:
+	var avatar := Global.GM._get_avatar(u.player_owner) as Unit
+	if not avatar or not is_instance_valid(avatar):
+		return false
+	var body: Node3D = avatar.fps_body_node
+	var pos: Vector3 = body.global_position if body else avatar.global_position
+	return u.global_position.distance_squared_to(pos) <= Config.RALLY_TETHER_RADIUS * Config.RALLY_TETHER_RADIUS

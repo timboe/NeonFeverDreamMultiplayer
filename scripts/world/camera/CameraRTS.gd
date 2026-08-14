@@ -7,6 +7,7 @@ class_name CameraController
 # --- Constants ---
 
 const WHEEL_MOD: float = 20.0
+const KEY_ROT_SPEED: float = 2.0
 const PITCH_LIMIT := Vector2(deg_to_rad(-80), deg_to_rad(5))
 const Y_LIMIT := Vector2(Global.FLOOR_HEIGHT + 10.0, Global.FLOOR_HEIGHT + 60.0)
 const ACCELERATION: float = 5.0
@@ -26,6 +27,11 @@ var _v: float = 0.0
 # --- Input ---
 
 func _input(event: InputEvent) -> void:
+	# RTS camera controls are active only in the overhead view — during camera
+	# transitions the transform is tweened and FPS movement must never pan/zoom
+	# the overhead camera (also keeps E = rotate in RTS vs E = jump in FPS).
+	if Global.VM.camera_status != VideoManager.CameraStatus.OVERHEAD:
+		return
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_mouse_offset = event.relative
 	if event is InputEventMouseButton:
@@ -34,6 +40,12 @@ func _input(event: InputEvent) -> void:
 			_wheel_cache = round(wheel)
 
 func _poll() -> void:
+	if Global.VM.camera_status != VideoManager.CameraStatus.OVERHEAD:
+		return
+	# Q/E keyboard rotation feeds the same smoothed yaw path as right-drag.
+	var key_rot := Input.get_action_strength("ui_rotate_right") - Input.get_action_strength("ui_rotate_left")
+	if key_rot != 0.0:
+		_mouse_offset.x += key_rot * KEY_ROT_SPEED
 	_direction.x = Input.get_action_strength("ui_movement_right") - Input.get_action_strength("ui_movement_left")
 	_direction.z = Input.get_action_strength("ui_movement_backward") - Input.get_action_strength("ui_movement_forward")
 

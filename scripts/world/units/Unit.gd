@@ -41,6 +41,15 @@ var _max_hp: float = -1.0
 var _self_heals := false
 var _heal_rate := 0.0
 
+# --- Rally ---
+
+# True while this unit holds a personal rally COMBAT_PERSUE job targeting its
+# player's avatar. Drives the tether damage bonus (server), the squad marker
+# (all peers, synced via snapshot slot 7) and the rallied VIRUS
+# attack-on-contact scan. Managed via set_rallied().
+var rallied := false
+var _rally_marker: MeshInstance3D
+
 # Server-only: an offense self-derive was requested from inside a move-tween
 # callback (see idle_callback). It is executed in _process — one frame later —
 # so the assigning tween has finished its step processing and assign_job's
@@ -273,12 +282,77 @@ func assign_job(new_job: Dictionary) -> void:
 func _job_target_tile() -> TileElement:
 	if job.is_empty():
 		return null
+	var target = job["target"]
+	# Rallied squad: the avatar's root never moves — aim at the tile its
+	# FPSBody actually stands on (memoized lookup, see JobManager). Guard
+	# against a freed avatar (it may be removed mid-frame by another system).
+	if is_instance_valid(target) and target is Avatar:
+		return Global.JM.rally_avatar_tile(target)
 	return Global.JM.target_tile(job["target"])
 
 func _kill_combat_hold() -> void:
 	if combat_hold_tween and combat_hold_tween.is_valid():
 		combat_hold_tween.kill()
 	combat_hold_tween = null
+
+# --- Rally ---
+
+# Set/clear the rallied flag (server-authoritative; clients mirror via
+# snapshot slot 7) and keep the squad marker in sync on every peer.
+func set_rallied(value: bool) -> void:
+	if rallied == value:
+		return
+	rallied = value
+	_set_rally_marker_visible(value)
+
+# Home-territory units idle outside their AoE: descend the MCP-distance
+# gradient so the unit walks back inside it instead of wandering randomly on
+# enemy territory (per DESIGN — rallied units make their way home). Also used
+# by the scram branch to head toward the MCP. Returns the LOWERED no-building
+# neighbours with the smallest distance from the player's MCP; empty when none
+# are reachable from it.
+func _gradient_home_destinations() -> Array[TileElement]:
+	if player_owner <= 0:
+		return []
+	Global.TM.ensure_mcp_distances()
+	var best_dist := 1 << 30
+	var best_tiles: Array[TileElement] = []
+	for n in location.neighbours:
+		if n.building != null or n.state != TileManager.State.LOWERED:
+			continue
+		var d: int = n.mcp_dist.get(player_owner, -1)
+		if d < 0:
+			continue # unreachable from the MCP — no gradient to walk
+		if d < best_dist:
+			best_dist = d
+			best_tiles = [n]
+		elif d == best_dist:
+			best_tiles.append(n)
+	return best_tiles
+
+func _set_rally_marker_visible(visible_now: bool) -> void:
+	if visible_now and _rally_marker == null:
+		var mi := MeshInstance3D.new()
+		var disc := CylinderMesh.new()
+		disc.top_radius = 3.0
+		disc.bottom_radius = 3.0
+		disc.height = 0.1
+		disc.radial_segments = 24
+		mi.mesh = disc
+		var accent := Config.player_accent(player_owner)
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(accent.r, accent.g, accent.b, 0.6)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.emission_enabled = true
+		mat.emission = accent
+		mi.material_override = mat
+		mi.position.y = 0.7
+		mi.name = "RallyMarker"
+		add_child(mi)
+		_rally_marker = mi
+	if _rally_marker:
+		_rally_marker.visible = visible_now
 
 # Offence hook - overridden by units that generate their own jobs when idle.
 func try_generate_offense_job() -> bool:
@@ -321,24 +395,23 @@ func idle_callback() -> void:
 	# Get possible ways out of this tile. Only wander on to AoE tiles
 	var territory_check := player_owner if type in Config.HOME_TERRITORY_UNITS else 0
 	var possible_destinations := location.get_access_tiles(territory_check)
-	# If not possible to stay on owned tiles, then relax this
+	# If not possible to stay on owned tiles, then relax this. A home-territory
+	# unit idle deep outside its AoE (e.g. dragged there by a rally) walks the
+	# MCP-distance gradient back inside instead of wandering randomly.
 	if possible_destinations.size() == 0:
-		possible_destinations = location.get_access_tiles()
+		if territory_check:
+			possible_destinations = _gradient_home_destinations()
+		if possible_destinations.size() == 0:
+			possible_destinations = location.get_access_tiles()
 
 	# Special considerations if scrambling, always head towards home
 	if scram_count > 0:
 		scram_count -= 1
-		if _mcp and is_instance_valid(_mcp) and _pathing_manager:
-			var lowest_dist := 9999
-			var best_target = null
-			for d in possible_destinations:
-				var dist = _pathing_manager.distance(d, _mcp.location)
-				if dist < lowest_dist:
-					lowest_dist = dist
-					best_target = d
-			if best_target:
-				possible_destinations.clear()
-				possible_destinations.append(best_target)
+		# Walk the MCP-distance gradient toward the MCP — cheaper and more
+		# reliable than A* distance to the (pathing-disconnected) MCP tile.
+		var gradient := _gradient_home_destinations()
+		if gradient.size() > 0:
+			possible_destinations = gradient
 
 	# Avoid backtracking, if possible
 	var backtrack = possible_destinations.find(previous_location)
@@ -464,7 +537,16 @@ func _combat_pathing_callback() -> void:
 func _combat_next_tile() -> TileElement:
 	if not multiplayer.is_server():
 		return null
-	var target_tile: TileElement = Global.JM.target_tile(job["target"])
+	var target = job["target"]
+	# Rallied squad: the target is the avatar, whose root never moves — follow
+	# the tile its FPSBody currently stands on instead of its spawn tile.
+	# is_instance_valid guards a freed avatar (removed mid-frame by another
+	# system); the job will be invalidated on the next validity check anyway.
+	if is_instance_valid(target) and target is Avatar:
+		return _follow_target_tile(Global.JM.rally_avatar_tile(target))
+	return _follow_target_tile(Global.JM.target_tile(job["target"]))
+
+func _follow_target_tile(target_tile: TileElement) -> TileElement:
 	if target_tile == null or not is_instance_valid(target_tile):
 		return null
 	var access: Array = target_tile.get_access_tiles()
@@ -548,6 +630,8 @@ func job_finished() -> void:
 func remove_job() -> void:
 	if not multiplayer.is_server():
 		return
+	if rallied:
+		set_rallied(false)
 	if state == State.WORKING:
 		_cleanup_working_state()
 	state = State.IDLE
@@ -579,6 +663,8 @@ func abandon_job() -> void:
 		return
 	assert(state == State.PATHING or state == State.WORKING)
 	assert(not job.is_empty())
+	if rallied:
+		set_rallied(false)
 	if state == State.WORKING:
 		_cleanup_working_state()
 	state = State.IDLE

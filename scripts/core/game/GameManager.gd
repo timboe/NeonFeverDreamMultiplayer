@@ -432,6 +432,7 @@ func _pack_unit(data: PackedFloat32Array, u: Unit) -> void:
 			slots[3] = u.global_rotation.y
 			slots[4] = u.state
 			slots[5] = u.health
+			slots[7] = 1.0 if u.rallied else 0.0
 		UnitManager.Type.AERIAL:
 			slots[0] = u.global_position.x
 			slots[1] = u.global_position.y
@@ -440,6 +441,7 @@ func _pack_unit(data: PackedFloat32Array, u: Unit) -> void:
 			slots[4] = u.state
 			slots[5] = u.health
 			slots[6] = float(u.mode)
+			slots[7] = 1.0 if u.rallied else 0.0
 		UnitManager.Type.VIRUS:
 			slots[0] = u.global_position.x
 			slots[1] = u.global_position.y
@@ -448,6 +450,7 @@ func _pack_unit(data: PackedFloat32Array, u: Unit) -> void:
 			slots[4] = u.state
 			slots[5] = u.health
 			slots[6] = 1.0 if u.cloaked else 0.0
+			slots[7] = 1.0 if u.rallied else 0.0
 	slots[8] = _encode_target(u.combat_target)
 	slots[9] = float(u.combat_fire_event)
 	data.append_array(_pack_scratch)
@@ -753,6 +756,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.rotation.y = slots[3]
 			u.state = slots[4]
 			u.health = slots[5]
+			u.set_rallied(slots[7] > 0.5)
 		UnitManager.Type.AERIAL:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
 			u.rotation.y = slots[3]
@@ -760,12 +764,14 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.health = slots[5]
 			u.mode = int(slots[6])
 			u.apply_mode_visual()
+			u.set_rallied(slots[7] > 0.5)
 		UnitManager.Type.VIRUS:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
 			u.rotation.y = slots[3]
 			u.state = slots[4]
 			u.health = slots[5]
 			u.cloaked = slots[6] > 0.5
+			u.set_rallied(slots[7] > 0.5)
 	var tid = roundi(slots[8])
 	if tid > 0:
 		u.combat_target = Global.UM.unit_dictionary.get(tid)

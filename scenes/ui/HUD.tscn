@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b3dbnii03wxt7" path="res://scripts/ui/HUD.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://b0rneonui1234" path="res://themes/neon_ui.tres" id="2_theme"]
 [ext_resource type="Script" uid="uid://piyhxwrjywaa" path="res://scripts/ui/NotificationManager.gd" id="3_script"]
+[ext_resource type="Script" path="res://scripts/ui/RallyCooldownRing.gd" id="4_script"]
 
 [node name="HUD" type="CanvasLayer" unique_id=708157452]
 layer = 10
@@ -268,6 +269,22 @@ offset_top = 17.0
 offset_right = 23.0
 offset_bottom = 23.0
 mouse_filter = 2
+
+[node name="RallyCooldown" type="Control" parent="HUDRoot/Crosshair" unique_id=1884517233]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -42.0
+offset_top = -42.0
+offset_right = 42.0
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_script")
 
 [node name="Tooltip" type="PanelContainer" parent="HUDRoot" unique_id=734103159]
 visible = false

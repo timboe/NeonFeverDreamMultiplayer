@@ -136,7 +136,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | When under active control, may tag enemy strike units to direct attack. Vunerable to attack from enemy strike units. |
 | Interaction: Virus | When under active control, may tag enemy virus units to direct attack. Un-cloaks enemy virus units. |
 | Interaction: Buildings | When under active control, may tag enemy buildings to direct attack. |
-| Special | When under active control, has time-limited RALLY ability. Nearby friendly units join the Avatar's rally party and will follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Marking a priority target (crosshair click) causes the rallied squad to deal +25% damage against that target (ping amplifier). Recovers 10 HP/s when out of combat for 10s (similar to zoombas). |
+| Special | When under active control, has cooldown-limited RALLY ability (R, 15s). Friendly TANK/AERIAL/VIRUS within ~8 tiles (with LoS) join the squad and follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). |
 
 ### Zoomba (Worker — non-combat)
 
@@ -172,7 +172,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | Primary role is to intercepts enemy aerial strike units invading home / contested tiles. STRONG engagement against aerial enemy units (5x bonus). |
 | Interaction: Virus | Cannot detect cloaked VIRUS. When a VIRUS uncloaks to attack the TANK (~10s to destroy), the TANK can queue a kill-VIRUS job for nearby PATROL units. The TANK has no direct defense and relies on PATROL support during the 10s attack window. |
 | Interaction: Buildings | None |
-| Special | Each TANK requires 1 Zoomba pilot. Total TANK cap = current Zoombas − 1. Tank destroyed → explodes, leaving the pilot Zoomba at the center of the wreckage (returns to workforce immediately). Repairs 25 HP/s when out of combat for 10s (not taking damage, not firing). Follows the avatar if RALLYED, but will not leave home / contested territory. |
+| Special | Each TANK requires 1 Zoomba pilot. Total TANK cap = current Zoombas − 1. Tank destroyed → explodes, leaving the pilot Zoomba at the center of the wreckage (returns to workforce immediately). Repairs 25 HP/s when out of combat for 10s (not taking damage, not firing). Follows the avatar if RALLYED (HOLD-stance tanks switch to WIDE patrol when rallied). When idle outside the player's AoE, home-territory units (TANKs, PATROL aerials, Zoombas) walk the MCP-distance gradient back inside it instead of wandering. |
 
 ### AERIAL — PATROL Mode (Air Defender)
 
@@ -190,7 +190,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | Intercepts enemy aerial strike units invading the AoE. WEAK against striking enemy aerial units due to height differential. |
 | Interaction: Virus | Detects cloaked VIRUS at range (2-3 tile omnidirectional AoE). Automatically queues a kill-VIRUS job for itself upon detection. Strong against VIRUS. If multiple VIRUS are uncloaked simultaneously, nearby PATROL units share the jobs. Will NOT accept kill-VIRUS jobs over enemy territory. |
 | Interaction: Building | May encounter enemy buildings only on contested tiles. Opportunistic engagement of enemy buildings on contested tiles, but does not seek these out. |
-| Special | Built at a Beacon with the assigned ratio. If following the avatar in a RALLY squad, auto-switches to STRIKE when entering contested/enemy territory, and auto-switches back to PATROL if re-entering home territory. Also switches and back to PATROL when the RALLY disbands. Cannot recover lost health. |
+| Special | Built at a Beacon with the assigned ratio. Cannot recover lost health. |
 
 ### AERIAL — STRIKE Mode (Air Offense)
 
@@ -208,7 +208,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | May encounter enemy strike units on any tile while en-route to attack the enemy's base. Engages in BALANCED combat. |
 | Interaction: Virus | Cannot attack VIRUS directly. However, STRIKE can detect cloaked VIRUS within a narrow 1-tile radius (direct overfly). Upon detection, STRIKE queues a kill-VIRUS job for nearby PATROL units. STRIKE will not accept the job itself. Over enemy territory, PATROL will not respond to these jobs — STRIKE's de-cloaking provides intel only for the attacking player. |
 | Interaction: Building | Primary role is to target and attack enemy buildings until destroyed. |
-| Special | Same as Aerial Patrol. Though switches back to STRIKE when a RALLY disbands. |
+| Special | Same as Aerial Patrol. |
 
 ### VIRUS (Ground Infiltrator)
 
@@ -293,8 +293,7 @@ The secondary capability is to fine-tune building settings via diegetic UI panel
 | --- | --- | --- |
 | Spot VIRUS | LoS based | Sees cloaked VIRUS at ground level (3-4 tile range in FPS mode, 1 tile in RTS mode). PATROL-spotted VIRUS is relayed to minimap in RTS mode. |
 | Ping VIRUS | Crosshair click on a spotted VIRUS | Queues a kill-VIRUS job for nearest PATROL. Also works on VIRUS spotted by nearby PATROL/STRIKE (relayed to minimap). |
-| Prioritize target | Crosshair click on enemy building or unit | Marks it as priority target for the RALLY squad (+25% damage from rallied units). |
-| RALLY | Press R (~15s cooldown) | Gathers nearby friendly units (~8 tile radius) into a squad that follows the avatar. AERIAL auto-switch mode by territory. Multiple presses grow the squad. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Lasts until avatar death or exit from FPS. |
+| RALLY | Press R (15s cooldown) | Gathers friendly TANK/AERIAL/VIRUS within ~8 tiles (with LoS) into a squad that follows the avatar; multiple presses grow the squad. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). A rallied VIRUS may drop out to limpet an enemy it comes across. TANK/AERIAL-PATROL created in HOLD-stance patrol switch to WIDE when rallied. Lasts until avatar death or exit from FPS; home-territory units left idle outside the AoE then walk the MCP-distance gradient back inside it. |
 | Empower building | Empower button on the building's terminal (FPS only, within terminal interaction range ~2 tiles) | That building's avatar buff becomes active. One per player — empowering another swaps. Cleared when re-entering FPS mode. Army buffs (Garage/Beacon/Nest) are type-wide: while any one of the type is empowered, all of the player's units of that type benefit. Generator (radius +1), Vat (capacity +50%, spend discount) and MCP (zoomba production/speed, damage reduction) buffs apply to the empowered building itself. |
 | Cure infection | Touch an infected friendly building | Immediately removes all VIRUS infections from that building (curing one Vat cures its entire connected chain). The building the Avatar is currently empowering is immune to infection. |
 | Interact with building | Interact with its diegetic control panel (within ~2 tiles of the building) | Alter the building's settings and behavior. See Diegetic Building UI section below. |

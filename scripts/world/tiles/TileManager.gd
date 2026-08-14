@@ -26,6 +26,10 @@ var rand := RandomNumberGenerator.new()
 var player_aoe_totals: Dictionary = {} # player_number -> float (split AoE score)
 var player_aoe_rings: Dictionary = {} # player_number -> Array[Array[TileElement]] (BFS rings from MCP within AoE)
 
+# MCP-distance gradient field is stale after any pathing-graph mutation
+# (PathingManager._bump_generation); recomputed lazily, server only.
+var _mcp_dist_dirty := true
+
 # --- Accessors ---
 
 func _tiles() -> Array:
@@ -324,6 +328,44 @@ func recompute_aoe() -> void:
 				t.selected_by.erase(s)
 	for t in _tiles():
 		t.update_selection_and_aoe_visual()
+
+# --- MCP distance gradient (server only) ---
+
+# The per-tile BFS distance from each player's MCP over the LOWERED no-building
+# neighbour graph (mirrors the pathing graph). Distinct from player_aoe_rings
+# (the pulse heartbeat, which is deliberately AoE-restricted). Home-territory
+# units idle outside their AoE walk this gradient back inside it.
+func invalidate_mcp_dist() -> void:
+	_mcp_dist_dirty = true
+
+func ensure_mcp_distances() -> void:
+	if not multiplayer.is_server():
+		return
+	if not _mcp_dist_dirty:
+		return
+	_mcp_dist_dirty = false
+	for t in _tiles():
+		t.mcp_dist.clear()
+	var mcp_count: int = Global.level.MCP_ARRAY.size()
+	for pnum in range(1, mcp_count + 1):
+		var mcp_tile_id: int = Global.level.MCP_ARRAY[pnum - 1]
+		if not tile_dictionary.has(mcp_tile_id):
+			continue
+		var start: TileElement = tile_dictionary[mcp_tile_id]
+		var visited := {start: true}
+		start.mcp_dist[pnum] = 0
+		var queue: Array = [start]
+		while queue.size() > 0:
+			var current: TileElement = queue.pop_front()
+			var dist: int = current.mcp_dist[pnum]
+			for n in current.neighbours:
+				if visited.has(n):
+					continue
+				if n.state != TileManager.State.LOWERED or n.building != null:
+					continue
+				visited[n] = true
+				n.mcp_dist[pnum] = dist + 1
+				queue.append(n)
 
 # --- Tile toggle (server only) ---
 

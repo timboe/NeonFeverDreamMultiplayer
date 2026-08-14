@@ -22,6 +22,12 @@ var job_id := -1
 # assign_jobs() pass (see _get_pathlength).
 var _path_cache: Dictionary = {}
 
+# Rallied-squad follow: the tile the avatar's FPSBody currently stands on,
+# memoized per avatar instance (keyed by instance id) so a squad of units
+# shares one nearest-tile lookup per interval.
+var _rally_avatar_tile_cache: Dictionary = {} # instance_id -> {tile: TileElement, time: float}
+const RALLY_AVATAR_TILE_TTL := 0.5
+
 var debug_enabled := false
 var debug_mesh: ImmediateMesh
 var debug_mesh_instance: MeshInstance3D
@@ -320,6 +326,100 @@ func check_job_still_valid(job: Dictionary) -> bool:
 			else:
 				return false
 	return true
+
+# --- Avatar rally ---
+
+# DESIGN: the avatar gathers nearby friendly TANK/AERIAL/VIRUS into a squad
+# that follows it while in FPS. Each member gets its own personal COMBAT_PERSUE
+# job targeting the avatar (personal jobs don't dedupe, so any squad size is
+# fine). The squad disbands when the avatar dies or the player leaves FPS
+# (Server._cmd_camera_mode / UnitManager avatar removal -> cancel_player_rally).
+func start_rally(pnum: int) -> int:
+	if not multiplayer.is_server():
+		return 0
+	var avatar := get_tree().get_first_node_in_group("avatar_player" + str(pnum)) as Unit
+	if not avatar or not is_instance_valid(avatar) or avatar.health <= 0:
+		return 0
+	var body: Node3D = avatar.fps_body_node
+	var origin: Vector3 = body.global_position if body else avatar.global_position
+	var joined := 0
+	for u in Global.UM.units():
+		if u.player_owner != pnum:
+			continue
+		if u.type != UnitManager.Type.TANK \
+			and u.type != UnitManager.Type.AERIAL \
+			and u.type != UnitManager.Type.VIRUS:
+			continue
+		if u == avatar or u.health <= 0 or u.scram_count > 0:
+			continue
+		if u.rallied:
+			continue # Already in the squad — pressing again only grows it.
+		if origin.distance_squared_to(u.global_position) > Config.RALLY_RADIUS * Config.RALLY_RADIUS:
+			continue
+		if not Global.CM.has_los(origin, u.global_position, [avatar, u]):
+			continue
+		# HOLD-stance home units (TANK / AERIAL-PATROL) switch to WIDE at rally
+		# time: once dragged away, walking back to the spawning building's
+		# patrol tiles is too much of an edge case (per DESIGN).
+		if u.orders.get("stance", JobManager.Stance.WIDE) == JobManager.Stance.HOLD \
+			and (u.type == UnitManager.Type.TANK \
+				or (u.type == UnitManager.Type.AERIAL and u.get_mode() == Config.AERIAL_MODE_PATROL)):
+			u.orders["stance"] = JobManager.Stance.WIDE
+		if not u.job.is_empty():
+			u.abandon_job()
+		add_job(pnum, Type.COMBAT_PERSUE, avatar, u, true) # personal, auto-assigned
+		if not u.job.is_empty() and u.job["type"] == Type.COMBAT_PERSUE and u.job["target"] == avatar:
+			u.set_rallied(true)
+			joined += 1
+	return joined
+
+func cancel_player_rally(pnum: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var ids: Array[int] = []
+	for job in jobs_dict.values():
+		if job["pnum"] != pnum or not job["personal"]:
+			continue
+		if job["type"] != Type.COMBAT_PERSUE:
+			continue
+		var t = job["target"]
+		# is_instance_valid: the avatar may already be freed (death removal
+		# runs before this in rpc_remove_unit; camera-mode cancel can arrive
+		# after). Such jobs are dead anyway — the validity check drops them.
+		if is_instance_valid(t) and t is Avatar and t.player_owner == pnum:
+			ids.append(job["id"])
+	for id_to_remove in ids:
+		remove_job(id_to_remove) # each removal clears the unit's rallied flag
+	var avatar := get_tree().get_first_node_in_group("avatar_player" + str(pnum))
+	if avatar:
+		_rally_avatar_tile_cache.erase(avatar.get_instance_id())
+
+# The LOWERED tile nearest the avatar's FPSBody — the squad's follow target
+# (the avatar's root node never moves). Nearest-tile scan is memoized per
+# avatar instance so a whole squad shares one lookup per 0.5s.
+func rally_avatar_tile(avatar: Unit) -> TileElement:
+	if not multiplayer.is_server():
+		return null
+	if not avatar or not is_instance_valid(avatar):
+		return null
+	var now := Time.get_ticks_msec() / 1000.0
+	var key := avatar.get_instance_id()
+	var entry = _rally_avatar_tile_cache.get(key)
+	if entry != null and now - entry["time"] < RALLY_AVATAR_TILE_TTL:
+		return entry["tile"]
+	var body: Node3D = avatar.fps_body_node
+	var pos: Vector3 = body.global_position if body else avatar.global_position
+	var best: TileElement = null
+	var best_d2 := INF
+	for t in Global.TM.tile_dictionary.values():
+		if t.state != TileManager.State.LOWERED or t.building != null:
+			continue
+		var d2: float = t.pathing_centre.distance_squared_to(pos)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = t
+	_rally_avatar_tile_cache[key] = {"tile": best, "time": now}
+	return best
 
 # --- Job notifications ---
 

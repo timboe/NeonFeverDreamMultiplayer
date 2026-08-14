@@ -26,6 +26,10 @@ var _decay_timer: float = 0.0
 # Idle time spent jobless (server) — prevents offense-job thrash.
 var _idle_time := 0.0
 
+# Rallied attack-on-contact throttle (server): while rallied, scan for a limpet
+# target within RALLY_LIMPET_RANGE every 1s.
+var _rally_attack_timer := 1.0
+
 # --- Limpet state ---
 
 # Limpet state (server only). One virus attaches to one target; multiple viruses
@@ -60,6 +64,13 @@ func _process(delta: float) -> void:
 			if _recloak_timer <= 0.0:
 				_recloak()
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
+		# Rallied squad member: may drop the rally job to limpet an enemy it
+		# comes across while following the avatar (per DESIGN, limpet-on-contact).
+		if rallied:
+			_rally_attack_timer -= delta
+			if _rally_attack_timer <= 0.0:
+				_rally_attack_timer = 1.0
+				_try_rally_attack()
 	_update_cloak_visual()
 
 func initialise(b: Building) -> void:
@@ -151,6 +162,59 @@ func _pick_enemy_tank(enemies: Array) -> Unit:
 	if candidates.is_empty():
 		return null
 	return candidates[Global.rand.randi() % candidates.size()]
+
+# --- Rallied attack-on-contact (server) ---
+
+# A rallied virus doesn't fire — its combat is the limpet. While following the
+# squad it periodically looks for an enemy tank/building it has come across
+# (within RALLY_LIMPET_RANGE) and drops the rally job for a personal ATTACK
+# job. It rejoins the squad on the next rally press.
+func _try_rally_attack() -> bool:
+	if not multiplayer.is_server():
+		return false
+	if not rallied or job.is_empty():
+		return false
+	var enemies: Array = []
+	for p in orders.get("enemy", []):
+		if p != player_owner:
+			enemies.append(int(p))
+	if enemies.is_empty():
+		return false
+	var target: Object = null
+	var tank_ratio: float = orders.get("tank_ratio", 0.5)
+	if randf() < tank_ratio:
+		target = _pick_enemy_tank_in_range(enemies)
+	if target == null:
+		target = _pick_enemy_building_in_range(enemies)
+	if target == null:
+		return false
+	_idle_time = 0.0
+	abandon_job() # drops the rally job (clears the rallied flag)
+	Global.JM.add_job(player_owner, JobManager.Type.ATTACK, target, self, true)
+	return true
+
+func _pick_enemy_tank_in_range(enemies: Array) -> Unit:
+	var best: Unit = null
+	for u in Global.UM.units():
+		if u.type != UnitManager.Type.TANK:
+			continue
+		if u.player_owner not in enemies:
+			continue
+		if u.health <= 0:
+			continue
+		if global_position.distance_squared_to(u.global_position) > Config.RALLY_LIMPET_RANGE * Config.RALLY_LIMPET_RANGE:
+			continue
+		best = u
+		break
+	return best
+
+func _pick_enemy_building_in_range(enemies: Array) -> Building:
+	var b := Global.CM.choose_building_target(enemies, orders.get("target", []), true)
+	if b == null:
+		return null
+	if global_position.distance_squared_to(b.location.pathing_centre) > Config.RALLY_LIMPET_RANGE * Config.RALLY_LIMPET_RANGE:
+		return null
+	return b
 
 # --- Limpet (WORKING) state ---
 

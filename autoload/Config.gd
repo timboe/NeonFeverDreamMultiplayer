@@ -159,6 +159,14 @@ const VIRUS_NEST_VIRUS_DPS: float = 10.0      # owner VIRUS DoT while on owner t
 const VIRUS_MCP_AERIAL_DAMAGE_MULT: float = 2.0   # infected MCP takes x2 from AERIAL attackers
 const VIRUS_CURE_RADIUS: float = Cairo.UNIT * 2.0 # avatar touch range for curing (FPS mode)
 
+# --- Avatar rally (per DESIGN) ---
+
+const RALLY_RADIUS: float = Cairo.UNIT * 8.0      # gather radius around the avatar (FPS)
+const RALLY_COOLDOWN: float = 15.0                # seconds between rally calls
+const RALLY_LIMPET_RANGE: float = Cairo.UNIT * 3.0 # rallied VIRUS attack-on-contact radius
+const RALLY_TETHER_RADIUS: float = Cairo.UNIT * 4.0 # tether bonus range from the avatar
+const RALLY_TETHER_DAMAGE_MULT: float = 1.1       # +10% damage while tethered
+
 static var TANK_AERIAL_MODE_MULTIPLIERS: Dictionary = {
 	AERIAL_MODE_PATROL: 6.0,
 	AERIAL_MODE_STRIKE: 5.0,

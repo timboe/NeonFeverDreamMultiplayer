@@ -123,6 +123,9 @@ func _to_fps_cam_start() -> void:
 	if not avatar:
 		return
 	camera_status = CameraStatus.TO_FPS
+	# Report immediately at transition start, not just at the end — server sims
+	# (VIRUS-detect radius, rally legality) should see the intent right away.
+	Global.send_command_me("camera_mode", [int(camera_status)])
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
@@ -151,6 +154,9 @@ func _to_fps_cam_end() -> void:
 
 func _to_overhead_cam_start() -> void:
 	camera_status = CameraStatus.TO_OVERHEAD
+	# Report immediately at transition start — the server disbands the rally
+	# squad the moment the player chooses to leave FPS.
+	Global.send_command_me("camera_mode", [int(camera_status)])
 	var avatar_body = avatar.get_node_or_null("FPSBody")
 	var fps_camera = avatar.find_child("Rotation_Helper").find_child("FPSCamera")
 	# Start from the FPS camera's actual transform (inside the avatar), then

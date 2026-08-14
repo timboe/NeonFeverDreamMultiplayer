@@ -12,6 +12,11 @@ var state: TileManager.State = TileManager.State.RAISED
 var selected_by: Array[int] # players who have a raise/lower command queued on the tile
 var aoe: Array[int] # players for whom this tile falls under their AoE
 var gen_count: int = 0 # number of GEN buildings whose AoE covers this tile
+# BFS distance in tiles from each player's MCP over the LOWERED tile graph
+# (pnum -> int). Filled lazily by TileManager.ensure_mcp_distances (server
+# only); used by home-territory units to gradient-walk back inside their AoE.
+# Tiles unreachable from a player's MCP have no entry for that player.
+var mcp_dist: Dictionary = {}
 
 # --- Neighbours ---
 

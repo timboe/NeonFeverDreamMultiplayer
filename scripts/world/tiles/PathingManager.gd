@@ -65,6 +65,10 @@ func _setup_debug() -> void:
 func _bump_generation() -> void:
 	_graph_generation += 1
 	_path_cache.clear()
+	# The MCP-distance gradient field mirrors this graph (LOWERED no-building
+	# neighbours) — any graph mutation makes it stale.
+	if Global.TM:
+		Global.TM.invalidate_mcp_dist()
 
 func add_tile(tile: TileElement) -> void:
 	astar.add_point(tile.get_id(), tile.pathing_centre)
