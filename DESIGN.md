@@ -18,11 +18,11 @@ Containing obsidian tiles around the perimeter and forming forced blocked and op
 
 When not in FPS-mode commanding a rally, unit behavior is automated following rules an not under the direct control of the players.
 
-### Alliance System (Team Play)
+### Alliance System (Team Play) — FUTURE STRETCH GOAL
 
-Players can toggle hostility per-player (allied, neutral, hostile). Allied players:
+Not implemented in the current build. Players can toggle hostility per-player (allied, neutral, hostile). Allied players:
 
-- **Share vision** — all allied units and buildings are visible on each other's minimap.
+- **Share vision** — all allied units and buildings are visible to each other.
 - **Share influence AoE** — allied buildings contribute to a shared team territory for placement and contested-tile purposes. A tile covered by any ally's building counts as team territory.
 - **Shared victory** — all allied MCPs must survive. If one is destroyed, all allied buildings and units are destroyed simultaneously. Victory is awarded to the last surviving player or team.
 - **Allied interaction** — Zoombas can repair allied buildings. Allied units do not target each other. Allied Garages/Beacons/Nests do not compete for the same Zoomba pool.
@@ -38,7 +38,7 @@ Obsidian tiles are excluded from the AoE.
 
 Contested tiles (covered by two+ players' AoEs) can be built on by all contested players, and count toward the zoomba cap split N ways (where N = number of contesting players). This rewards border aggression without double-counting.
 
-Most tiles start RAISED up, tiles within AoE can be LOWERED by Zoombas (pulled down to ground level) at which point they become navigable & buildable. LOWERED tiles can similarly be RAISED back up by Zoombas, blocking the path. Raising and lowering is rate-limited to a concurrent job cap of 3 per player. Requests to raise or lower tiles or place buildings within the AoE are issued by the players in RTS-mode.
+Most tiles start RAISED up, tiles within AoE can be LOWERED by Zoombas (pulled down to ground level) at which point they become navigable & buildable. LOWERED tiles can similarly be RAISED back up by Zoombas, blocking the path. Requests to raise or lower tiles or place buildings within the AoE are issued by the players in RTS-mode.
 
 All buildings occupy a single tile. Tiles with buildings on them cannot be raised or lowered.
 
@@ -47,7 +47,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Property | Value |
 | --- | --- |
 | Influence radius | 6 tiles (113 tiles) |
-| Function | Spawns Zoombas up to AoE controlled cap (costs energy). Internal reactor generates 50% of a Generator's full-AoE output (does not draw from tiles). 1 Vat's worth of energy storage (1000e), pooled with Vats for spending purposes — acts as a free, uninfectable Vat. "Uninfectable" here means immune to the Vat infection **cascade** only (never part of a connected-Vat chain); VIRUS may still target the MCP directly (see Infected MCP). Does not participate in adjacency bonuses or generator-split mechanics. |
+| Function | Spawns Zoombas up to the AoE-controlled cap (costs energy; converted TANKs count toward the cap — `zoomba + tank < cap`, so converting never grows the army). Internal reactor generates 50% of a Generator's full-AoE output (does not draw from tiles). 1 Vat's worth of energy storage (1000e), pooled with Vats for spending purposes — acts as a free, uninfectable Vat. "Uninfectable" here means immune to the Vat infection **cascade** only (never part of a connected-Vat chain); VIRUS may still target the MCP directly (see Infected MCP). Does not participate in adjacency bonuses or generator-split mechanics. |
 | HP | 15000 |
 | Cost | N/A (starting building, cannot be replaced) |
 | Avatar buff | Zoomba spawn rate +25% (1 per 1.6s), zoomba move/work speed +20%, MCP damage reduction +25% while the Avatar is empowering the MCP. |
@@ -130,13 +130,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Lifetime | Permanent, respawns when killed |
 | Cost | Free (respawn) |
 | Function | Player's avatar embodies their direct influence in the game world. Use the empower button on a friendly building's diegetic terminal (FPS mode, within terminal interaction range) to empower it; that building's avatar buff becomes active. One empowered building per player — empowering another clears the previous. The buff persists while in RTS mode; re-entering FPS mode clears it. |
-| Interaction: Zoomba | When under active control, may tag enemy zoomba to direct attack. |
-| Interaction: Tank | When under active control, may tag enemy tanks to direct attack. |
-| Interaction: Aerial Patrol | When under active control, may tag enemy patrol units to direct attack. Vunerable to attack from enemy patrol units. |
-| Interaction: Aerial Strike | When under active control, may tag enemy strike units to direct attack. Vunerable to attack from enemy strike units. |
-| Interaction: Virus | When under active control, may tag enemy virus units to direct attack. Un-cloaks enemy virus units. |
-| Interaction: Buildings | When under active control, may tag enemy buildings to direct attack. |
-| Special | When under active control, has cooldown-limited RALLY ability (R, 15s). Friendly TANK/AERIAL/VIRUS within ~8 tiles (with LoS) join the squad and follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). |
+| Special | When under active control, has cooldown-limited RALLY ability (R, 15s). Friendly TANK/AERIAL/VIRUS within ~8 tiles (with LoS) join the squad and follow the avatar until it is destroyed or the player leaves FPS-mode. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). Recovers 10 HP/s when out of combat for 10s. |
 
 ### Zoomba (Worker — non-combat)
 
@@ -154,7 +148,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | May encounter invading enemy strike units on home or contested tiles. Scrams if under fire. |
 | Interaction: Virus | May encounter invading enemy  virus on home or contested tiles. Does not interact with virus. Does not de-cloak virus. |
 | Interaction: Buildings | Does not interact with enemy buildings on contested tiles. |
-| Special | Only created at MCP. Heals 10 HP/s when out of combat for 10s (not being attacked, not in scram). **Scram:** when attacked by enemy STRIKE or PATROL on contested tiles, paths to MCP at high speed for 3s. After scram ends, resumes normal behavior. |
+| Special | Only created at MCP. Heals 10 HP/s when out of combat for 10s (not being attacked, not in scram). **Scram:** taking any damage sends the Zoomba into scram — it flees to the MCP at ~1.33× speed for 10 moves, can't take jobs while scrambled, and resumes normal behavior when it ends. |
 
 ### TANK (Ground Defender)
 
@@ -281,7 +275,7 @@ TANK ──(AA 5-6x)──→ STRIKE ──(height 2x)──→ PATROL ──(de
 
 ## Avatar (FPS Mode)
 
-The player's physical first-person representation. Entered via Tab/Enter. Can be killed (respawns at MCP after ~10s).
+The player's physical first-person representation. Entered via Tab. Can be killed (respawns at MCP after ~10s).
 
 ### Capabilities in FPS
 
@@ -291,8 +285,7 @@ The secondary capability is to fine-tune building settings via diegetic UI panel
 
 | Action | How | Effect |
 | --- | --- | --- |
-| Spot VIRUS | LoS based | Sees cloaked VIRUS at ground level (3-4 tile range in FPS mode, 1 tile in RTS mode). PATROL-spotted VIRUS is relayed to minimap in RTS mode. |
-| Ping VIRUS | Crosshair click on a spotted VIRUS | Queues a kill-VIRUS job for nearest PATROL. Also works on VIRUS spotted by nearby PATROL/STRIKE (relayed to minimap). |
+| Spot VIRUS | LoS based | Sees cloaked VIRUS at ground level (3-4 tile range in FPS mode, 1 tile in RTS mode). |
 | RALLY | Press R (15s cooldown) | Gathers friendly TANK/AERIAL/VIRUS within ~8 tiles (with LoS) into a squad that follows the avatar; multiple presses grow the squad. RALLIED units within 4 tiles of the Avatar gain +10% damage (tether bonus). A rallied VIRUS may drop out to limpet an enemy it comes across. TANK/AERIAL-PATROL created in HOLD-stance patrol switch to WIDE when rallied. Lasts until avatar death or exit from FPS; home-territory units left idle outside the AoE then walk the MCP-distance gradient back inside it. |
 | Empower building | Empower button on the building's terminal (FPS only, within terminal interaction range ~2 tiles) | That building's avatar buff becomes active. One per player — empowering another swaps. Cleared when re-entering FPS mode. Army buffs (Garage/Beacon/Nest) are type-wide: while any one of the type is empowered, all of the player's units of that type benefit. Generator (radius +1), Vat (capacity +50%, spend discount) and MCP (zoomba production/speed, damage reduction) buffs apply to the empowered building itself. |
 | Cure infection | Touch an infected friendly building | Immediately removes all VIRUS infections from that building (curing one Vat cures its entire connected chain). The building the Avatar is currently empowering is immune to infection. |
@@ -349,9 +342,10 @@ The default command view. Commands are issued through the Zoomba job queue.
 | Lower tile | Click RAISED tile → select to LOWER | Queues `MODIFY_TERRAIN` job. A Zoomba paths there and works it (~7–8s). Tile becomes LOWERED (passable floor). |
 | Raise tile | Click un-built LOWERED tile → select to RAISE | Same job in reverse. Tile becomes RAISED (impassable wall). |
 | Place building | Click UI button → click valid tile | Same as existing `BuildingManager` pattern. Validates tile, queues `CONSTRUCT_BUILDING` job. |
+| Demolish building | Remove mode → click an owned building (red ghost highlight) | Instantly removes the building (no refund). The MCP cannot be removed; removing an empowered building clears its empowerment. |
 | View Garage/Beacon/Nest ratios | Hover / UI readout | Shows current building settings. Read-only. |
 | View energy | HUD | Income (per tile via Gens), storage (Vats), spend rate |
-| View Zoomba cap and Tank count | HUD | Current cap vs current count and number of zoomba in tanks |
+| View Zoomba cap and Tank count | MCP terminal (diegetic UI) | Current cap vs current count; converted TANKs count toward the cap |
 
 ### What RTS cannot do
 
@@ -370,6 +364,7 @@ Pure visuals — no collision, no gameplay effect, no multiplayer sync beyond wh
 - **Animated floor**: the 50×50 floor is decorative; mountains morph over time (per-instance vertex displacement driven by a timer) and monuments pulse a beacon light.
 - **Tile claim visualization**: each tile draws band stripes (per-instance MultiMesh custom data) showing which players' AoE covers it, plus a white edge-glow for hover/selection/state feedback driven by an emission-priority system (generator catchment > tile selected > hover > pulse animation).
 - **Generator catchment**: hovering a Generator tints its catchment tiles by per-tile output share (full 1e, half, third, or split further), and its terminal HUD shows the breakdown by bucket.
+- **Avatar feedback**: an empower beam links the avatar to its empowered building's terminal; a rally press emits an expanding shockwave ring at the avatar, and a cooldown ring around the FPS crosshair shows when RALLY is ready again.
 
 * * *
 
@@ -488,7 +483,7 @@ You cannot run everything from one Generator. With two Generators (~80-110e/sec)
 
 | Action | Cost | Rationale |
 |--------|------|-----------|
-| Terrain raise/lower | **Zoomba time only** (~7–8s per tile) | Rate-limited by zoomba labor and a concurrent job cap of 3 per player. No energy cost — prevents rich-get-richer on map control. |
+| Terrain raise/lower | **Zoomba time only** (~7–8s per tile) | Rate-limited by zoomba labor. No energy cost — prevents rich-get-richer on map control. |
 | Building repair | **Free** (one Zoomba visit) | Damaged buildings auto-queue a fix-me job. 50 HP/s per Zoomba assigned to repair. No additional energy cost. |
 | TANK self-repair | **Free** (internal pilot) | Repairs automatically when out of combat. No energy cost. |
 | Zoomba self-heal | **Free** (slow regen) | Heals over time when not in scram mode. |
