@@ -70,6 +70,13 @@ var _game_over_winner: int = 0
 var _game_over_phase: int = 0
 var _game_over_timer: float = 0.0
 
+# --- Catch-up (server only, per DESIGN) ---
+
+# Desperation Meter: consecutive seconds behind the leader and the resulting
+# stack count, per player (1-based). Driven by the 1s job tick.
+var _behind_seconds: Dictionary = {}
+var _desperation_stacks: Dictionary = {}
+
 # --- Avatar cache ---
 
 func _get_avatar(pnum: int) -> Unit:
@@ -137,7 +144,67 @@ func _process(delta: float) -> void:
 		Global.JM.assign_jobs()
 		for b in Global.BM.buildings():
 			b.check_work()
+		_tick_desperation()
 	_throttled_terminal_refresh(delta)
+
+# --- Catch-up (per DESIGN) ---
+
+# DESIGN: Desperation Meter — a player gains one stack per CATCHUP_DESP_STACK_EVERY
+# of consecutive time with fewer tiles than the leader; stacks reset when they
+# claim or tie the lead. Each stack grants energy income and offensive damage
+# (see desperation_energy_rate / desperation_damage_mult). Server-only, called
+# from the 1s job tick. Early-outs while the system is disabled in Config.
+func _tick_desperation() -> void:
+	if Config.CATCHUP_DESP_MAX_STACKS <= 0 or Config.CATCHUP_DESP_STACK_EVERY <= 0.0:
+		return
+	var leader := _tile_leader()
+	if leader <= 0.0:
+		return
+	for p in range(1, Global.MAX_PLAYERS + 1):
+		var mine: float = Global.TM.player_aoe_totals.get(p, 0.0)
+		if mine >= leader:
+			_behind_seconds[p] = 0.0
+			_desperation_stacks[p] = 0
+			continue
+		_behind_seconds[p] = _behind_seconds.get(p, 0.0) + 1.0
+		if _behind_seconds[p] >= Config.CATCHUP_DESP_STACK_EVERY:
+			_behind_seconds[p] = 0.0
+			_desperation_stacks[p] = mini(
+				_desperation_stacks.get(p, 0) + 1, Config.CATCHUP_DESP_MAX_STACKS)
+
+func _tile_leader() -> float:
+	var leader := 0.0
+	for p in Global.TM.player_aoe_totals:
+		leader = maxf(leader, Global.TM.player_aoe_totals[p])
+	return leader
+
+# DESIGN: Underdog Grit — the behind player's Zoombas work faster: +3% per 10%
+# tile deficit relative to the leader, capped at CATCHUP_GRIT_MAX_STACKS. Pure
+# function of the current split-AoE totals (no accumulation). Multiplicative.
+func underdog_grit_work_mult(pnum: int) -> float:
+	if Config.CATCHUP_GRIT_MAX_STACKS <= 0 or Config.CATCHUP_GRIT_DEFICIT_STEP <= 0.0:
+		return 1.0
+	var leader := _tile_leader()
+	var mine: float = Global.TM.player_aoe_totals.get(pnum, 0.0)
+	if leader <= 0.0 or mine >= leader:
+		return 1.0
+	var stacks: int = mini(
+		int((leader - mine) / leader / Config.CATCHUP_GRIT_DEFICIT_STEP),
+		Config.CATCHUP_GRIT_MAX_STACKS)
+	return 1.0 + (Config.CATCHUP_GRIT_WORK_MULT_PER_STACK - 1.0) * stacks
+
+# DESIGN: Desperation Meter energy — +CATCHUP_DESP_ENERGY_PER_STACK e/sec per
+# stack, capped at CATCHUP_DESP_MAX_STACKS (30e/sec at DESIGN values).
+func desperation_energy_rate(pnum: int) -> float:
+	var stacks: int = _desperation_stacks.get(pnum, 0)
+	return minf(stacks, Config.CATCHUP_DESP_MAX_STACKS) * Config.CATCHUP_DESP_ENERGY_PER_STACK
+
+# DESIGN: Desperation Meter damage — offensive units (STRIKE, VIRUS) deal
+# +CATCHUP_DESP_DAMAGE_PER_STACK per stack, capped at CATCHUP_DESP_MAX_STACKS
+# (+18% at DESIGN values).
+func desperation_damage_mult(pnum: int) -> float:
+	var stacks: int = _desperation_stacks.get(pnum, 0)
+	return 1.0 + minf(stacks, Config.CATCHUP_DESP_MAX_STACKS) * Config.CATCHUP_DESP_DAMAGE_PER_STACK
 
 func _throttled_terminal_refresh(delta: float) -> void:
 	_terminal_refresh_timer += delta

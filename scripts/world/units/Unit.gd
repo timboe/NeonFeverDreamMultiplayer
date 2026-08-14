@@ -616,10 +616,15 @@ func _consume_for_tank() -> void:
 
 # DESIGN: MCP avatar buff — zoombas work +20% faster (toggle countdowns,
 # construction drain, repair ticks) while their MCP is empowered.
+# DESIGN: Underdog Grit — the behind player's zoombas work faster still,
+# scaling with the tile deficit vs the leader (see GameManager).
 func work_speed_multiplier() -> float:
+	var mult := 1.0
 	if type == UnitManager.Type.ZOOMBA and is_instance_valid(_mcp) and _mcp.is_empowered:
-		return Config.EMPOWER_ZOOMBA_SPEED_MULT
-	return 1.0
+		mult *= Config.EMPOWER_ZOOMBA_SPEED_MULT
+	if type == UnitManager.Type.ZOOMBA:
+		mult *= Global.GM.underdog_grit_work_mult(player_owner)
+	return mult
 
 func _move_offset() -> Vector3:
 	if type != UnitManager.Type.VIRUS and type != UnitManager.Type.AERIAL:

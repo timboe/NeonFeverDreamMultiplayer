@@ -256,6 +256,24 @@ static var SELF_HEAL_RATE: Dictionary = {
 	UnitManager.Type.AVATAR: 10.0,
 }
 
+# --- Catch-up mechanics (per DESIGN) ---
+
+# Underdog Grit: the behind player's Zoombas work faster. +3% work speed per
+# 10% tile deficit relative to the leader, capped at +30%. Speeds up terrain
+# work and building construction without directly buffing combat.
+const CATCHUP_GRIT_DEFICIT_STEP: float = 0.10       # one stack per 10% deficit
+const CATCHUP_GRIT_WORK_MULT_PER_STACK: float = 1.0 # DESIGN 1.03 (+3%); 1.0 = off
+const CATCHUP_GRIT_MAX_STACKS: int = 10             # 10 x 10% = +30% cap
+
+# Desperation Meter: the behind player gains a stack for each consecutive
+# minute they have fewer tiles than the leader; resets on claiming/tying the
+# lead. Each stack adds MCP energy and offensive-unit damage (caps at 6 stacks
+# = +30e/sec and +18% per DESIGN).
+const CATCHUP_DESP_STACK_EVERY: float = 60.0
+const CATCHUP_DESP_MAX_STACKS: int = 6
+const CATCHUP_DESP_ENERGY_PER_STACK: float = 0.0   # DESIGN 5.0 (e/sec); 0 = off
+const CATCHUP_DESP_DAMAGE_PER_STACK: float = 0.0   # DESIGN 0.03 (+3%); 0 = off
+
 # --- Players ---
 
 static var PLAYER_COLORS: Array[Color] = [

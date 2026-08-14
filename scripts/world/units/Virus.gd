@@ -263,5 +263,8 @@ func _tick_limpet(delta: float) -> void:
 			location = tank.location
 			global_position = tank.global_position
 		var amount: float = Config.VIRUS_TANK_DRAIN_DPS * delta
+		# DESIGN: Desperation Meter — offensive units (VIRUS) deal +3% per stack
+		# while behind.
+		amount *= Global.GM.desperation_damage_mult(player_owner)
 		target.apply_damage(amount)
 		Global.SM.record_damage_done(player_owner, amount)

@@ -422,6 +422,11 @@ func _update_firing(delta: float) -> void:
 				var mode = _attacker_mode(u)
 				var dmg = Config.get_damage(u.type, u.combat_target, mode)
 				if dmg > 0:
+					# DESIGN: Desperation Meter — offensive units (STRIKE) deal
+					# +3% per stack while behind; PATROL/TANK are defensive and
+					# excluded.
+					if u.type == UnitManager.Type.AERIAL and mode == Config.AERIAL_MODE_STRIKE:
+						dmg *= Global.GM.desperation_damage_mult(u.player_owner)
 					var delay := 0.0
 					if u.type == UnitManager.Type.AERIAL:
 						delay = u.update_projectile_delay()
