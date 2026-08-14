@@ -11,6 +11,8 @@ const HUD_SCENE: PackedScene = preload("res://scenes/ui/NestHUD.tscn")
 var _virus_tank_building_ratio: float = 0.5
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = Config.ALL_BUILDING_TARGETS
+# The VIRUS DoT is an O(units) scan — tick it at 1 Hz instead of per frame.
+var _do_tick_timer := 0.0
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -19,6 +21,10 @@ func _get_hud_scene() -> PackedScene:
 # loses cloak and takes damage over time while on the owner's own territory.
 func _tick_infection(delta: float) -> void:
 	super._tick_infection(delta)
+	_do_tick_timer += delta
+	if _do_tick_timer < 1.0:
+		return
+	_do_tick_timer = 0.0
 	for attacker in infections:
 		var strength: float = float(infections[attacker].get("strength", 1.0))
 		var dps: float = Config.VIRUS_NEST_VIRUS_DPS * strength
@@ -27,7 +33,7 @@ func _tick_infection(delta: float) -> void:
 				continue
 			if player_owner in u.location.aoe:
 				u.uncloak() # re-armed every tick so the DoT outlasts the 5s re-cloak
-				u.apply_damage(dps * delta)
+				u.apply_damage(dps)
 
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)

@@ -6,6 +6,11 @@ class_name GeneratorHUD
 
 var building: Generator
 
+# Terminal HUDs refresh at 4 Hz — power and catchment only change on
+# recompute_aoe cadence, not every frame.
+const REFRESH_INTERVAL := 0.25
+var _refresh_timer := 0.0
+
 # --- Nodes ---
 
 @onready var empower_btn: Button = $Window/VBox/Header/EmpowerBtn
@@ -48,9 +53,13 @@ func _tint_bar(bar: ProgressBar, color: Color) -> void:
 func _on_empower_pressed() -> void:
 	_empower_building(building)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not building or not power_label:
 		return
+	_refresh_timer += delta
+	if _refresh_timer < REFRESH_INTERVAL:
+		return
+	_refresh_timer = 0.0
 	# Empowered Generators also draw from the extra ring of tiles.
 	var power: float = building.get_energy()
 	var total_tiles: int = building._aoe_tiles.size() + (building._aoe_tiles_extra.size() if building.is_empowered else 0)

@@ -48,6 +48,11 @@ var _empowered_by_player: Dictionary = {}  # pnum -> Building
 # Building the mouse is currently over in RTS mode (for the main HUD tooltip).
 var hovered_building: Building = null
 
+# Buildings with at least one active infection (Building -> true). Maintained in
+# _apply_infection_entry / cure paths / removal so EnergyManager can drain
+# infected buildings without scanning every building at 20 Hz.
+var infected_buildings: Dictionary = {}
+
 # Building currently showing the remove-mode "doomed" ghost (null = none).
 var _remove_ghost_building: Building = null
 var _remove_ghost_captured: Array = []
@@ -117,7 +122,12 @@ func _apply_infection_entry(b: Building, attacker: int, strength: float) -> void
 	else:
 		entry["strength"] = strength
 		entry["remaining"] = float(entry["remaining"]) + Config.VIRUS_INFECTION_DURATION * strength
+	infected_buildings[b] = true
 	b._update_infection_visual()
+
+func _untrack_infection(b: Building) -> void:
+	if b.infections.is_empty():
+		infected_buildings.erase(b)
 
 # Avatar cure: removes every infection from the building. Curing one Vat in a
 # shared-health pool cures the whole connected chain (the infection cascaded,
@@ -130,6 +140,7 @@ func cure_building(building: Building) -> void:
 	for b in targets:
 		if is_instance_valid(b) and not b.infections.is_empty():
 			b.infections.clear()
+			infected_buildings.erase(b)
 			b._update_infection_visual()
 
 # Per-attacker removal, used when an infection expires on its own.
@@ -137,6 +148,7 @@ func cure_infection(building: Building, attacker: int) -> void:
 	if not is_instance_valid(building):
 		return
 	if building.infections.erase(attacker):
+		_untrack_infection(building)
 		building._update_infection_visual()
 
 func building_type_name(t: Type) -> String:
@@ -423,7 +435,7 @@ func rpc_remove_building(id: int) -> void:
 	if b:
 		# Read identity before the node is freed at the end of the function.
 		var was_mcp: bool = b is MCP and b.state == Building.State.CONSTRUCTED
-		var owner: int = b.player_owner
+		var owner_pnum: int = b.player_owner
 		if multiplayer.is_server() and is_instance_valid(b.working_unit):
 			b.working_unit.job_finished()
 		building_dictionary.erase(id)
@@ -442,6 +454,11 @@ func rpc_remove_building(id: int) -> void:
 		# buildings skip it.
 		if b.state == Building.State.CONSTRUCTED:
 			DestructionFX.spawn(b)
+		# A removed Vat must leave its shared-health pool in a consistent state
+		# (re-elect the master / prune the member) before the node frees.
+		if b is Vat:
+			(b as Vat).detach_from_pool()
+		infected_buildings.erase(b)
 		b.queue_free()
 		Global.TM.recompute_aoe()
 		# A neighbour may have just been unblocked (freed access tile) or lost
@@ -462,4 +479,4 @@ func rpc_remove_building(id: int) -> void:
 		# units are removed too, and if only one MCP remains the game is over.
 		# Server-only — the removals below are call_local RPCs synced to peers.
 		if multiplayer.is_server() and was_mcp:
-			Global.GM.on_player_eliminated(owner)
+			Global.GM.on_player_eliminated(owner_pnum)

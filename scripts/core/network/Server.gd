@@ -114,6 +114,12 @@ func _on_peer_disconnected(peer_id: int) -> void:
 # --- Command handlers ---
 
 func _cmd_place_blueprint(player_number: int, tile_id: int, building_type: int) -> void:
+	# Whitelist the placeable types — MCPs and NONE would otherwise reach
+	# update_blueprint's enabled_blueprints[type] dict access and error.
+	if building_type not in [BuildingManager.Type.GEN, BuildingManager.Type.VAT,
+			BuildingManager.Type.GARAGE, BuildingManager.Type.BEACON, BuildingManager.Type.NEST]:
+		push_warning("Server._cmd_place_blueprint: invalid building_type ", building_type)
+		return
 	var tm = Global.TM
 	if not tm:
 		push_warning("Server._cmd_place_blueprint: TileManager not found")

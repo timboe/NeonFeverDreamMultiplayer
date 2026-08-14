@@ -148,16 +148,50 @@ func _merge_pools(masters: Dictionary) -> void:
 	new_master._sync_pool_health()
 
 func _destroy_pool() -> void:
+	# Snapshot the members first: removing the master runs detach_from_pool
+	# (via rpc_remove_building), which rewires the pool lists, so iterating
+	# pool_members afterwards would miss everyone.
+	var doomed: Array[Vat] = pool_members.duplicate()
 	Global.BM.rpc("rpc_remove_building", id)
-	for m in pool_members:
+	for m in doomed:
 		if is_instance_valid(m):
 			Global.BM.rpc("rpc_remove_building", m.id)
+
+# Called by rpc_remove_building before the node is freed, so the surviving pool
+# keeps a consistent graph. Without this, removing one vat from a pool left
+# members pointing at a freed master (or the master keeping a freed member),
+# crashing the next damage/repair/empower tick on the pool.
+func detach_from_pool() -> void:
+	if pool_master != null:
+		# Member: prune from the master and re-sync the pool.
+		var m := pool_master
+		pool_master = null
+		if is_instance_valid(m):
+			m.pool_members.erase(self)
+			m._recompute_pool_max()
+			m._sync_pool_health()
+		Global.EM.recalculate_capacity()
+	elif not pool_members.is_empty():
+		# Master: re-elect the lowest-id survivor as the new master.
+		var new_master: Vat = pool_members[0]
+		for m in pool_members:
+			if m.id < new_master.id:
+				new_master = m
+		pool_members.erase(new_master)
+		for m in pool_members:
+			m.pool_master = new_master
+			new_master.pool_members.append(m)
+		pool_members = []
+		new_master.pool_master = null
+		new_master._recompute_pool_max()
+		new_master._sync_pool_health()
+		Global.EM.recalculate_capacity()
 
 # --- Damage / repair ---
 
 func _apply_damage(damage: float, attacker: Unit = null) -> void:
 	if state == State.CONSTRUCTED:
-		if pool_master != null:
+		if pool_master != null and is_instance_valid(pool_master):
 			# Member vats forward to the master — record stats only at the
 			# actual damage site (the master), so pooled damage isn't counted
 			# once per member.
@@ -182,7 +216,7 @@ func _apply_damage(damage: float, attacker: Unit = null) -> void:
 			Global.BM.rpc("rpc_remove_building", id)
 
 func _repair_heal() -> bool:
-	var target: Vat = pool_master if pool_master != null else self
+	var target: Vat = pool_master if pool_master != null and is_instance_valid(pool_master) else self
 	target.health = minf(target.health + REPAIR_AMOUNT * _work_mult(), target.max_health)
 	target._sync_pool_health()
 	if target.health >= target.max_health:
@@ -196,7 +230,7 @@ func _empower_changed(val: bool) -> void:
 	capacity_mult_empower = Config.EMPOWER_VAT_CAPACITY_MULT if val else 1.0
 	if not multiplayer.is_server():
 		return
-	if pool_master != null:
+	if pool_master != null and is_instance_valid(pool_master):
 		# Member: ask the master to sync the whole pool (it also recomputes capacity).
 		if pool_master.is_empowered != val:
 			pool_master.rpc_set_empowered(val)

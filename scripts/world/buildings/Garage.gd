@@ -12,6 +12,13 @@ var zoomba_tank_ratio: float = 0.5  # 0.0 = all zoombas, 1.0 = all tanks
 var cached_tank_count: int = 0
 var patrol_stance: JobManager.Stance = JobManager.Stance.WIDE
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
+# 1 Hz caches refreshed in check_work — _can_produce runs every frame and used
+# to pay group lookups + O(jobs)/O(buildings) scans per frame for values that
+# only change on spawn cadence.
+var _mcp: Node
+var _claimed_consume_jobs := 0
+var _pending_job_here := false
+var _tank_target_cached := 0
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -67,10 +74,12 @@ func _update_tank_count() -> void:
 # conversions happen). Summed ratios may exceed 100% — the cap − 1 clamp is the
 # "never convert the last zoomba" rule, applied to the pool.
 func player_tank_target() -> int:
-	var mcp := get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
-	if not mcp or not mcp.has_method("zoomba_cap"):
+	# Cache the MCP ref — group lookup per call was the hot spot.
+	if _mcp == null or not is_instance_valid(_mcp):
+		_mcp = get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
+	if not _mcp or not _mcp.has_method("zoomba_cap"):
 		return 0
-	var cap := int(mcp.zoomba_cap())
+	var cap := int(_mcp.zoomba_cap())
 	var total := 0
 	for b in Global.BM.buildings():
 		if b is Garage and b.player_owner == player_owner:
@@ -85,6 +94,11 @@ func check_work() -> void:
 		return
 	# Tank count only changes at spawn cadence — refresh on the 1 s tick, not per frame.
 	_update_tank_count()
+	# Refresh the per-frame _can_produce caches (job scans + tank target are
+	# O(jobs)/O(buildings) — far too heavy to run every frame).
+	_pending_job_here = Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location)
+	_claimed_consume_jobs = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
+	_tank_target_cached = player_tank_target()
 	if not _production_enabled:
 		return
 	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job
@@ -92,19 +106,17 @@ func check_work() -> void:
 		# Don't start a new cycle while the previous CONSUME_ZOOMBA job is still
 		# pending (a zoomba hasn't arrived yet) — otherwise the garage spends
 		# energy on a conversion that hasn't happened.
-		if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+		if _pending_job_here:
 			return
 		var total_zoombas: int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
-		var claimed: int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 		# Always keep at least 1 zoomba free
-		if total_zoombas - claimed < 2:
+		if total_zoombas - _claimed_consume_jobs < 2:
 			_production_energy = 0.0
 			_production_timer = 0.0
 			return
 		# Tank cap from the pooled ratio across all garages, minus already
 		# claimed zoombas
-		var target_tanks: int = player_tank_target()
-		if cached_tank_count + claimed >= target_tanks:
+		if cached_tank_count + _claimed_consume_jobs >= _tank_target_cached:
 			_production_energy = 0.0
 			_production_timer = 0.0
 			return
@@ -116,18 +128,19 @@ func check_work() -> void:
 		_production_timer = Config.PRODUCTION_COOLDOWNS.get(type, 10.0)
 
 # Only spend production energy when the previous CONSUME_ZOOMBA job has finished
-# (a tank was actually produced) and the building isn't hemmed in.
+# (a tank was actually produced) and the building isn't hemmed in. Reads the
+# 1 Hz caches refreshed by check_work — worst case a tick of staleness, which
+# only delays energy accumulation (job creation itself is gated in check_work
+# on fresh data).
 func _can_produce() -> bool:
 	if not super._can_produce():
 		return false
-	if Global.JM.has_job(player_owner, JobManager.Type.CONSUME_ZOOMBA, location):
+	if _pending_job_here:
 		return false
 	var total_zoombas: int = Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA)
-	var claimed: int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
-	if total_zoombas - claimed < 2:
+	if total_zoombas - _claimed_consume_jobs < 2:
 		return false
-	var target_tanks: int = player_tank_target()
-	if cached_tank_count + claimed >= target_tanks:
+	if cached_tank_count + _claimed_consume_jobs >= _tank_target_cached:
 		return false
 	return true
 

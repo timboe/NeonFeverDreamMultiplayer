@@ -95,6 +95,10 @@ func rpc_request_lobby_state() -> void:
 	if not srv:
 		return
 	var caller := multiplayer.get_remote_sender_id()
+	# The caller may have disconnected between request and reply — sending to a
+	# gone peer logs a noisy ENet error.
+	if not srv.peer_to_player.has(caller):
+		return
 	rpc_id(caller, "rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size())
 
 func _on_peer_connected(_peer_id: int) -> void:

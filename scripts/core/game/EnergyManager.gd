@@ -128,8 +128,10 @@ func _energy_tick() -> void:
 # Beacon drains its owner's store as a parasite. The drained energy is
 # destroyed, and counted as consumed so it shows up in the stats "used" rate.
 func _infection_drains() -> void:
-	for b in Global.BM.buildings():
-		if b.state != Building.State.CONSTRUCTED or b.infections.is_empty():
+	# Iterate the tracked infected set (maintained by BuildingManager) instead
+	# of scanning every building at 20 Hz — almost no buildings are infected.
+	for b in Global.BM.infected_buildings:
+		if not is_instance_valid(b) or b.state != Building.State.CONSTRUCTED or b.infections.is_empty():
 			continue
 		var rate := 0.0
 		match b.type:

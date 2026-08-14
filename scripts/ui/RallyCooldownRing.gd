@@ -10,6 +10,7 @@ class_name RallyCooldownRing
 # --- State ---
 
 var _fraction := 0.0 # remaining cooldown fraction; 0 = ready, nothing drawn
+var _last_drawn := -1.0
 var _accent := Color.CYAN
 
 # --- Lifecycle ---
@@ -21,7 +22,13 @@ func _ready() -> void:
 # --- API ---
 
 func set_fraction(f: float) -> void:
-	_fraction = clampf(f, 0.0, 1.0)
+	var clamped := clampf(f, 0.0, 1.0)
+	# Redraw only on visible change — the HUD calls this every frame during a
+	# ~15 s cooldown, and each call used to queue two draw_arcs.
+	if is_equal_approx(clamped, _last_drawn):
+		return
+	_last_drawn = clamped
+	_fraction = clamped
 	queue_redraw()
 
 # --- Drawing ---

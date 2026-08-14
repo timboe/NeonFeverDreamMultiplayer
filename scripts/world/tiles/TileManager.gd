@@ -405,7 +405,9 @@ func rpc_broadcast_tile_selection(update_tile_id: int, selected_by: Array) -> vo
 	tile.selected_by = selected_by
 	tile.update_selection_and_aoe_visual()
 
-@rpc("authority", "call_local")
+# Reliable: tile states aren't in the snapshot stream, so a dropped commit
+# (mode 2) would permanently desync that tile's visual/state on a client.
+@rpc("authority", "call_local", "reliable")
 func rpc_toggle_animation(rpc_tile_id: int, mode: int, pnum_or_a: float = 0, b: float = 0, c: float = 0, d: float = 0, e: float = 0) -> void:
 	if not tile_dictionary.has(rpc_tile_id):
 		return

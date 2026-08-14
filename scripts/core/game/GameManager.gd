@@ -53,6 +53,13 @@ var _chunk_buffer: Dictionary = {}
 var _pack_scratch: PackedFloat32Array
 # Client-side interpolation scratch (per unit per frame).
 var _interp_scratch: Array[float] = []
+# Reused avatar-interpolation dicts (server, per frame per remote FPS avatar).
+var _avatar_interp: Array[Dictionary] = [
+	{"type": UnitManager.Type.AVATAR, "slots": null},
+	{"type": UnitManager.Type.AVATAR, "slots": null},
+]
+# Building packing scratch (server, 20 Hz) — same idea as _pack_scratch.
+var _building_scratch: PackedFloat32Array
 
 var _avatar_cache: Dictionary = {} # pnum -> {"avatar": Node, "time": float}
 
@@ -464,8 +471,10 @@ static func _encode_target(target: Variant) -> float:
 	return 0.0
 
 func _pack_building(data: PackedFloat32Array, b: Building) -> void:
-	var slots: Array[float] = []
-	slots.resize(SLOT_COUNT)
+	if _building_scratch.size() != SLOT_COUNT:
+		_building_scratch.resize(SLOT_COUNT)
+	_building_scratch.fill(0.0)
+	var slots := _building_scratch
 	slots[0] = b.state
 	slots[1] = b.health
 	slots[2] = b._construction_energy_spent
@@ -496,8 +505,7 @@ func _pack_building(data: PackedFloat32Array, b: Building) -> void:
 	slots[10] = _encode_infection_mask(b)
 	slots[11] = b.channel_progress()
 	slots[12] = b.infection_remaining_max()
-	for s in slots:
-		data.append(s)
+	data.append_array(_building_scratch)
 
 # VIRUS infection attackers packed as a bitmask (bit n = player n+1), mirrored
 # to every peer so the infection ring visual shows on all clients.
@@ -602,6 +610,10 @@ func _parse_snapshot(data: PackedFloat32Array) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable")
 func rpc_receive_avatar_snapshot(data: PackedFloat32Array) -> void:
+	# Bounds check: any_peer RPC — a malformed packet must never index past
+	# the buffer in the authoritative sim.
+	if data.size() < SLOT_COUNT:
+		return
 	var caller := multiplayer.get_remote_sender_id()
 	var srv = Global.network_manager.server
 	if not srv:
@@ -798,23 +810,45 @@ func _apply_building(b: Building, slots: Array) -> void:
 	b.apply_infection_progress(slots[11], slots[12])
 	# Mirror the per-type settings packed by _pack_building so foreign building
 	# terminals (spying) and owned building vars stay in sync with the server.
+	# Each setter re-encodes/rebuilds the orders dict, so skip it when the raw
+	# packed values are unchanged (runs every frame per building on clients).
 	match b.type:
 		BuildingManager.Type.GARAGE:
 			var g := b as Garage
-			g.zoomba_tank_ratio = clampf(slots[6], 0.0, 1.0)
-			g.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
-			g.set_patrol_stance(int(slots[9]))
+			var enemy_mask := int(slots[7])
+			var stance := int(slots[9])
+			var ratio := clampf(slots[6], 0.0, 1.0)
+			if not is_equal_approx(g.zoomba_tank_ratio, ratio):
+				g.zoomba_tank_ratio = ratio
+			if _encode_enemy_targets(g._enemy_targets) != enemy_mask:
+				g.set_enemy_targets(_decode_enemy_targets(enemy_mask))
+			if int(g.patrol_stance) != stance:
+				g.set_patrol_stance(stance)
 		BuildingManager.Type.BEACON:
 			var bc := b as Beacon
-			bc.patrol_strike_ratio = clampf(slots[6], 0.0, 1.0)
-			bc.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
-			bc.set_building_targets(_decode_building_targets(int(slots[8])))
-			bc.set_patrol_stance(int(slots[9]))
+			var b_enemy_mask := int(slots[7])
+			var b_building_mask := int(slots[8])
+			var b_stance := int(slots[9])
+			var b_ratio := clampf(slots[6], 0.0, 1.0)
+			if not is_equal_approx(bc.patrol_strike_ratio, b_ratio):
+				bc.patrol_strike_ratio = b_ratio
+			if _encode_enemy_targets(bc._enemy_targets) != b_enemy_mask:
+				bc.set_enemy_targets(_decode_enemy_targets(b_enemy_mask))
+			if _encode_building_targets(bc._building_targets) != b_building_mask:
+				bc.set_building_targets(_decode_building_targets(b_building_mask))
+			if int(bc._patrol_stance) != b_stance:
+				bc.set_patrol_stance(b_stance)
 		BuildingManager.Type.NEST:
 			var n := b as Nest
-			n.set_virus_tank_building_ratio(slots[6])
-			n.set_enemy_targets(_decode_enemy_targets(int(slots[7])))
-			n.set_building_targets(_decode_building_targets(int(slots[8])))
+			var n_enemy_mask := int(slots[7])
+			var n_building_mask := int(slots[8])
+			var n_ratio := clampf(slots[6], 0.0, 1.0)
+			if not is_equal_approx(n._virus_tank_building_ratio, n_ratio):
+				n.set_virus_tank_building_ratio(n_ratio)
+			if _encode_enemy_targets(n._enemy_targets) != n_enemy_mask:
+				n.set_enemy_targets(_decode_enemy_targets(n_enemy_mask))
+			if _encode_building_targets(n._building_targets) != n_building_mask:
+				n.set_building_targets(_decode_building_targets(n_building_mask))
 
 # Push freshly-synced building settings into the terminal controls of every
 # building the current player does NOT own, so they can spy on the settings of
@@ -859,12 +893,13 @@ func _interpolate_avatars() -> void:
 			var interval: float = s1["time"] - s0["time"]
 			if interval > 0:
 				var t := clampf((render_time - s0["time"]) / interval, 0.0, 1.0)
-				var e0 := {"type": UnitManager.Type.AVATAR, "slots": s0["slots"]}
-				var e1 := {"type": UnitManager.Type.AVATAR, "slots": s1["slots"]}
+				# Reused dicts — allocated once, not per avatar per frame.
+				_avatar_interp[0]["slots"] = s0["slots"]
+				_avatar_interp[1]["slots"] = s1["slots"]
 				# Health is server-authoritative — don't let the client's snapshot
 				# overwrite it (that would let the avatar cheat death).
 				var health_before_instance1: float = avatar.health
-				_apply_interpolated_unit(avatar, e0, e1, t, UnitManager.Type.AVATAR)
+				_apply_interpolated_unit(avatar, _avatar_interp[0], _avatar_interp[1], t, UnitManager.Type.AVATAR)
 				avatar.health = health_before_instance1
 				continue
 		var health_before_instance2: float = avatar.health

@@ -78,6 +78,10 @@ func _spawn_unit(uid: int, type: Type, building: Building) -> void:
 	_add_to_dict_and_scene(uid, u)
 	u.initialise(building)
 	_count_add(u)
+	# The avatar's FPSBody is the only unit collision body on the LOS mask —
+	# a new one can enter a sight line.
+	if u is Avatar:
+		Global.CM.invalidate_los()
 
 func next_unit_id() -> int:
 	var nuid := _next_unit_id
@@ -165,6 +169,10 @@ func rpc_remove_unit(unit_id: int) -> void:
 			DestructionFX.spawn_unit(u)
 		_count_remove(u)
 		u.queue_free()
+		# The avatar's FPSBody is the only unit collision body on the LOS mask —
+		# its removal can clear a sight line.
+		if u is Avatar:
+			Global.CM.invalidate_los()
 
 # One-shot rally shockwave at the avatar — cosmetic, spawned on every peer via
 # the call_local RPC (same pattern as the destruction FX).

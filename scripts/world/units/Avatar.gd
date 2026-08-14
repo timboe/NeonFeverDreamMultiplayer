@@ -54,7 +54,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	_update_empower_beam()
+	_update_empower_beam(delta)
 
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:
@@ -246,19 +246,23 @@ func _hide_all_hud_cursors() -> void:
 # transform (deterministic position_terminal), and the avatar's FPSBody
 # transform (locally driven or relayed via avatar snapshots) are all
 # identical everywhere, so every peer draws the same beam with no extra sync.
-func _update_empower_beam() -> void:
+# Cached empower-beam target refs. The empowered building only changes on
+# empower/clear/removal — per-frame buildings() scans + string node lookups
+# were the hot spot; re-scan is throttled on the miss path.
+var _beam_target: Building = null
+var _beam_terminal: Node3D = null
+var _beam_screen: Node3D = null
+var _beam_scan_timer := 0.0
+
+func _update_empower_beam(delta: float) -> void:
 	if zapper == null:
 		return
-	var target: Building = _find_empowered_building()
-	if target == null or not is_instance_valid(target) or not target.visible:
+	var target: Building = _cached_empowered_building(delta)
+	if target == null:
 		zapper.visible = false
 		return
-	var terminal := target.get_node_or_null("Terminal") as Node3D
-	if terminal == null:
-		zapper.visible = false
-		return
-	var screen := terminal.get_node_or_null("Screen") as Node3D
-	var terminal_pos: Vector3 = screen.global_position if screen else terminal.global_position
+	var terminal_pos: Vector3 = _beam_screen.global_position if _beam_screen \
+		else (_beam_terminal.global_position if _beam_terminal else Vector3.ZERO)
 	var origin := zapper.global_position
 	var dist := origin.distance_to(terminal_pos)
 	if dist <= 0.001 or dist > EMPOWER_BEAM_MAX_RANGE:
@@ -278,8 +282,23 @@ func _update_empower_beam() -> void:
 	# through the terminal and out the other side.
 	zapper.target_position = Vector3(0.0, dist, 0.0)
 
-func _find_empowered_building() -> Building:
+func _cached_empowered_building(delta: float) -> Building:
+	var target := _beam_target
+	if target != null and is_instance_valid(target) and target.is_empowered \
+		and target.player_owner == player_owner and target.visible:
+		return target
+	# Stale or none — re-scan, throttled so an avatar without an empowered
+	# building doesn't pay the buildings() scan every frame.
+	_beam_scan_timer += delta
+	if _beam_scan_timer < 0.25:
+		return null
+	_beam_scan_timer = 0.0
+	target = null
 	for b in Global.BM.buildings():
 		if b.player_owner == player_owner and b.is_empowered:
-			return b
-	return null
+			target = b
+			break
+	_beam_target = target
+	_beam_terminal = target.get_node_or_null("Terminal") as Node3D if target else null
+	_beam_screen = _beam_terminal.get_node_or_null("Screen") as Node3D if _beam_terminal else null
+	return target

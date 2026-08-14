@@ -161,11 +161,14 @@ func _collect_collision_rids(node: Node) -> Array[RID]:
 		rids.append_array(_collect_collision_rids(child))
 	return rids
 
-func _can_see(attacker: Unit, target: Node3D) -> bool:
+func _can_see(attacker: Unit, target: Node3D, from := Vector3(INF, INF, INF)) -> bool:
 	if _los_dirty:
 		_los_cache.clear()
 		_los_dirty = false
-	var from: Vector3 = attacker._get_muzzle_global()
+	# Callers hoist the muzzle fetch (force_update_transform is expensive) and
+	# pass it in; only compute it here on direct calls.
+	if from == Vector3(INF, INF, INF):
+		from = attacker._get_muzzle_global()
 	var to: Vector3 = combat_target_position(target)
 	if not _in_range(from, to):
 		return false
@@ -215,13 +218,15 @@ func _scan_tank(tank: Unit) -> void:
 	if tank.health <= 0:
 		tank.combat_target = null
 		return
+	# Hoist the muzzle fetch once per attacker for the whole candidate pass.
+	var from: Vector3 = tank._get_muzzle_global()
 	var enemies := _enemy_list_for(tank)
 	var best_target: Node = null
 	var best_score := -INF
 	if tank.combat_target and is_instance_valid(tank.combat_target):
 		var t = tank.combat_target
 		var dmg = Config.get_damage(tank.type, t)
-		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(tank, t):
+		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(tank, t, from):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
 	# Target stickiness: only switch away from the retained current target when
@@ -238,7 +243,7 @@ func _scan_tank(tank: Unit) -> void:
 				# Firing is territory-free: a tank shoots any enemy aerial it can
 				# see in range. The COMBAT_PERSUE patrol job is still queued only
 				# over own AoE — tanks patrol home territory but engage off-base.
-				var seen := _can_see(tank, c)
+				var seen := _can_see(tank, c, from)
 				if seen:
 					if tank.player_owner in c.location.aoe:
 						Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
@@ -251,7 +256,7 @@ func _scan_tank(tank: Unit) -> void:
 				# A tank spots an uncloaked virus attacking it and queues a kill-VIRUS job for patrols
 				if c.cloaked or _dist_2d(tank, c) > Config.TANK_VIRUS_DETECT_RADIUS:
 					continue
-				if _can_see(tank, c):
+				if _can_see(tank, c, from):
 					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, null, false, [UnitManager.Type.AERIAL], true, true)
 	tank.combat_target = best_target
 	tank.combat_los_fail_time = 0.0
@@ -260,6 +265,8 @@ func _scan_aerial(aerial: Unit) -> void:
 	if aerial.health <= 0:
 		aerial.combat_target = null
 		return
+	# Hoist the muzzle fetch once per attacker for the whole candidate pass.
+	var from: Vector3 = aerial._get_muzzle_global()
 	var enemies := _enemy_list_for(aerial)
 	var mode := _attacker_mode(aerial)
 	var is_patrol := mode == Config.AERIAL_MODE_PATROL
@@ -268,7 +275,7 @@ func _scan_aerial(aerial: Unit) -> void:
 	if aerial.combat_target and is_instance_valid(aerial.combat_target):
 		var t = aerial.combat_target
 		var dmg = Config.get_damage(aerial.type, t, mode)
-		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(aerial, t):
+		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(aerial, t, from):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
 	for c in Global.UM.units():
@@ -282,7 +289,7 @@ func _scan_aerial(aerial: Unit) -> void:
 				# Spot an enemy tank and queue a VIRUS ATTACK job — a freshly
 				# spawned virus can be assigned it before it derives its own
 				# personal ATTACK job (the 1s _idle_time guard).
-				var seen := _can_see(aerial, c)
+				var seen := _can_see(aerial, c, from)
 				if seen:
 					Global.JM.add_job(aerial.player_owner, JobManager.Type.ATTACK, c, null, false, [UnitManager.Type.VIRUS])
 					if dmg > 0:
@@ -295,12 +302,12 @@ func _scan_aerial(aerial: Unit) -> void:
 				# virus is never a fire target. Kill-VIRUS jobs are patrol-only:
 				# PATROL executes them; STRIKE only queues.
 				var radius := Config.PATROL_VIRUS_DETECT_RADIUS if is_patrol else Config.STRIKE_VIRUS_DETECT_RADIUS
-				if _dist_2d(aerial, c) <= radius and _can_see(aerial, c):
+				if _dist_2d(aerial, c) <= radius and _can_see(aerial, c, from):
 					if c.cloaked:
 						c.uncloak()
 					var patrol_aerial := aerial if is_patrol else null
 					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT_PERSUE, c, patrol_aerial, false, [UnitManager.Type.AERIAL], true, true)
-				if dmg > 0 and not c.cloaked and _can_see(aerial, c):
+				if dmg > 0 and not c.cloaked and _can_see(aerial, c, from):
 					var score := _score_for_damage(dmg, c.health)
 					if score > best_score:
 						best_score = score
@@ -308,7 +315,7 @@ func _scan_aerial(aerial: Unit) -> void:
 			_:
 				if dmg > 0:
 					var score := _score_for_damage(dmg, c.health)
-					if score > best_score and _can_see(aerial, c):
+					if score > best_score and _can_see(aerial, c, from):
 						best_score = score
 						best_target = c
 	for b in Global.BM.buildings():
@@ -318,7 +325,7 @@ func _scan_aerial(aerial: Unit) -> void:
 		if dmg <= 0:
 			continue
 		var score := _score_for_damage(dmg, b.health)
-		if score > best_score and _can_see(aerial, b):
+		if score > best_score and _can_see(aerial, b, from):
 			best_score = score
 			best_target = b
 	aerial.combat_target = best_target
@@ -372,10 +379,12 @@ func _update_firing(delta: float) -> void:
 			continue
 		if not u.is_weapon_aligned():
 			continue
+		# Muzzle fetch hoisted once per unit per frame (force_update_transform).
+		var from: Vector3 = u._get_muzzle_global()
 		# Drop targets only after sustained visibility loss (behind a wall/out of
 		# range) — a single-frame LOS flicker must not dump the target into the
 		# re-scan + re-aim gap. The weapon keeps tracking while we wait.
-		if not _can_see(u, u.combat_target):
+		if not _can_see(u, u.combat_target, from):
 			u.combat_los_fail_time += delta
 			if u.combat_los_fail_time < Config.COMBAT_LOS_GRACE:
 				continue

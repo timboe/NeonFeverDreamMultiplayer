@@ -37,6 +37,8 @@ var _btn_focus: StyleBoxFlat
 var _btn_disabled: StyleBoxFlat
 var _energy_fill_sb: StyleBoxFlat
 var _low_energy := false
+const ENERGY_REFRESH_INTERVAL := 0.25
+var _energy_refresh_timer := 0.0
 var _tooltip_tween: Tween
 # Client-side rally cooldown display (ms epoch when R becomes usable again).
 # The server enforces the real cooldown — this only drives the HUD readout.
@@ -117,17 +119,32 @@ func _ready() -> void:
 	energy_prod_label.add_theme_color_override("font_color", Config.UI_SUCCESS)
 	energy_cons_label.add_theme_color_override("font_color", Config.UI_WARNING)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_camera_ui()
 	_update_tooltip()
+	# Energy changes at the 20 Hz server tick — refresh bar/labels at 4 Hz.
+	_energy_refresh_timer += delta
+	if _energy_refresh_timer >= ENERGY_REFRESH_INTERVAL:
+		_energy_refresh_timer = 0.0
+		_refresh_energy_display()
+	# Rally cooldown ring (child of the crosshair, so FPS-visible only). Drawn
+	# only while the countdown is live: full arc on press, drains to nothing.
+	var remaining := maxi(0, _rally_ready_ms - Time.get_ticks_msec())
+	rally_ring.set_fraction(float(remaining) / (Config.RALLY_COOLDOWN * 1000.0))
+
+func _refresh_energy_display() -> void:
 	var e := _get_player_energy()
 	energy_bar.max_value = e.capacity
 	energy_bar.value = e.current
-	energy_label.text = str(int(e.current))
-
-	energy_prod_label.text = "+" + str(int(e.produced)) + "/s"
-	energy_cons_label.text = "-" + str(int(e.consumed)) + "/s"
-
+	var cur_text := str(int(e.current))
+	if energy_label.text != cur_text:
+		energy_label.text = cur_text
+	var prod_text := "+" + str(int(e.produced)) + "/s"
+	var cons_text := "-" + str(int(e.consumed)) + "/s"
+	if energy_prod_label.text != prod_text:
+		energy_prod_label.text = prod_text
+	if energy_cons_label.text != cons_text:
+		energy_cons_label.text = cons_text
 	var low_energy: bool = e.capacity > 0 and e.current / e.capacity < 0.2
 	if low_energy != _low_energy and _energy_fill_sb:
 		_low_energy = low_energy
@@ -137,11 +154,6 @@ func _process(_delta: float) -> void:
 		else:
 			_energy_fill_sb.bg_color = Config.UI_ACCENT
 			_energy_fill_sb.shadow_color = Color(0, 1, 1, 0.4)
-
-	# Rally cooldown ring (child of the crosshair, so FPS-visible only). Drawn
-	# only while the countdown is live: full arc on press, drains to nothing.
-	var remaining := maxi(0, _rally_ready_ms - Time.get_ticks_msec())
-	rally_ring.set_fraction(float(remaining) / (Config.RALLY_COOLDOWN * 1000.0))
 
 func _input(event: InputEvent) -> void:
 	if not Global.game_started:

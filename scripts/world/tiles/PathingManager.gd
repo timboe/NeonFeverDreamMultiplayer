@@ -93,8 +93,13 @@ func disconnect_tile(tile: TileElement) -> void:
 
 # --- Queries ---
 
+# Returns the edge count between two tiles, or -1 when unreachable. (No
+# callers today — kept distinct from the "same tile" 0 so the two cases can
+# never be conflated.)
 func distance(a: TileElement, b: TileElement) -> int:
 	var path := pathfind(a, b)
+	if path.is_empty():
+		return -1
 	return max(0, path.size() - 1)
 
 func pathfind(from: TileElement, to: TileElement) -> PackedInt64Array:

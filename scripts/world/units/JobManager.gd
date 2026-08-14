@@ -144,7 +144,9 @@ func remove_job(id_to_remove: int) -> void:
 	if jobs_dict.has(id_to_remove):
 		var job = jobs_dict[id_to_remove]
 		var pnum = job["pnum"]
-		if job["assigned"]:
+		# A freed Object still evaluates truthy — guard in case a future removal
+		# path frees a unit without abandoning its job first.
+		if job["assigned"] != null and is_instance_valid(job["assigned"]):
 			job["assigned"].remove_job()
 		jobs_dict.erase(id_to_remove)
 		_notify_job_event(pnum, "finished", job)

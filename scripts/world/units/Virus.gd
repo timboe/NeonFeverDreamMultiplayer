@@ -277,6 +277,10 @@ func _leave_building_channel(b: Building) -> void:
 	if entry.is_empty():
 		return
 	entry["units"].erase(self)
+	# Drop the pool entry once it empties — otherwise the accumulated "done"
+	# progress leaks into the next joiner's channel (and the stale bar lingers).
+	if entry.get("units", []).is_empty():
+		b._channels.erase(player_owner)
 
 func _tick_building_channel(delta: float) -> void:
 	var b := _limpet_target as Building
@@ -292,7 +296,9 @@ func _tick_building_channel(delta: float) -> void:
 	var strength: float = _health_at_attach / Config.UNIT_MAX_HP.get(UnitManager.Type.VIRUS, 150.0)
 	if not Global.BM.infect_building(player_owner, b, strength):
 		# The building became empowered mid-channel — the infection is wasted
-		# and the channelers stand down (they survive and re-target).
+		# and the channelers stand down (they survive and re-target). Wipe the
+		# pool so the wasted effort can't seed the next joiner's channel.
+		b._channels.erase(player_owner)
 		for v in entry["units"].duplicate():
 			if is_instance_valid(v):
 				v.job_finished()

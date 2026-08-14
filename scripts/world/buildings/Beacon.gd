@@ -12,6 +12,8 @@ var patrol_strike_ratio: float = 0.5
 var _patrol_stance: JobManager.Stance = JobManager.Stance.WIDE
 var _enemy_targets: Array[int] = [1, 2, 3, 4]
 var _building_targets: Array[BuildingManager.Type] = Config.ALL_BUILDING_TARGETS
+# The aerial DoT is an O(units) scan — tick it at 1 Hz instead of per frame.
+var _do_tick_timer := 0.0
 
 func _get_hud_scene() -> PackedScene:
 	return HUD_SCENE
@@ -21,12 +23,16 @@ func _get_hud_scene() -> PackedScene:
 # beacon's fleet turns against itself. Magnitude scales with infection strength.
 func _tick_infection(delta: float) -> void:
 	super._tick_infection(delta)
+	_do_tick_timer += delta
+	if _do_tick_timer < 1.0:
+		return
+	_do_tick_timer = 0.0
 	for attacker in infections:
 		var strength: float = float(infections[attacker].get("strength", 1.0))
 		var dps: float = Config.VIRUS_BEACON_AERIAL_DPS * strength
 		for u in Global.UM.units():
 			if u.type == UnitManager.Type.AERIAL and u.player_owner == player_owner:
-				u.apply_damage(dps * delta)
+				u.apply_damage(dps)
 
 func initialise(pnum: int, tile: TileElement) -> void:
 	super.initialise(pnum, tile)
