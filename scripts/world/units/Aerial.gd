@@ -105,8 +105,7 @@ func initialise(b: Building) -> void:
 	# Update orders based on strike or patrol. Copy the chosen orders dict so
 	# later building order changes don't retroactively affect already-spawned units.
 	orders = (b.orders["strike"] if mode == Mode.STRIKE else b.orders["patrol"]).duplicate()
-	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_unit_material.tres")
-	$Body/CSG.set_surface_override_material(0, updated_mat)
+	$Body/CSG.set_surface_override_material(0, Config.player_unit_material(player_owner))
 	# Let the model brand its accent parts with the full player colour (the hull
 	# is the dark unit variant, so accents stay the bright identity colour).
 	if $Body.has_method("set_player_color"):

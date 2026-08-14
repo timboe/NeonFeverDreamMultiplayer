@@ -307,6 +307,12 @@ func player_accent(pnum: int) -> Color:
 		return PLAYER_COLORS[pnum - 1]
 	return UI_ACCENT
 
+# The dark unit-variant hull material for a player (player<N>_unit_material.tres).
+# Single source of truth for unit branding — live units and destruction debris
+# (DestructionFX copies the effective material onto its chunks) both use it.
+func player_unit_material(pnum: int) -> Material:
+	return load("res://materials/player/player" + str(pnum) + "_unit_material.tres")
+
 # --- Generator catchment ---
 
 # Colours by tile gen_count — used by the Generator hover emission and the

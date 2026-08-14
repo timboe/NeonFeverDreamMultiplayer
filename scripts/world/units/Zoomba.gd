@@ -43,8 +43,7 @@ func initialise(b: Building) -> void:
 	_health_bar.position.y = 2.5
 	health = Config.UNIT_MAX_HP.get(type, 100.0)
 	add_to_group("zoomba")
-	var updated_mat = load("res://materials/player/player" + str(player_owner) + "_unit_material.tres")
-	$Body/CSG.set_surface_override_material(0, updated_mat)
+	$Body/CSG.set_surface_override_material(0, Config.player_unit_material(player_owner))
 	# initialise() teleports the node to its spawn tile — drop the tracker so
 	# the first _process frames don't read a phantom spawn velocity.
 	_prev_eye_pos = global_position

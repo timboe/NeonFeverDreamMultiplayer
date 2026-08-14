@@ -136,6 +136,7 @@ func _make_chunk(mi: MeshInstance3D) -> void:
 	var vis := MeshInstance3D.new()
 	vis.name = "Mesh"
 	vis.mesh = mi.mesh
+	_copy_materials(mi, vis)
 	body.add_child(vis)
 	var shape := CollisionShape3D.new()
 	shape.name = "Shape"
@@ -157,6 +158,22 @@ func _make_chunk(mi: MeshInstance3D) -> void:
 	body.linear_velocity = dir * speed + Vector3.UP * randf_range(1.0, _blast_lift_max)
 	body.angular_velocity = Vector3(randf_range(-6.0, 6.0), randf_range(-6.0, 6.0), randf_range(-6.0, 6.0))
 	_chunks.append(body)
+
+# Carry the dying mesh's runtime branding onto its debris chunk — player hull
+# materials (Config.player_unit_material), zoomba eye shaders, chrome barrel,
+# virus mats, infection rings. Only overrides are copied: the shared mesh's own
+# base surface materials (scene-baked MCP player colours, chrome/glass) are
+# already what the chunk displays. No-op when the source has no overrides.
+static func _copy_materials(src: MeshInstance3D, dst: MeshInstance3D) -> void:
+	if src.material_override:
+		dst.material_override = src.material_override
+	if src.material_overlay:
+		dst.material_overlay = src.material_overlay
+	if src.mesh:
+		for i in src.mesh.get_surface_count():
+			var m := src.get_surface_override_material(i)
+			if m:
+				dst.set_surface_override_material(i, m)
 
 func _arm_cleanup() -> void:
 	var t := create_tween().bind_node(self)

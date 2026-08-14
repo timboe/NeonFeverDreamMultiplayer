@@ -6,6 +6,10 @@ class_name Blueprints
 
 @onready var blueprint_enabled: ShaderMaterial = preload("res://materials/blueprint_enabled.tres")
 @onready var blueprint_disabled: ShaderMaterial = preload("res://materials/blueprint_disabled.tres")
+# Fully invisible override for vertex-edge line surfaces (cyan plinth outlines,
+# meshes/plinth.tres surface 1): the blueprint shaders don't render PRIMITIVE_LINES
+# correctly, so blueprint setup hides them instead.
+static var _hidden_line_mat: StandardMaterial3D = preload("res://materials/blueprint_line_hidden.tres")
 
 static func disable_collision_recursive(node: Node) -> void:
 	for c in node.get_children():
@@ -80,6 +84,11 @@ static func apply_mesh_material(node: Node, mat: ShaderMaterial) -> void:
 		apply_mesh_material(c, mat)
 	if node is MeshInstance3D and node.mesh:
 		for i in range(node.mesh.get_surface_count()):
+			# Only ArrayMesh carries primitive types; primitives (CylinderMesh
+			# etc.) are always triangles and have no surface_get_primitive_type.
+			if node.mesh is ArrayMesh and node.mesh.surface_get_primitive_type(i) == Mesh.PRIMITIVE_LINES:
+				node.set_surface_override_material(i, _hidden_line_mat)
+				continue
 			node.set_surface_override_material(i, mat)
 	elif node is CSGCombiner3D:
 		node.material_override = mat
