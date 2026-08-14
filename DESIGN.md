@@ -84,7 +84,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Property | Value |
 | --- | --- |
 | Influence radius | 3 tiles (33 tiles) |
-| Function | Produces TANKs. Each TANK requires one Zoomba as pilot. TANK creation is relatively slow (1 per 6s). Each Garage has a ZOOMBA/TANK ratio slider (0–100%, default 50/50, minimum one zoomba). Each Garage tracks a target tank count = `roundi(ratio × total Zoombas)`. Garages compete for available Zoombas round-robin each tick. |
+| Function | Produces TANKs. Each TANK requires one Zoomba converted at a Garage (one-way). TANK creation is relatively slow (1 per 6s). Each Garage has a ZOOMBA/TANK ratio slider (0–100%, default 50/50, minimum one zoomba). The tank target is pooled across all of the player's Garages: Σ `roundi(ratio × zoomba cap)` per Garage, clamped to cap − 1 so the last zoomba is never converted (ratios summing ≥ 100% still leave 1). |
 | HP | 2000 |
 | Cost | 750e |
 | Avatar buff | TANK fire rate +25% against aerial targets for all of the player's TANKs while the Avatar is empowering a Garage (type-wide buff; to be play tested, adjust if needed). |
@@ -147,7 +147,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Lifetime | Permanent |
 | Cost | 25e |
 | HP | 50 |
-| Function | Primary role is to constructs buildings, repairs damaged buildings, raises/lowers tiles, pilots TANKs. |
+| Function | Primary role is to constructs buildings, repairs damaged buildings, raises/lowers tiles, converts into TANKs (at a Garage). |
 | Interaction: Zoomba | May encounter enemy zoomba only on contested tiles. Does not interact with enemy zoomba. |
 | Interaction: Tank | May encounter enemy tanks only on contested tiles. Does not interact with enemy tanks. |
 | Interaction: Aerial Patrol | May encounter enemy Patrol units only on contested tiles. Scrams if under fire. |
@@ -164,7 +164,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Max count | Zoombas - 1 |
 | HP | 400 |
 | Lifetime | Permanent |
-| Cost | 150e (plus 1 Zoomba pilot — 25e one-time) |
+| Cost | 150e (plus 1 Zoomba converted at a Garage — 25e one-time) |
 | Function | Patrols owned/contested territory. Provides AA-cover against aerial units. |
 | Interaction: Zoomba | May encounter enemy zoomba only on contested tiles. Does not interact with enemy zoomba. |
 | Interaction: Tank | May encounter enemy tanks only on contested tiles. Does not interact with enemy tanks. |
@@ -172,7 +172,7 @@ All buildings occupy a single tile. Tiles with buildings on them cannot be raise
 | Interaction: Aerial Strike | Primary role is to intercepts enemy aerial strike units invading home / contested tiles. STRONG engagement against aerial enemy units (5x bonus). |
 | Interaction: Virus | Cannot detect cloaked VIRUS. When a VIRUS uncloaks to attack the TANK (~10s to destroy), the TANK can queue a kill-VIRUS job for nearby PATROL units. The TANK has no direct defense and relies on PATROL support during the 10s attack window. |
 | Interaction: Buildings | None |
-| Special | Each TANK requires 1 Zoomba pilot. Total TANK cap = current Zoombas − 1. Tank destroyed → explodes, leaving the pilot Zoomba at the center of the wreckage (returns to workforce immediately). Repairs 25 HP/s when out of combat for 10s (not taking damage, not firing). Follows the avatar if RALLYED (HOLD-stance tanks switch to WIDE patrol when rallied). When idle outside the player's AoE, home-territory units (TANKs, PATROL aerials, Zoombas) walk the MCP-distance gradient back inside it instead of wandering. |
+| Special | Each TANK requires 1 Zoomba converted at a Garage. The conversion is one-way — a destroyed TANK does not return its Zoomba. Total TANK cap = current Zoombas − 1. Repairs 25 HP/s when out of combat for 10s (not taking damage, not firing). Follows the avatar if RALLYED (HOLD-stance tanks switch to WIDE patrol when rallied). When idle outside the player's AoE, home-territory units (TANKs, PATROL aerials, Zoombas) walk the MCP-distance gradient back inside it instead of wandering. |
 
 ### AERIAL — PATROL Mode (Air Defender)
 
@@ -449,7 +449,7 @@ No starting energy — the MCP's internal reactor provides initial income (27e/s
 | Unit | Energy Cost | Notes |
 |------|-------------|-------|
 | Zoomba | 25e | Produced at MCP. One-time cost per worker. |
-| TANK | 150e | Per-life conversion cost at Garage. Requires 1 Zoomba pilot (25e one-time). When destroyed, pilot returns — pay 150e to re-convert. |
+| TANK | 150e | Conversion cost at Garage. Requires 1 Zoomba converted at the Garage (25e one-time). Conversion is permanent — a destroyed TANK does not return its Zoomba; re-converting requires a fresh Zoomba + 150e. |
 | AERIAL (PATROL) | 100e | Produced at Beacon. 2-minute lifetime. |
 | AERIAL (STRIKE) | 100e | Produced at Beacon. 2-minute lifetime. |
 | VIRUS | 100e | Produced at Nest. 2-minute health-based lifetime. |

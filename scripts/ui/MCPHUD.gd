@@ -49,9 +49,11 @@ func _process(delta: float) -> void:
 	var avatar_count: int = Global.UM.unit_count(mcp.player_owner, UnitManager.Type.AVATAR)
 	avatar_count_label.text = str(avatar_count) + " / 1"
 	var current: int = Global.UM.unit_count(mcp.player_owner, UnitManager.Type.ZOOMBA)
+	var tank_count: int = Global.UM.unit_count(mcp.player_owner, UnitManager.Type.TANK)
 	var cap: int = mcp.zoomba_cap()
-	count_label.text = str(current) + " / " + str(cap)
-	if current >= cap:
+	# Converted zoombas (TANKs) spend the cap too — show the combined army.
+	count_label.text = str(current + tank_count) + " / " + str(cap)
+	if current + tank_count >= cap:
 		spawn_bar.value = 100.0
 	elif mcp._production_cost > 0.0:
 		spawn_bar.value = clampf(mcp._production_energy / mcp._production_cost * 100.0, 0.0, 100.0)

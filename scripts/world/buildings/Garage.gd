@@ -62,6 +62,21 @@ func _process(delta: float) -> void:
 func _update_tank_count() -> void:
 	cached_tank_count = Global.UM.unit_count(player_owner, UnitManager.Type.TANK)
 
+# Pooled tank target across all of the player's garages, derived from the
+# stable MCP zoomba cap (not the live zoomba count, which the MCP refills as
+# conversions happen). Summed ratios may exceed 100% — the cap − 1 clamp is the
+# "never convert the last zoomba" rule, applied to the pool.
+func player_tank_target() -> int:
+	var mcp := get_tree().get_first_node_in_group("mcp_player" + str(player_owner))
+	if not mcp or not mcp.has_method("zoomba_cap"):
+		return 0
+	var cap := int(mcp.zoomba_cap())
+	var total := 0
+	for b in Global.BM.buildings():
+		if b is Garage and b.player_owner == player_owner:
+			total += roundi(cap * b.zoomba_tank_ratio)
+	return clampi(total, 0, maxi(cap - 1, 0))
+
 func check_work() -> void:
 	super.check_work()
 	if not multiplayer.is_server():
@@ -86,8 +101,9 @@ func check_work() -> void:
 			_production_energy = 0.0
 			_production_timer = 0.0
 			return
-		# Tank cap based on ratio, minus already claimed zoombas
-		var target_tanks: int = roundi(total_zoombas * zoomba_tank_ratio)
+		# Tank cap from the pooled ratio across all garages, minus already
+		# claimed zoombas
+		var target_tanks: int = player_tank_target()
 		if cached_tank_count + claimed >= target_tanks:
 			_production_energy = 0.0
 			_production_timer = 0.0
@@ -110,7 +126,7 @@ func _can_produce() -> bool:
 	var claimed: int = Global.JM.count_jobs(player_owner, JobManager.Type.CONSUME_ZOOMBA)
 	if total_zoombas - claimed < 2:
 		return false
-	var target_tanks: int = roundi(total_zoombas * zoomba_tank_ratio)
+	var target_tanks: int = player_tank_target()
 	if cached_tank_count + claimed >= target_tanks:
 		return false
 	return true

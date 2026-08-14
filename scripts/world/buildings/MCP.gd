@@ -61,7 +61,9 @@ func _can_produce() -> bool:
 		return Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1
 	if Global.UM.unit_count(player_owner, UnitManager.Type.AVATAR) < 1:
 		return true
-	return Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap()
+	# Converted zoombas (TANKs from the Garage) spend the cap too — the cap is
+	# the player's MCP-derived army budget, conversions don't grow the army.
+	return Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) + Global.UM.unit_count(player_owner, UnitManager.Type.TANK) < zoomba_cap()
 
 func _produce_unit() -> void:
 	if not multiplayer.is_server():
@@ -77,8 +79,8 @@ func _produce_unit() -> void:
 		_production_energy = 0.0
 		_production_timer = cooldown
 		return
-	# Then zoombas up to cap
-	if Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) < zoomba_cap():
+	# Then zoombas up to cap (converted tanks count toward the cap)
+	if Global.UM.unit_count(player_owner, UnitManager.Type.ZOOMBA) + Global.UM.unit_count(player_owner, UnitManager.Type.TANK) < zoomba_cap():
 		var uid: int = Global.UM.next_unit_id()
 		Global.UM.rpc("rpc_spawn_unit", uid, UnitManager.Type.ZOOMBA, self.id)
 		_production_energy = 0.0

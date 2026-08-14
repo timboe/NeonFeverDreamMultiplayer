@@ -23,7 +23,6 @@ var building: Garage
 # --- State ---
 
 var _enemy_buttons: Dictionary = {}
-var _mcp: Node
 # Terminal HUDs refresh at 4 Hz — unit counts and ratios change on production
 # cadence, not every frame.
 const REFRESH_INTERVAL := 0.25
@@ -88,16 +87,14 @@ func _on_patrol_stance(stance: JobManager.Stance) -> void:
 	patrol_hold_btn.set_pressed_no_signal(stance == JobManager.Stance.HOLD)
 	patrol_wide_btn.set_pressed_no_signal(stance == JobManager.Stance.WIDE)
 
-# Total tanks this garage requests at equilibrium: the player's zoomba cap
-# (from the MCP) times this garage's tank/zoomba ratio.
+# Total tanks this garage requests at equilibrium: the pooled target across all
+# of the player's garages (sum of cap × ratio per garage, capped at cap − 1 so
+# the last zoomba is never converted). Garages share one pool, so every garage
+# HUD shows the same number.
 func _requested_tanks() -> int:
-	var cap := 0
-	# Cache the MCP ref — group lookup per frame was the hot spot.
-	if _mcp == null or not is_instance_valid(_mcp):
-		_mcp = get_tree().get_first_node_in_group("mcp_player" + str(building.player_owner))
-	if _mcp and _mcp.has_method("zoomba_cap"):
-		cap = int(_mcp.zoomba_cap())
-	return roundi(cap * building.zoomba_tank_ratio)
+	if not building:
+		return 0
+	return building.player_tank_target()
 
 func _process(delta: float) -> void:
 	if not building or not prod_btn:
