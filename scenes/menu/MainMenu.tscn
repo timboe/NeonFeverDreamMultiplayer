@@ -29,10 +29,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -305.5
-offset_top = -230.0
-offset_right = 305.5
-offset_bottom = 230.0
+offset_left = -470.0
+offset_top = -270.0
+offset_right = 470.0
+offset_bottom = 270.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 16
@@ -45,7 +45,13 @@ theme_override_constants/outline_size = 8
 text = "Neon Fever Dream"
 horizontal_alignment = 1
 
-[node name="ModeTabs" type="TabContainer" parent="VBoxContainer" unique_id=630049502]
+[node name="BodyRow" type="HBoxContainer" parent="VBoxContainer" unique_id=972904284]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="ModeTabs" type="TabContainer" parent="VBoxContainer/BodyRow" unique_id=630049502]
+custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -53,41 +59,111 @@ current_tab = 0
 tab_0/title = "Host"
 tab_1/title = "Connect"
 
-[node name="HostSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1009015495]
+[node name="HostSection" type="VBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs" unique_id=1009015495]
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 0
 metadata/_tab_name = "Host"
 
-[node name="PlayerCountSpin" type="SpinBox" parent="VBoxContainer/ModeTabs/HostSection" unique_id=970904275]
+[node name="PlayerCountRow" type="HBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs/HostSection" unique_id=972904276]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/BodyRow/ModeTabs/HostSection/PlayerCountRow" unique_id=972904277]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Players:"
+
+[node name="PlayerCountSpin" type="SpinBox" parent="VBoxContainer/BodyRow/ModeTabs/HostSection/PlayerCountRow" unique_id=970904275]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 2.0
 max_value = 4.0
 value = 2.0
 
-[node name="PortLine" type="LineEdit" parent="VBoxContainer/ModeTabs/HostSection" unique_id=937289710]
+[node name="PortRow" type="HBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs/HostSection" unique_id=972904278]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/BodyRow/ModeTabs/HostSection/PortRow" unique_id=972904279]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Port:"
+
+[node name="PortLine" type="LineEdit" parent="VBoxContainer/BodyRow/ModeTabs/HostSection/PortRow" unique_id=937289710]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
 text = "8070"
 
-[node name="SlotsContainer" type="VBoxContainer" parent="VBoxContainer/ModeTabs/HostSection" unique_id=568122432]
+[node name="SlotsContainer" type="VBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs/HostSection" unique_id=568122432]
 layout_mode = 2
 
-[node name="ConnectSection" type="VBoxContainer" parent="VBoxContainer/ModeTabs" unique_id=1808141224]
+[node name="ConnectSection" type="VBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs" unique_id=1808141224]
 visible = false
 layout_mode = 2
 theme_type_variation = &"TabContainer"
 metadata/_tab_index = 1
 metadata/_tab_name = "Connect"
 
-[node name="IPLine" type="LineEdit" parent="VBoxContainer/ModeTabs/ConnectSection" unique_id=1576719820]
+[node name="AddressRow" type="HBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection" unique_id=972904280]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection/AddressRow" unique_id=972904281]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Address:"
+
+[node name="IPLine" type="LineEdit" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection/AddressRow" unique_id=1576719820]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
 text = "localhost"
 placeholder_text = "Server IP"
 
-[node name="ConnectPortLine" type="LineEdit" parent="VBoxContainer/ModeTabs/ConnectSection" unique_id=166329366]
+[node name="PortRow" type="HBoxContainer" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection" unique_id=972904282]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection/PortRow" unique_id=972904283]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Port:"
+
+[node name="ConnectPortLine" type="LineEdit" parent="VBoxContainer/BodyRow/ModeTabs/ConnectSection/PortRow" unique_id=166329366]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
 text = "8070"
 placeholder_text = "Port"
+
+[node name="PreviewPanel" type="PanelContainer" parent="VBoxContainer/BodyRow" unique_id=972904285]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Content" type="Control" parent="VBoxContainer/BodyRow/PreviewPanel" unique_id=972904287]
+layout_mode = 2
+
+[node name="FallbackLabel" type="Label" parent="VBoxContainer/BodyRow/PreviewPanel/Content" unique_id=972904286]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SectionHeader"
+text = "Level Preview"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PreviewTexture" type="TextureRect" parent="VBoxContainer/BodyRow/PreviewPanel/Content" unique_id=972904288]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
 
 [node name="StartButton" type="Button" parent="VBoxContainer" unique_id=1758753179]
 custom_minimum_size = Vector2(300, 0)
@@ -98,7 +174,6 @@ text = "Start Game"
 
 [node name="AUTO_START" type="Timer" parent="VBoxContainer/StartButton" unique_id=1417484374]
 one_shot = true
-autostart = true
 
 [node name="ConnectionErrorOverlay" type="ColorRect" parent="." unique_id=1498380162]
 visible = false

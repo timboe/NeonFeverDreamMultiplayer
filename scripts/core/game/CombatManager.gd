@@ -127,9 +127,9 @@ func has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
 		los_clear = true
 	else:
 		var collider = result.collider
-		if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING]:
+		if collider is TileElement and collider.state in [TileManager.State.LOWERED, TileManager.State.FALLING, TileManager.State.DISABLED_LOWERED]:
 			los_clear = true
-		elif collider is TileElement and collider.state == TileManager.State.RAISED:
+		elif collider is TileElement and collider.state in [TileManager.State.RAISED, TileManager.State.DISABLED_RAISED]:
 			return false
 		else:
 			var total_dist := from.distance_to(to)
@@ -149,7 +149,7 @@ func has_los(from: Vector3, to: Vector3, excludes: Array = []) -> bool:
 				var ro := space.intersect_ray(qo)
 				if not ro.is_empty():
 					var co = ro.collider
-					if co is TileElement and co.state == TileManager.State.RAISED:
+					if co is TileElement and co.state in [TileManager.State.RAISED, TileManager.State.DISABLED_RAISED]:
 						return false
 	return true
 

@@ -318,7 +318,7 @@ func _gradient_home_destinations() -> Array[TileElement]:
 	var best_dist := 1 << 30
 	var best_tiles: Array[TileElement] = []
 	for n in location.neighbours:
-		if n.building != null or n.state != TileManager.State.LOWERED:
+		if n.building != null or not n.walkable():
 			continue
 		var d: int = n.mcp_dist.get(player_owner, -1)
 		if d < 0:
@@ -507,7 +507,7 @@ func _check_pathing_valid() -> bool:
 	if path.size() > 0:
 		for i in range(progress, path.size()):
 			var tile = _pathing_manager.get_tile(path[i])
-			if tile.state != TileManager.State.LOWERED:
+			if not tile.walkable():
 				path.resize(0)
 				break
 	if path.size() == 0:

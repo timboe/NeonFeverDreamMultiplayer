@@ -6,7 +6,43 @@ const MAX_PLAYERS := 4
 const FLOOR_HEIGHT: float = 20.0 # Visible floor-to-roof of tile
 const TILE_OFFSET: float = 1.95 # Tile extends this far below floor level
 const GRID_OFFSET: float = 2.0 # Grid is this far below floor level
-const level = preload("res://levels/skirmish_01.gd")
+
+# Level registry: menu key -> preloaded level script (a GDScript whose consts
+# are the level data — see levels/*.gd). `level` is a var because the chosen
+# map is synced at lobby/game start: every peer MUST set Global.level to the
+# same entry before World loads or the deterministic tile IDs desync.
+const LEVELS := {
+	"duel": preload("res://levels/duel.gd"),
+	"basin": preload("res://levels/basin.gd"),
+	"canyons": preload("res://levels/canyons.gd"),
+	"skirmish_01": preload("res://levels/skirmish_01.gd"),
+}
+const DEFAULT_LEVEL := "duel"
+var level = LEVELS[DEFAULT_LEVEL]
+
+func level_name(key: String) -> String:
+	if not LEVELS.has(key):
+		return "?"
+	return String(LEVELS[key].NAME)
+
+func level_max_players(key: String) -> int:
+	if not LEVELS.has(key):
+		return MAX_PLAYERS
+	return int(LEVELS[key].MAX_PLAYERS)
+
+# Menu dropdown label: "Duel (2 player)", "Skirmish (2-3 player)", "(2-4 player)".
+func level_label(key: String) -> String:
+	var max_p := level_max_players(key)
+	if max_p <= 2:
+		return level_name(key) + " (2 player)"
+	return level_name(key) + " (2-" + str(max_p) + " player)"
+
+func set_level(key: String) -> void:
+	if LEVELS.has(key):
+		level = LEVELS[key]
+	else:
+		push_warning("Global.set_level: unknown level '", key, "' — falling back to '", DEFAULT_LEVEL, "'")
+		level = LEVELS[DEFAULT_LEVEL]
 
 # --- Manager references ---
 # Each manager registers itself in its _ready(). Null until World is loaded.

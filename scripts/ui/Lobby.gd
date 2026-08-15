@@ -4,6 +4,7 @@ class_name Lobby
 # --- Nodes ---
 
 @onready var slot_container: VBoxContainer = $VBoxContainer/SlotContainer
+@onready var map_label: Label = $VBoxContainer/MapLabel
 @onready var status_label: Label = $VBoxContainer/StatusLabel
 @onready var back_button: Button = $VBoxContainer/BackButton
 
@@ -99,7 +100,7 @@ func rpc_request_lobby_state() -> void:
 	# gone peer logs a noisy ENet error.
 	if not srv.peer_to_player.has(caller):
 		return
-	rpc_id(caller, "rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size())
+	rpc_id(caller, "rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size(), Global.network_manager.config.level_name)
 
 func _on_peer_connected(_peer_id: int) -> void:
 	# Arm the fallback in case this client never reports lobby-ready.
@@ -130,6 +131,7 @@ func _update_status() -> void:
 		return
 	var connected = srv.peer_to_player.size()
 	_populate_slots(Global.network_manager.config.slots, connected)
+	map_label.text = "Map: " + Global.level_name(Global.network_manager.config.level_name)
 	status_label.text = str(connected) + " / " + str(_remote_needed) + " remote players connected"
 	# Only broadcast state / start once every connected client has confirmed it
 	# is inside the Lobby scene — otherwise the broadcast and rpc_start_game
@@ -168,11 +170,12 @@ func _broadcast_state() -> void:
 	var srv = Global.network_manager.server
 	if not srv:
 		return
-	rpc("rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size())
+	rpc("rpc_receive_lobby_state", Global.network_manager.config.slots, srv.peer_to_player.size(), Global.network_manager.config.level_name)
 
 @rpc("authority", "call_remote", "reliable")
-func rpc_receive_lobby_state(slots: Array, connected_remote: int) -> void:
+func rpc_receive_lobby_state(slots: Array, connected_remote: int, level_name: String = "") -> void:
 	_populate_slots(slots, connected_remote)
+	map_label.text = "Map: " + Global.level_name(level_name)
 	status_label.text = str(connected_remote) + " / " + str(_remote_needed) + " remote players connected"
 	if Global.my_player_number >= 0:
 		status_label.text = "You are Player " + str(Global.my_player_number) + ". " + status_label.text
@@ -195,12 +198,16 @@ func _start_game() -> void:
 			multiplayer.peer_connected.disconnect(_on_peer_connected)
 		if multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
 			multiplayer.peer_disconnected.disconnect(_on_peer_disconnected)
-		rpc("rpc_start_game")
+		# Every peer must apply the same level before World generates or the
+		# deterministic tile IDs desync.
+		Global.set_level(Global.network_manager.config.level_name)
+		rpc("rpc_start_game", Global.network_manager.config.level_name)
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
 @rpc("authority", "call_remote")
-func rpc_start_game() -> void:
+func rpc_start_game(level_name: String) -> void:
 	# Executed on each remote client when the host starts the game.
+	Global.set_level(level_name)
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
 func _on_back() -> void:

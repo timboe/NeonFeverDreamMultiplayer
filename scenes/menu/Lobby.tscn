@@ -45,6 +45,11 @@ horizontal_alignment = 1
 [node name="SlotContainer" type="VBoxContainer" parent="VBoxContainer" unique_id=584030630]
 layout_mode = 2
 
+[node name="MapLabel" type="Label" parent="VBoxContainer" unique_id=4021741291]
+layout_mode = 2
+text = "Map: ..."
+horizontal_alignment = 1
+
 [node name="StatusLabel" type="Label" parent="VBoxContainer" unique_id=2037856046]
 layout_mode = 2
 text = "Waiting for remote players..."

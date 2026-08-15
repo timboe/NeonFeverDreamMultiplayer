@@ -36,6 +36,12 @@ var _countdown_tweens: Dictionary = {} # pnum -> Tween (visual countdown, all pe
 
 var tile_mm: MultiMesh # Reference to the TileManager's TileMultiMesh
 var tile_mm_id: int # This tile's index within the MM
+# Obsidian (IMMUTABLE) tiles live in the disabled multimesh (black obsidian).
+# An obsidian floor (IMMUTABLE + LOWERED → state DISABLED_LOWERED) updates its
+# disabled-MM instance so the visual sits at floor level while the tile stays
+# non-interactive.
+var disabled_mm: MultiMesh
+var disabled_mm_id: int = -1
 
 # --- Pathing ---
 
@@ -90,8 +96,8 @@ func set_building(b: Building) -> void:
 	building = b
 	b.location = self
 
-func set_disabled() -> void:
-	state = TileManager.State.DISABLED
+func set_disabled_raised() -> void:
+	state = TileManager.State.DISABLED_RAISED
 
 func set_id(i: int) -> void:
 	id = i
@@ -102,11 +108,11 @@ func get_id() -> int:
 # --- AoE / selection ---
 
 func add_to_aoe(player_n: int) -> void:
-	if player_n not in aoe and state != TileManager.State.DISABLED:
+	if player_n not in aoe and state < TileManager.State.DISABLED_RAISED:
 		aoe.append(player_n)
 
 func toggle_selected_by(player_n: int) -> bool:
-	if state == TileManager.State.DISABLED:
+	if state >= TileManager.State.DISABLED_RAISED:
 		return false
 	if player_n in selected_by:
 		selected_by.erase(player_n)
@@ -117,8 +123,20 @@ func toggle_selected_by(player_n: int) -> bool:
 
 # --- Tile state transitions ---
 
+# Walkable = units can path through it. Interactive LOWERED tiles and obsidian
+# floors (DISABLED_LOWERED) qualify; raised tiles, mid-toggle tiles and
+# DISABLED_RAISED walls don't.
+func walkable() -> bool:
+	return state == TileManager.State.LOWERED or state == TileManager.State.DISABLED_LOWERED
+
 func set_lowered() -> void:
-	state = TileManager.State.LOWERED
+	# Obsidian floor: a DISABLED tile listed in LOWERED becomes a permanent
+	# walkable corridor — DISABLED_LOWERED keeps it non-toggleable / not
+	# buildable / AoE-excluded, while walkable() lets units use it. Pathing
+	# wiring is done by TileManager._apply_loaded_level once every level tile
+	# is in its final state.
+	var obsidian_floor := state == TileManager.State.DISABLED_RAISED or state == TileManager.State.DISABLED_LOWERED
+	state = TileManager.State.DISABLED_LOWERED if obsidian_floor else TileManager.State.LOWERED
 	# Only the selection highlight is provably stale here (_begin_toggle cleared
 	# selected_by). Generator-catchment / hover / pulse requests self-manage and
 	# must survive — a full clear made the catchment ring flicker off whenever
@@ -129,9 +147,15 @@ func set_lowered() -> void:
 	t.origin.y = -HEIGHT
 	transform = t
 	_set_tile_mm_height(-HEIGHT)
+	if obsidian_floor:
+		if disabled_mm and disabled_mm_id >= 0:
+			var dt: Transform3D = disabled_mm.get_instance_transform(disabled_mm_id)
+			dt.origin.y = -HEIGHT
+			disabled_mm.set_instance_transform(disabled_mm_id, dt)
+		return
 	# Connect pathing to any already-lowered neighbours
 	for n in neighbours:
-		if n.state == TileManager.State.LOWERED and n.building == null:
+		if n.walkable() and n.building == null:
 			pathing_manager.connect_tiles(self, n)
 
 # Unlike lowering where all the stuff happens at the end, we kill the pathing as soon as we move
@@ -150,7 +174,7 @@ func get_access_tiles(require_aoe: int = 0) -> Array[TileElement]:
 	for n in neighbours:
 		if n.building != null:
 			continue
-		if n.state != TileManager.State.LOWERED:
+		if not n.walkable():
 			continue
 		if require_aoe and require_aoe not in n.aoe:
 			continue
@@ -163,7 +187,7 @@ func has_access(require_aoe: int = 0) -> bool:
 	for n in neighbours:
 		if n.building != null:
 			continue
-		if n.state != TileManager.State.LOWERED:
+		if not n.walkable():
 			continue
 		if require_aoe and require_aoe not in n.aoe:
 			continue
@@ -177,7 +201,7 @@ func _ready() -> void:
 	# See delayed_ready
 
 func delayed_ready() -> void:
-	if state >= TileManager.State.DISABLED:
+	if state >= TileManager.State.DISABLED_RAISED:
 		return
 	mouse_entered.connect(_on_StaticBody_mouse_entered)
 	mouse_exited.connect(_on_StaticBody_mouse_exited)
@@ -219,6 +243,8 @@ func _get_tile_mm_height() -> float:
 	return tile_mm.get_instance_transform(tile_mm_id).origin.y
 
 func _set_tile_mm_height(value: float) -> void:
+	if tile_mm == null:
+		return
 	var t: Transform3D = tile_mm.get_instance_transform(tile_mm_id)
 	t.origin.y = value
 	tile_mm.set_instance_transform(tile_mm_id, t)
@@ -230,10 +256,14 @@ func _set_tile_mm_selecting_mask(mask: Color) -> void:
 	tile_mm.set_instance_custom_data(tile_mm_id, d)
 
 func _set_tile_mm_color(value: Color) -> void:
+	if tile_mm == null:
+		return
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	tile_mm.set_instance_color(tile_mm_id, Color(value.r, value.g, value.b, c.a))
 
 func _set_tile_mm_emission(value: float) -> void:
+	if tile_mm == null:
+		return
 	var c = tile_mm.get_instance_color(tile_mm_id)
 	c.a = value
 	tile_mm.set_instance_color(tile_mm_id, c)

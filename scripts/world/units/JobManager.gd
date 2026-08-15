@@ -439,7 +439,7 @@ func rally_avatar_tile(avatar: Unit) -> TileElement:
 	var best: TileElement = null
 	var best_d2 := INF
 	for t in Global.TM.tile_dictionary.values():
-		if t.state != TileManager.State.LOWERED or t.building != null:
+		if not t.walkable() or t.building != null:
 			continue
 		var d2: float = t.pathing_centre.distance_squared_to(pos)
 		if d2 < best_d2:

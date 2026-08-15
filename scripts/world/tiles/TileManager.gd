@@ -7,7 +7,7 @@ signal level_loaded
 
 # --- Types ---
 
-enum State {RAISED, FALLING, LOWERED, RISING, DISABLED}
+enum State {RAISED, FALLING, LOWERED, RISING, DISABLED_RAISED, DISABLED_LOWERED}
 
 # --- Nodes ---
 
@@ -54,13 +54,13 @@ func _populate(physics_body_instance: StaticBody3D, rotation_group: String) -> v
 		physics_body_instance.visible = true # Note: was being used as a flag
 		mat = disabled_material
 		if not Engine.is_editor_hint():
-			physics_body_instance.set_disabled()
+			physics_body_instance.set_disabled_raised()
 		physics_body_instance.add_to_group("disabled")
 	elif tile_id in Global.level.INVISIBLE:
 		# Similar to immutable, but seethrough too
 		mesh_instance.visible = false
 		if not Engine.is_editor_hint():
-			physics_body_instance.set_disabled()
+			physics_body_instance.set_disabled_raised()
 		physics_body_instance.add_to_group("invisible")
 	else:
 		mat = base_material.duplicate()
@@ -84,11 +84,17 @@ func _check_disabled(physics_body_instance: StaticBody3D) -> bool:
 	var t_local: Vector3 = physics_body_instance.position
 	var t: Vector3 = physics_body_instance.to_global(t_local)
 	var distance_v := Vector2()
-	var max_outer: float = Global.level.TRIPLETS * 3 * Cairo.UNIT * 2
+	# The playable area is a world-space rectangle [0, max_outer_x] x
+	# [0, max_outer_z] — TRIPLETS_X drives the world x bound, TRIPLETS_Z the
+	# world z bound.
+	var max_outer_x: float = Global.level.TRIPLETS_X * 3 * Cairo.UNIT * 2
+	var max_outer_z: float = Global.level.TRIPLETS_Z * 3 * Cairo.UNIT * 2
 	if t.z < 0 or t.x < 0:
 		distance_v.x = -min(t.x, t.z)
-	if t.z > max_outer or t.x > max_outer:
-		distance_v.y = max(t.x, t.z) - max_outer
+	if t.z > max_outer_z:
+		distance_v.y = maxf(distance_v.y, t.z - max_outer_z)
+	if t.x > max_outer_x:
+		distance_v.y = maxf(distance_v.y, t.x - max_outer_x)
 	var distance: float = maxf(distance_v.x, distance_v.y)
 	if distance > 0:
 		physics_body_instance.visible = false # Used to communicate w below
@@ -98,14 +104,18 @@ func _check_disabled(physics_body_instance: StaticBody3D) -> bool:
 
 # --- Cluster generation ---
 
-func _add_cluster(x_offset: int, y_offset: int) -> void:
+func _add_cluster(x_offset: int, z_offset: int) -> void:
+	# Cluster (x_offset, z_offset) in loop space, named by the world axis each
+	# dominates: x_offset extends world x, z_offset extends world z. The Cairo
+	# pattern's own axes sit ~15 deg off the world axes, so each also leaks a
+	# small opposite-axis component (RIGHT_POINT__UP terms).
 	var spatial := Node3D.new()
-	var y_mod: float = $CairoDisabled.RIGHT_POINT__UP * x_offset
-	var x_mod: float = $CairoDisabled.RIGHT_POINT__UP * y_offset
+	var y_mod: float = $CairoDisabled.RIGHT_POINT__UP * z_offset
+	var x_mod: float = $CairoDisabled.RIGHT_POINT__UP * x_offset
 	spatial.position = Vector3(
-		y_mod + y_offset * ($CairoDisabled.TOP_POINT__RIGHT + $CairoDisabled.TOP_POINT__UP),
+		y_mod + x_offset * ($CairoDisabled.TOP_POINT__RIGHT + $CairoDisabled.TOP_POINT__UP),
 		0,
-		x_offset * (Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - x_mod)
+		z_offset * (Cairo.UNIT + Cairo.RIGHT_POINT__RIGHT) - x_mod)
 	var physics_body_a := StaticBody3D.new() # TL
 	var physics_body_b := StaticBody3D.new() # BL
 	var physics_body_c := StaticBody3D.new() # BR
@@ -153,15 +163,21 @@ func _generate() -> void:
 		$Tiles.get_child(i).queue_free()
 	var floor_v := Vector2()
 	var border: int = Global.level.BORDER_TRIPLETS * 3
-	var arena: int = Global.level.TRIPLETS * 3
-	for x in range(-border, (arena * 2) + border):
-		for y in range(-border - arena, arena + border):
-			floor_v = Vector2(floor(x / 3.0), floor(y / 3.0))
-			if (y + border < 0 - floor_v.x or y - border > arena - floor_v.x):
+	# Non-square maps: TRIPLETS_X sizes the world x extent (the x loop) and
+	# TRIPLETS_Z the world z extent (the z loop) — loop vars are named by the
+	# world axis they extend. The cluster pattern is rotated ~15 deg against
+	# the world axes (see _add_cluster), so each loop also contributes a small
+	# offset on the other axis. Equal values reproduce the square arena.
+	var arena_x: int = Global.level.TRIPLETS_X * 3
+	var arena_z: int = Global.level.TRIPLETS_Z * 3
+	for z in range(-border, (arena_z * 2) + border):
+		for x in range(-border - arena_x, arena_x + border):
+			floor_v = Vector2(floor(z / 3.0), floor(x / 3.0))
+			if (x + border < 0 - floor_v.x or x - border > arena_x - floor_v.x):
 				continue
-			if (x + border < 0 + floor_v.y or x - border > arena + floor_v.y):
+			if (z + border < 0 + floor_v.y or z - border > arena_z + floor_v.y):
 				continue
-			_add_cluster(x, y)
+			_add_cluster(x, z)
 	set_physics_process(true)
 	generated = true
 
@@ -202,8 +218,21 @@ func _set_neighbours() -> void:
 		if tile.state == TileManager.State.RAISED:
 			assert(tile.neighbours.size() == 5)
 		ray.queue_free()
-	var interactive: Array = get_tree().get_nodes_in_group("interactive")
-	for tile in interactive:
+		# Obsidian floors wire themselves into the pathing graph during
+		# _apply_loaded_level — give them the manager ref up front.
+		tile.pathing_manager = $PathingManager
+	# pathing_centre + AStar points must exist for every tile that can ever
+	# join the pathing graph BEFORE MonorailMultimesh.setup/cap_setup bake
+	# their rail/cap transforms (both run this frame, before level setup).
+	# Obsidian floors (IMMUTABLE + LOWERED) used to miss this — their edges
+	# were computed against Vector3.ZERO and rendered at the world origin.
+	var pathing_tiles: Array = []
+	for tile in get_tree().get_nodes_in_group("interactive"):
+		pathing_tiles.append(tile)
+	for tile in get_tree().get_nodes_in_group("disabled"):
+		if tile.get_id() in Global.level.LOWERED:
+			pathing_tiles.append(tile)
+	for tile in pathing_tiles:
 		var t = tile.get_child(0).get_transform()
 		t.origin += Vector3($CairoDisabled.RIGHT_POINT__UP, 0.0, $CairoDisabled.RIGHT_POINT__UP)
 		t = tile.get_global_transform() * t
@@ -228,10 +257,74 @@ func _apply_loaded_level() -> void:
 			Global.BM.place_building(player_number, tile, mcp_type)
 		elif tile.get_id() in Global.level.LOWERED:
 			tile.set_lowered()
+			if tile.state == TileManager.State.DISABLED_LOWERED:
+				_wire_obsidian_floor(tile)
+	# Optional pre-placed economy buildings (e.g. a starting GEN per player).
+	# Placed after the LOWERED pass so their tiles are guaranteed navigable;
+	# place_building is the same deterministic local path MCPs use (no RPC).
+	# Every level file defines this const ([] when unused).
+	var starting: Array = Global.level.STARTING_BUILDINGS
+	if not starting.is_empty():
+		for entry in starting:
+			var t: TileElement = tile_dictionary.get(entry.tile)
+			if t == null:
+				push_warning("TileManager._apply_loaded_level: STARTING_BUILDINGS tile not found: ", entry.tile)
+				continue
+			Global.BM.place_building(entry.pnum, t, entry.type)
 	recompute_aoe()
 	# MCPs may have been placed before their LOWERED neighbours were lowered, so
 	# re-evaluate terminal positions/hiding now that the grid is final.
 	Global.BM.position_all_terminals()
+	if "--dump-tiles" in OS.get_cmdline_user_args():
+		_dump_tiles_to_log()
+
+# Obsidian floor (IMMUTABLE + LOWERED → DISABLED_LOWERED): permanent walkable
+# corridor. pathing_centre and the AStar point were set up in _set_neighbours
+# (before the monorail baked its transforms) — here we only connect the floor
+# to its lowered neighbours.
+func _wire_obsidian_floor(tile: TileElement) -> void:
+	for n in tile.neighbours:
+		if n.walkable() and n.building == null:
+			$PathingManager.connect_tiles(tile, n)
+
+# --- Debug: tile ID dump ---
+
+# Headless level-authoring helper (--dump-tiles): prints every tile's ID,
+# world position, state, flags and neighbour IDs, writes the same TSV to
+# user://level_dump.txt and quits. Run with:
+#   godot --headless --path . -- --dump-tiles --level=duel
+# NOTE: x/z are the tile node ANCHORS. The border check (_check_disabled)
+# tests a rotated corner of each tile, so anchors can extend ~33 units past
+# the nominal world rectangle — interior tiles are unaffected.
+func _dump_tiles_to_log() -> void:
+	var lines: Array[String] = ["id\tx\tz\tpcx\tpcz\tstate\tin_immutable\tinvisible\tin_lowered\tneighbours"]
+	var ids := tile_dictionary.keys()
+	ids.sort()
+	for tid in ids:
+		var tile: TileElement = tile_dictionary[tid]
+		var p: Vector3 = tile.global_position
+		var nids: Array[int] = []
+		for n in tile.neighbours:
+			nids.append(n.get_id())
+		nids.sort()
+		var nstr := " ".join(nids.map(func(n): return str(n)))
+		lines.append("%d\t%.1f\t%.1f\t%.1f\t%.1f\t%d\t%d\t%d\t%d\t%s" % [
+			tid, p.x, p.z, tile.pathing_centre.x, tile.pathing_centre.z, tile.state,
+			1 if tid in Global.level.IMMUTABLE else 0,
+			1 if tid in Global.level.INVISIBLE else 0,
+			1 if tid in Global.level.LOWERED else 0,
+			nstr,
+		])
+	var content := "\n".join(lines)
+	print(content)
+	var f := FileAccess.open("user://level_dump.txt", FileAccess.WRITE)
+	if f:
+		f.store_string(content)
+		f.close()
+		print("level_dump written to ", ProjectSettings.globalize_path("user://level_dump.txt"))
+	else:
+		push_warning("TileManager._dump_tiles_to_log: could not write user://level_dump.txt")
+	get_tree().quit()
 
 # --- AoE computation ---
 
@@ -361,7 +454,7 @@ func ensure_mcp_distances() -> void:
 			for n in current.neighbours:
 				if visited.has(n):
 					continue
-				if n.state != TileManager.State.LOWERED or n.building != null:
+				if not n.walkable() or n.building != null:
 					continue
 				visited[n] = true
 				n.mcp_dist[pnum] = dist + 1
@@ -444,6 +537,9 @@ func _disabled_tiles_to_multimesh() -> void:
 	disabled_mm.multimesh.instance_count = disabled.size()
 	for i in range(disabled.size()):
 		disabled_mm.multimesh.set_instance_transform(i, disabled[i].get_global_transform())
+		# Obsidian floors update their disabled-MM instance in set_lowered.
+		disabled[i].disabled_mm = disabled_mm.multimesh
+		disabled[i].disabled_mm_id = i
 		disabled[i].get_child(0).queue_free()
 
 func _enabled_tiles_to_multimesh() -> void:

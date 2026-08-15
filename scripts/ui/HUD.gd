@@ -185,6 +185,34 @@ func _input(event: InputEvent) -> void:
 		Global.send_command_me("debug_damage_building", [])
 	if event.is_action_pressed("ui_damage_unit"):
 		Global.send_command_me("debug_damage_unit", [])
+	if event.is_action_pressed("ui_debug_tile"):
+		_debug_tile_under_mouse()
+		return
+
+# DEBUG-ONLY level-authoring helper: prints the tile under the mouse cursor
+# (id, world position, state, flags) and copies the id to the clipboard.
+# Strip from release builds along with the other debug keys.
+func _debug_tile_under_mouse() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var mouse := get_viewport().get_mouse_position()
+	var from := cam.project_ray_origin(mouse)
+	var to := from + cam.project_ray_normal(mouse) * 10000.0
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	var hit := get_viewport().get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var node: Node = hit.collider
+	while node != null and not node.has_method("get_id"):
+		node = node.get_parent()
+	if node == null:
+		return
+	var tile := node as TileElement
+	print("TILE id=%d pos=(%.1f, %.1f) state=%d building=%s" % [
+		tile.get_id(), tile.global_position.x, tile.global_position.z,
+		tile.state, str(tile.building != null)])
+	DisplayServer.clipboard_set(str(tile.get_id()))
 
 # --- Camera UI ---
 

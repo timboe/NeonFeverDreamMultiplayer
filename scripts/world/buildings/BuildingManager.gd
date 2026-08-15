@@ -472,9 +472,9 @@ func rpc_remove_building(id: int) -> void:
 		# one — re-evaluate every terminal.
 		position_all_terminals()
 		# Reconnect tile to pathing (reverse of remove_tile_from_pathing)
-		if tile and tile.state == TileManager.State.LOWERED:
+		if tile and tile.walkable():
 			for n in tile.neighbours:
-				if n.state == TileManager.State.LOWERED and n.building == null:
+				if n.walkable() and n.building == null:
 					Global.PM.connect_tiles(tile, n)
 		# Manual removal (not combat destruction) un-selects the remove button,
 		# mirroring rpc_broadcast_place_blueprint's clear_build_mode on placement.
