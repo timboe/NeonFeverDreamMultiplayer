@@ -23,6 +23,7 @@ static var _projectile_mats: Array[StandardMaterial3D] = []
 var mode: Mode = Mode.PATROL
 var _visual_mode: int = -1 # last mode branded on the model (all peers)
 var _lifetime_timer: float = 0.0
+var _synced_lifetime_remaining := -1.0 # remaining seconds from the server snapshot (clients)
 var _lifetime_bar: HealthBar3D
 var _projectile_delay := 0.0
 var _idle_time := 0.0 # time spent jobless & idle (server) - prevents offense job thrash
@@ -83,7 +84,16 @@ func _process(delta: float) -> void:
 		_idle_time = (_idle_time + delta) if (state == State.IDLE and job.is_empty()) else 0.0
 	if _lifetime_bar:
 		var lifetime := _get_lifetime()
-		_lifetime_bar.set_health(lifetime - _lifetime_timer, lifetime)
+		# The timer only advances server-side. Pure clients draw the remaining
+		# time synced through the snapshot (slot 10) instead — full bar until
+		# the first snapshot lands. The host is also a client and renders this
+		# bar, but keeps using its local authoritative timer: it never applies
+		# snapshots to itself, and what it packs into slot 10 is exactly this
+		# computation, so every peer's bar agrees.
+		var remaining := lifetime - _lifetime_timer
+		if not multiplayer.is_server() and _synced_lifetime_remaining >= 0.0:
+			remaining = _synced_lifetime_remaining
+		_lifetime_bar.set_health(remaining, lifetime)
 
 func initialise(b: Building) -> void:
 	var spawn_tile: TileElement = b.find_unit_spawn_location()

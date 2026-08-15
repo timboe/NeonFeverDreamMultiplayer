@@ -295,7 +295,7 @@ func cancel_toggle_countdown(pnum: int) -> void:
 	if entry["countdown_tween"] and entry["countdown_tween"].is_valid():
 		entry["countdown_tween"].kill()
 	_working_unit_dict.erase(pnum)
-	Global.TM.rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
+	Global.TM.rpc("rpc_toggle_animation", id, 1, pnum) # MODE 1
 
 func _cancel_other_workers(except_pnum: int) -> void:
 	if not multiplayer.is_server():
@@ -312,7 +312,7 @@ func _cancel_other_workers(except_pnum: int) -> void:
 		var unit = entry["unit"] as Unit
 		if is_instance_valid(unit) and not unit.job.is_empty():
 			unit.job_finished()
-		Global.TM.rpc("rpc_toggle_animation", id, 1, 0, pnum) # MODE 1
+		Global.TM.rpc("rpc_toggle_animation", id, 1, pnum) # MODE 1
 
 # Point of no return - raising or lowering if this gets called.
 # The firing player is bound into the countdown tween callback (do_toggle_countdown),
@@ -332,6 +332,9 @@ func _begin_toggle(active_pnum: int) -> void:
 			var entry = entries[pnum]
 			if is_instance_valid(entry["unit"]):
 				entry["unit"].job_finished()
+			# Clients never learn about this abort otherwise — kill their
+			# countdown sweeps too (mode 1 keyed by player number).
+			Global.TM.rpc("rpc_toggle_animation", id, 1, pnum)
 		return
 
 	_cancel_other_workers(active_pnum)
@@ -340,6 +343,10 @@ func _begin_toggle(active_pnum: int) -> void:
 		state = TileManager.State.FALLING
 	elif state == TileManager.State.LOWERED:
 		_set_rising()
+	# The wall is actually moving now — sight lines through it change from this
+	# moment, so drop the cached combat LOS (the selection-time invalidation is
+	# gone: a deselect/reject never moves anything).
+	Global.CM.invalidate_los()
 
 	selected_by.clear()
 	Global.TM.rpc("rpc_broadcast_tile_selection", id, selected_by.duplicate())
@@ -448,6 +455,8 @@ func _done_toggle() -> void:
 		# (set_lowered does the same; without this a raised tile stays lit until re-hovered)
 		release_emission(EmissionEffect.TILE_SELECTED)
 		_apply_emission()
+	# The wall just settled into its final state — sight lines change again.
+	Global.CM.invalidate_los()
 	Global.BM.position_terminals_around(self)
 	var entries = _working_unit_dict.duplicate()
 	_working_unit_dict.clear()
@@ -461,6 +470,11 @@ func _done_toggle() -> void:
 # --- Input handlers ---
 
 func _on_StaticBody_mouse_entered() -> void:
+	# The statistics window is modal — physics picking ignores Control
+	# mouse_filter, so block hover-driven actions (drag-select extension,
+	# blueprint ghosts) while it's open.
+	if Global.stats_window_open():
+		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if not hud:
 		update_selection_and_aoe_visual()
@@ -477,6 +491,8 @@ func _on_StaticBody_mouse_entered() -> void:
 	update_selection_and_aoe_visual()
 
 func _on_StaticBody_mouse_exited() -> void:
+	if Global.stats_window_open():
+		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if hud and hud.is_placing():
 		var type = hud.building_being_placed()
@@ -488,6 +504,10 @@ func _on_StaticBody_mouse_exited() -> void:
 
 func _on_StaticBody_input_event(_camera, event, _click_position, _click_normal, _shape_idx) -> void:
 	if not event is InputEventMouseButton or not event.is_pressed() or event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# The statistics window is modal — physics picking ignores Control
+	# mouse_filter, so clicks must not toggle/place/remove behind it.
+	if Global.stats_window_open():
 		return
 	var hud = get_tree().get_first_node_in_group("hud") as HUD
 	if not hud:

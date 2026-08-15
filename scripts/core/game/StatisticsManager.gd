@@ -12,6 +12,10 @@ class_name StatisticsManager
 # --- Constants ---
 
 const TICK_INTERVAL := 1.0
+# History is capped per player (server and client) — 3600 records = 1 hour of
+# samples at 1 Hz, well beyond the largest graph window (30 m). Oldest-first
+# pruning keeps memory bounded regardless of game length.
+const MAX_STATS_RECORDS := 3600
 
 # --- State ---
 
@@ -95,6 +99,8 @@ func _tick() -> void:
 		# clients (peers > 1) — the host's local slot and AI slots have no peer,
 		# so the host player (already stored server-side) is naturally skipped.
 		stats[p].append(record)
+		if stats[p].size() > MAX_STATS_RECORDS:
+			stats[p].pop_front()
 		if srv:
 			var peer: int = srv.player_to_peer.get(p, 0)
 			if peer > 1:
@@ -126,3 +132,5 @@ func rpc_receive_stats(pnum: int, record: Dictionary) -> void:
 	if not stats.has(pnum):
 		stats[pnum] = []
 	stats[pnum].append(record)
+	if stats[pnum].size() > MAX_STATS_RECORDS:
+		stats[pnum].pop_front()

@@ -198,14 +198,33 @@ func _score_for_damage(dmg: float, health: float) -> float:
 # --- Scanning ---
 
 func _scan_targets() -> void:
-	for unit in Global.UM.units():
+	var all_units: Array = Global.UM.units()
+	# Per-player groupings built once per scan — each attacker's pass then only
+	# iterates enemy players' units/buildings instead of the whole world (the
+	# old per-attacker Global.UM.units() call also allocated a fresh Array).
+	var units_by_player: Dictionary = {}
+	for u in all_units:
+		if not units_by_player.has(u.player_owner):
+			units_by_player[u.player_owner] = []
+		units_by_player[u.player_owner].append(u)
+	var buildings_by_player: Dictionary = {}
+	for b in Global.BM.buildings():
+		if not buildings_by_player.has(b.player_owner):
+			buildings_by_player[b.player_owner] = []
+		buildings_by_player[b.player_owner].append(b)
+	# Freed attackers linger as _los_cache keys until the next _los_dirty clear —
+	# sweep them each scan so the cache can't grow without bound in a quiet game.
+	for key in _los_cache.keys():
+		if not is_instance_valid(key):
+			_los_cache.erase(key)
+	for unit in all_units:
 		match unit.type:
 			UnitManager.Type.TANK:
-				_scan_tank(unit)
+				_scan_tank(unit, units_by_player)
 			UnitManager.Type.AERIAL:
-				_scan_aerial(unit)
+				_scan_aerial(unit, units_by_player, buildings_by_player)
 			UnitManager.Type.AVATAR:
-				_scan_avatar(unit)
+				_scan_avatar(unit, units_by_player)
 
 func _dist_2d(a: Node3D, b: Node3D) -> float:
 	var p := a.global_position
@@ -214,7 +233,7 @@ func _dist_2d(a: Node3D, b: Node3D) -> float:
 
 # Single unit pass - LOS computed once per candidate is shared between
 # combat-target picking and interception COMBAT job registration.
-func _scan_tank(tank: Unit) -> void:
+func _scan_tank(tank: Unit, units_by_player: Dictionary) -> void:
 	if tank.health <= 0:
 		tank.combat_target = null
 		return
@@ -233,35 +252,37 @@ func _scan_tank(tank: Unit) -> void:
 	# a candidate is clearly better — prevents ping-pong retargets between
 	# aerials with near-equal scores (each switch costs re-aim downtime).
 	var sticky := Config.COMBAT_TARGET_STICKY_MARGIN if best_target != null else 0.0
-	for c in Global.UM.units():
-		if c == tank or c.health <= 0:
-			continue
-		if c.player_owner not in enemies:
-			continue
-		match c.type:
-			UnitManager.Type.AERIAL:
-				# Firing is territory-free: a tank shoots any enemy aerial it can
-				# see in range. The COMBAT_PERSUE patrol job is still queued only
-				# over own AoE — tanks patrol home territory but engage off-base.
-				var seen := _can_see(tank, c, from)
-				if seen:
-					if tank.player_owner in c.location.aoe:
-						Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
-					var dmg := Config.get_damage(tank.type, c)
-					var score := _score_for_damage(dmg, c.health)
-					if score > best_score + sticky:
-						best_score = score
-						best_target = c
-			UnitManager.Type.VIRUS:
-				# A tank spots an uncloaked virus attacking it and queues a kill-VIRUS job for patrols
-				if c.cloaked or _dist_2d(tank, c) > Config.TANK_VIRUS_DETECT_RADIUS:
-					continue
-				if _can_see(tank, c, from):
-					Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, null, false, [UnitManager.Type.AERIAL], true, true)
+	for p in enemies:
+		var list: Array = units_by_player.get(p, [])
+		for c in list:
+			if c == tank or c.health <= 0:
+				continue
+			match c.type:
+				UnitManager.Type.AERIAL:
+					# Firing is territory-free: a tank shoots any enemy aerial it can
+					# see in range. The COMBAT_PERSUE patrol job is still queued only
+					# over own AoE — tanks patrol home territory but engage off-base.
+					var seen := _can_see(tank, c, from)
+					if seen:
+						if tank.player_owner in c.location.aoe:
+							Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, tank, false, [UnitManager.Type.TANK], false, true)
+						var dmg := Config.get_damage(tank.type, c)
+						var score := _score_for_damage(dmg, c.health)
+						if score > best_score + sticky:
+							best_score = score
+							best_target = c
+				UnitManager.Type.VIRUS:
+					# A tank spots an uncloaked virus attacking it and queues a kill-VIRUS job for patrols
+					if c.cloaked or _dist_2d(tank, c) > Config.TANK_VIRUS_DETECT_RADIUS:
+						continue
+					if _can_see(tank, c, from):
+						Global.JM.add_job(tank.player_owner, JobManager.Type.COMBAT_PERSUE, c, null, false, [UnitManager.Type.AERIAL], true, true)
 	tank.combat_target = best_target
-	tank.combat_los_fail_time = 0.0
+	# NOTE: no combat_los_fail_time reset here — _update_firing accumulates and
+	# resets it per-frame on actual visibility. Resetting it per scan extended
+	# the LOS grace to ~0.8s and let tanks fire through fresh walls.
 
-func _scan_aerial(aerial: Unit) -> void:
+func _scan_aerial(aerial: Unit, units_by_player: Dictionary, buildings_by_player: Dictionary) -> void:
 	if aerial.health <= 0:
 		aerial.combat_target = null
 		return
@@ -275,62 +296,69 @@ func _scan_aerial(aerial: Unit) -> void:
 	if aerial.combat_target and is_instance_valid(aerial.combat_target):
 		var t = aerial.combat_target
 		var dmg = Config.get_damage(aerial.type, t, mode)
-		if dmg > 0 and t.health > 0 and t.player_owner in enemies and _can_see(aerial, t, from):
+		# A re-cloaked VIRUS is invisible — never retain it (retaining it would
+		# stick an untargetable score into best_target and suppress real picks).
+		# `cloaked` exists only on VIRUS — guard the type before touching it.
+		if dmg > 0 and t.health > 0 and t.player_owner in enemies \
+			and not (t is Unit and t.type == UnitManager.Type.VIRUS and t.cloaked) \
+			and _can_see(aerial, t, from):
 			best_target = t
 			best_score = _score_for_damage(dmg, t.health)
-	for c in Global.UM.units():
-		if c == aerial or c.health <= 0:
-			continue
-		if c.player_owner not in enemies:
-			continue
-		var dmg := Config.get_damage(aerial.type, c, mode)
-		match c.type:
-			UnitManager.Type.TANK:
-				# Spot an enemy tank and queue a VIRUS ATTACK job — a freshly
-				# spawned virus can be assigned it before it derives its own
-				# personal ATTACK job (the 1s _idle_time guard).
-				var seen := _can_see(aerial, c, from)
-				if seen:
-					Global.JM.add_job(aerial.player_owner, JobManager.Type.ATTACK, c, null, false, [UnitManager.Type.VIRUS])
-					if dmg > 0:
+	for p in enemies:
+		var list: Array = units_by_player.get(p, [])
+		for c in list:
+			if c == aerial or c.health <= 0:
+				continue
+			var dmg := Config.get_damage(aerial.type, c, mode)
+			match c.type:
+				UnitManager.Type.TANK:
+					# Spot an enemy tank and queue a VIRUS ATTACK job — a freshly
+					# spawned virus can be assigned it before it derives its own
+					# personal ATTACK job (the 1s _idle_time guard).
+					var seen := _can_see(aerial, c, from)
+					if seen:
+						Global.JM.add_job(aerial.player_owner, JobManager.Type.ATTACK, c, null, false, [UnitManager.Type.VIRUS])
+						if dmg > 0:
+							var score := _score_for_damage(dmg, c.health)
+							if score > best_score:
+								best_score = score
+								best_target = c
+				UnitManager.Type.VIRUS:
+					# Detection (radius + LoS) uncloaks a cloaked virus — a cloaked
+					# virus is never a fire target. Kill-VIRUS jobs are patrol-only:
+					# PATROL executes them; STRIKE only queues.
+					var radius := Config.PATROL_VIRUS_DETECT_RADIUS if is_patrol else Config.STRIKE_VIRUS_DETECT_RADIUS
+					if _dist_2d(aerial, c) <= radius and _can_see(aerial, c, from):
+						if c.cloaked:
+							c.uncloak()
+						var patrol_aerial := aerial if is_patrol else null
+						Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT_PERSUE, c, patrol_aerial, false, [UnitManager.Type.AERIAL], true, true)
+					if dmg > 0 and not c.cloaked and _can_see(aerial, c, from):
 						var score := _score_for_damage(dmg, c.health)
 						if score > best_score:
 							best_score = score
 							best_target = c
-			UnitManager.Type.VIRUS:
-				# Detection (radius + LoS) uncloaks a cloaked virus — a cloaked
-				# virus is never a fire target. Kill-VIRUS jobs are patrol-only:
-				# PATROL executes them; STRIKE only queues.
-				var radius := Config.PATROL_VIRUS_DETECT_RADIUS if is_patrol else Config.STRIKE_VIRUS_DETECT_RADIUS
-				if _dist_2d(aerial, c) <= radius and _can_see(aerial, c, from):
-					if c.cloaked:
-						c.uncloak()
-					var patrol_aerial := aerial if is_patrol else null
-					Global.JM.add_job(aerial.player_owner, JobManager.Type.COMBAT_PERSUE, c, patrol_aerial, false, [UnitManager.Type.AERIAL], true, true)
-				if dmg > 0 and not c.cloaked and _can_see(aerial, c, from):
-					var score := _score_for_damage(dmg, c.health)
-					if score > best_score:
-						best_score = score
-						best_target = c
-			_:
-				if dmg > 0:
-					var score := _score_for_damage(dmg, c.health)
-					if score > best_score and _can_see(aerial, c, from):
-						best_score = score
-						best_target = c
-	for b in Global.BM.buildings():
-		if b.player_owner not in enemies or b.health <= 0:
-			continue
-		var dmg = Config.get_damage(aerial.type, b, mode)
-		if dmg <= 0:
-			continue
-		var score := _score_for_damage(dmg, b.health)
-		if score > best_score and _can_see(aerial, b, from):
-			best_score = score
-			best_target = b
+				_:
+					if dmg > 0:
+						var score := _score_for_damage(dmg, c.health)
+						if score > best_score and _can_see(aerial, c, from):
+							best_score = score
+							best_target = c
+	for p in enemies:
+		var blist: Array = buildings_by_player.get(p, [])
+		for b in blist:
+			if b.health <= 0:
+				continue
+			var dmg = Config.get_damage(aerial.type, b, mode)
+			if dmg <= 0:
+				continue
+			var score := _score_for_damage(dmg, b.health)
+			if score > best_score and _can_see(aerial, b, from):
+				best_score = score
+				best_target = b
 	aerial.combat_target = best_target
 
-func _scan_avatar(avatar: Unit) -> void:
+func _scan_avatar(avatar: Unit, units_by_player: Dictionary) -> void:
 	# Ground-level spotting: an enemy Avatar uncloaks cloaked VIRUS within its
 	# sight radius + LoS. FPS sees 3-4 tiles, RTS only 1 tile (DESIGN). The
 	# avatar lives in its FPSBody, so range/LoS originate from the body.
@@ -340,16 +368,19 @@ func _scan_avatar(avatar: Unit) -> void:
 	if _avatar_camera_mode(avatar.player_owner) == VideoManager.CameraStatus.OVERHEAD:
 		radius = Config.AVATAR_VIRUS_DETECT_RADIUS_RTS
 	var origin := avatar._get_muzzle_global()
-	for c in Global.UM.units():
-		if c.type != UnitManager.Type.VIRUS:
+	for p in units_by_player:
+		if p == avatar.player_owner:
 			continue
-		if not c.cloaked or c.health <= 0 or c.player_owner == avatar.player_owner:
-			continue
-		var to := combat_target_position(c)
-		if Vector2(origin.x, origin.z).distance_to(Vector2(to.x, to.z)) > radius:
-			continue
-		if has_los(origin, to, [avatar, c]):
-			c.uncloak()
+		for c in units_by_player[p]:
+			if c.type != UnitManager.Type.VIRUS:
+				continue
+			if not c.cloaked or c.health <= 0:
+				continue
+			var to := combat_target_position(c)
+			if Vector2(origin.x, origin.z).distance_to(Vector2(to.x, to.z)) > radius:
+				continue
+			if has_los(origin, to, [avatar, c]):
+				c.uncloak()
 
 func _avatar_camera_mode(pnum: int) -> int:
 	if pnum == Global.my_player_number:
@@ -421,37 +452,37 @@ func _update_firing(delta: float) -> void:
 			u.combat_damage_tick_timer = 0.0
 			if u.type == UnitManager.Type.TANK:
 				u.combat_fire_event += 1
-
-			if u.combat_burst_timer > 0.0:
-				u.combat_burst_timer -= delta
-				u.combat_damage_tick_timer -= delta
-				while u.combat_damage_tick_timer <= 0.0 and u.combat_burst_timer > 0.0:
-					u.combat_damage_tick_timer += Config.DAMAGE_TICK_DURATION
-					if not u.combat_target or not is_instance_valid(u.combat_target):
-						continue
-					if not u.is_weapon_aligned():
-						continue
-					var mode = _attacker_mode(u)
-					var dmg = Config.get_damage(u.type, u.combat_target, mode)
-					if dmg > 0:
-						# DESIGN: Desperation Meter — offensive units (STRIKE) deal
-						# +3% per stack while behind; PATROL/TANK are defensive and
-						# excluded.
-						if u.type == UnitManager.Type.AERIAL and mode == Config.AERIAL_MODE_STRIKE:
-							dmg *= Global.GM.desperation_damage_mult(u.player_owner)
-						# DESIGN: rally tether — a rallied unit within 4 tiles of
-						# the avatar deals +10% damage.
-						if u.rallied and _rally_tethered(u):
-							dmg *= Config.RALLY_TETHER_DAMAGE_MULT
-						var delay := 0.0
-						if u.type == UnitManager.Type.AERIAL:
-							delay = u.update_projectile_delay()
-						u.combat_target.apply_damage(dmg, delay, u)
-						Global.SM.record_damage_done(u.player_owner, dmg)
-						if u.type == UnitManager.Type.AERIAL:
-							u.combat_fire_event += 1
-				if u.combat_burst_timer <= 0.0:
-					u.combat_burst_timer = 0.0
+		# Burst progression runs every frame while a burst is active — the
+		# LOS-grace continues above pause it, so a blinded weapon holds its
+		# remaining burst time until sight returns.
+		if u.combat_burst_timer > 0.0:
+			u.combat_burst_timer -= delta
+			u.combat_damage_tick_timer -= delta
+			while u.combat_damage_tick_timer <= 0.0 and u.combat_burst_timer > 0.0:
+				u.combat_damage_tick_timer += Config.DAMAGE_TICK_DURATION
+				if not u.combat_target or not is_instance_valid(u.combat_target):
+					continue
+				if not u.is_weapon_aligned():
+					continue
+				var mode = _attacker_mode(u)
+				var dmg = Config.get_damage(u.type, u.combat_target, mode)
+				if dmg > 0:
+					# DESIGN: Desperation Meter — offensive units (STRIKE) deal
+					# +3% per stack while behind; PATROL/TANK are defensive and
+					# excluded.
+					if u.type == UnitManager.Type.AERIAL and mode == Config.AERIAL_MODE_STRIKE:
+						dmg *= Global.GM.desperation_damage_mult(u.player_owner)
+					# DESIGN: rally tether — a rallied unit within 4 tiles of
+					# the avatar deals +10% damage.
+					if u.rallied and _rally_tethered(u):
+						dmg *= Config.RALLY_TETHER_DAMAGE_MULT
+					var delay := 0.0
+					if u.type == UnitManager.Type.AERIAL:
+						delay = u.update_projectile_delay()
+					u.combat_target.apply_damage(dmg, delay, u)
+					Global.SM.record_damage_done(u.player_owner, dmg)
+					if u.type == UnitManager.Type.AERIAL:
+						u.combat_fire_event += 1
 
 # Whether a rallied unit is within the tether radius of its player's avatar
 # (measured from the avatar's FPSBody — the root never moves).

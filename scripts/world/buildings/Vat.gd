@@ -83,7 +83,7 @@ func _pool_contribution() -> float:
 	var count := 0
 	for n in location.neighbours:
 		var b = n.building
-		if b is Vat and b.player_owner == player_owner:
+		if b is Vat and b.player_owner == player_owner and b.state == Building.State.CONSTRUCTED:
 			count += 1
 	return Config.BUILDING_MAX_HP[type] * (1.0 - minf(0.5, 0.1 * count))
 
@@ -248,7 +248,8 @@ func _empower_changed(val: bool) -> void:
 func update_capacity() -> void:
 	var count := 0
 	for n in location.neighbours:
-		if n.building and n.building is Vat and n.building.player_owner == player_owner:
+		if n.building and n.building is Vat and n.building.player_owner == player_owner \
+			and n.building.state == Building.State.CONSTRUCTED:
 			count += 1
 	capacity_mod_vats = count * 0.1 * CAPACITY
 

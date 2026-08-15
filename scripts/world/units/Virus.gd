@@ -241,7 +241,11 @@ func start_attack() -> void:
 	_join_building_channel(b)
 
 func cancel_attack() -> void:
-	if _limpet_target is Tank:
+	# The limpet target may already be freed (a tank that died removes the
+	# virus through rpc_remove_unit -> _cleanup_working_state -> here) — `is`
+	# on a freed instance errors, so validity-check first. Unregistering from
+	# a freed tank is unnecessary anyway (its _attached_virus dies with it).
+	if is_instance_valid(_limpet_target) and _limpet_target is Tank:
 		(_limpet_target as Tank).unregister_virus(self)
 	if _limpet_is_building and is_instance_valid(_limpet_target):
 		_leave_building_channel(_limpet_target as Building)
@@ -321,17 +325,20 @@ func _tick_limpet(delta: float) -> void:
 		else:
 			Global.UM.rpc("rpc_remove_unit", id)
 		return
+	if not _limpet_is_building:
+		# Limpet tracks the tank from the moment it latches — the virus jumps
+		# straight onto it and rides along through the attach delay, so a moving
+		# tank can't drift away while the virus waits to start draining.
+		var tank: Unit = target as Unit
+		if tank:
+			location = tank.location
+			global_position = tank.global_position
 	if _limpet_delay > 0.0:
 		_limpet_delay -= delta
 		return
 	if _limpet_is_building:
 		_tick_building_channel(delta)
 	else:
-		# Limpet tracks the tank — stay attached (on it) as it moves.
-		var tank: Unit = target as Unit
-		if tank:
-			location = tank.location
-			global_position = tank.global_position
 		var amount: float = Config.VIRUS_TANK_DRAIN_DPS * delta
 		# DESIGN: Desperation Meter — offensive units (VIRUS) deal +3% per stack
 		# while behind.

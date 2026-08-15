@@ -38,7 +38,8 @@ func add_notification(pnum: int, event: String, text: String, location: Vector3)
 	var id := _next_id
 	_next_id += 1
 	placeholder.visible = false
-	while notification_list.get_child_count() > MAX_VISIBLE:
+	# Child 0 is the placeholder label — cap the chips, not chips + placeholder.
+	while notification_list.get_child_count() - 1 > MAX_VISIBLE:
 		var oldest := notification_list.get_child(1)
 		if oldest:
 			_remove_entry(oldest.name.to_int())

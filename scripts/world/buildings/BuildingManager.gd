@@ -438,6 +438,13 @@ func rpc_remove_building(id: int) -> void:
 		var owner_pnum: int = b.player_owner
 		if multiplayer.is_server() and is_instance_valid(b.working_unit):
 			b.working_unit.job_finished()
+		# A removed empowered building must drop the player's empower buffs.
+		# Clear it while the building (and, for a Vat, its pool graph) is still
+		# intact — rpc_set_empowered(false) propagates through the pool master
+		# to every member. Skipping this left a stale master permanently
+		# empowered (x1.5 capacity + infection immunity) when a pool member died.
+		if multiplayer.is_server() and _empowered_by_player.get(owner_pnum) == b:
+			clear_empowered_for_player(owner_pnum)
 		building_dictionary.erase(id)
 		var tile = b.location
 		if tile:

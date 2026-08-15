@@ -41,6 +41,12 @@ func get_server() -> Server:
 		return network_manager.server
 	return null
 
+# Whether the statistics window is open. The modal also blocks 3D-world input
+# (CameraRTS, tile picking) which Control mouse_filter can't reach.
+func stats_window_open() -> bool:
+	var sw = get_tree().get_first_node_in_group("statistics_window")
+	return sw != null and sw.visible
+
 # Tear down the network session and return to the main menu. Used by the Lobby
 # back button and by the end-of-game flow (statistics window dismissal). The
 # host's server may close before its clients disconnect — stop() closes both
@@ -55,6 +61,9 @@ func leave_game() -> void:
 		nm.stop()
 		nm.queue_free()
 	my_player_number = -1
+	# A client can be in FPS (MOUSE_MODE_CAPTURED) when the host quits — the
+	# menu must never render with a hidden/locked cursor.
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
 func send_command_me(command: String, args: Array) -> void:

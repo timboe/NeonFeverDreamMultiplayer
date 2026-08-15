@@ -101,8 +101,9 @@ func check_work() -> void:
 	_tank_target_cached = player_tank_target()
 	if not _production_enabled:
 		return
-	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job
-	if _production_energy >= _production_cost and _production_timer <= 0:
+	# When energy accumulated and timer ready, create CONSUME_ZOOMBA job.
+	# Threshold scales with the empowered-Vat discount (same as Building._process).
+	if _production_energy >= _production_cost * _vat_spend_mult() and _production_timer <= 0:
 		# Don't start a new cycle while the previous CONSUME_ZOOMBA job is still
 		# pending (a zoomba hasn't arrived yet) — otherwise the garage spends
 		# energy on a conversion that hasn't happened.

@@ -462,7 +462,20 @@ func _pathing_callback() -> void:
 		return _combat_pathing_callback()
 	# Third check if at destination - path_dest is always a neighbour of location
 	if job.has("path_dest") and job["path_dest"].id == location.id:
-		return _start_work()
+		# A moving unit target (VIRUS -> TANK attack) may have stepped away
+		# during the final move — only start work while actually adjacent to
+		# its current tile. Otherwise drop the stale path and chase where it
+		# is now, instead of latching and teleport-snapping across the map.
+		var job_target: Variant = job.get("target")
+		if is_instance_valid(job_target) and job_target is Unit:
+			var target_loc: TileElement = job_target.location
+			if location != target_loc and location not in target_loc.get_access_tiles():
+				path.resize(0)
+				job.erase("path_dest")
+			else:
+				return _start_work()
+		else:
+			return _start_work()
 	# Fourth, run pathing
 	if not _check_pathing_valid():
 		return abandon_job()
@@ -478,6 +491,18 @@ func _pathing_callback() -> void:
 func _check_pathing_valid() -> bool:
 	if not multiplayer.is_server():
 		return false
+	# A moving unit target: if the planned destination is no longer adjacent
+	# to the target's current tile, the target moved while we were pathing —
+	# drop the stale path so the re-plan below chases its current location
+	# instead of walking to where it was (and teleport-latching on arrival).
+	var job_target: Variant = job.get("target")
+	if is_instance_valid(job_target) and job_target is Unit and job.has("path_dest"):
+		var dest: TileElement = job["path_dest"]
+		var target_loc: TileElement = job_target.location
+		if dest == null or target_loc == null \
+			or (dest != target_loc and dest not in target_loc.get_access_tiles()):
+			path.resize(0)
+			job.erase("path_dest")
 	# Validate remaining path nodes are still traversable
 	if path.size() > 0:
 		for i in range(progress, path.size()):

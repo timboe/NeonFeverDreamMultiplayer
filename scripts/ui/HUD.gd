@@ -162,6 +162,9 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_stats"):
 		if stats_window:
 			stats_window.toggle()
+			# The window swallows the next mouse release while open — always end
+			# any in-progress drag, or _drag_action stays stuck forever.
+			end_drag()
 		return
 	if stats_window and stats_window.visible:
 		# Statistics window is modal — swallow game input while it's open.

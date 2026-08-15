@@ -12,6 +12,11 @@ enum Stance {WIDE, HOLD}
 
 const DELAY_PER_ABANDON := 11.0
 const DELAY_MAX := 60.0
+# Upper bound on the world-space distance between two adjacent pathing
+# centres (the Cairo pentagon spans ~15 units edge-to-edge). The euclidean
+# distance between any two tiles can never exceed path_edges x this bound,
+# so it lower-bounds the A* path length for candidate pruning in assignment.
+const PATH_EDGE_EUCLID_BOUND: float = Cairo.UNIT * 2.5
 
 # --- State ---
 
@@ -183,6 +188,9 @@ func assign_jobs() -> void:
 		if job["assigned"] != null:
 			continue
 		job["abandoned_timer"] -= 1.0
+	# One snapshot of the job list for the whole assignment pass — building it
+	# per idle unit was a fresh Array allocation (and dict iteration) per unit.
+	var job_list: Array = jobs_dict.values()
 	# Assign jobs to idle workers
 	for unit in get_tree().get_nodes_in_group("unit"):
 		if not unit.job.is_empty():
@@ -191,13 +199,16 @@ func assign_jobs() -> void:
 			continue
 		if unit.scram_count > 0:
 			continue
-		_assign_nearest_job(unit)
+		_assign_nearest_job(unit, job_list)
 
-func _assign_nearest_job(unit: Unit) -> bool:
+func _assign_nearest_job(unit: Unit, job_list: Array) -> bool:
 	var pnum = unit.player_owner
-	var best_job = null
-	var best_dist := 9999
-	for job in jobs_dict.values():
+	var from_pos: Vector3 = unit.location.pathing_centre
+	# Filter to this unit's eligible jobs and precompute the straight-line
+	# distance — it provides a lower bound on the A* path length, so candidates
+	# can be visited nearest-first and the rest skipped without pathfinding.
+	var candidates: Array = []
+	for job in job_list:
 		if job["pnum"] != pnum:
 			continue
 		if job["assigned"] != null:
@@ -209,10 +220,24 @@ func _assign_nearest_job(unit: Unit) -> bool:
 		var tile := target_tile(job["target"])
 		if tile == null:
 			continue
+		candidates.append({"job": job, "d2": from_pos.distance_squared_to(tile.pathing_centre)})
+	if candidates.is_empty():
+		return false
+	candidates.sort_custom(func(a, b): return a["d2"] < b["d2"])
+	var best_job = null
+	var best_dist := 9999
+	for c in candidates:
+		# Euclidean lower bound: path edges x PATH_EDGE_EUCLID_BOUND >= straight
+		# distance (an adjacent pathing-centre pair is always closer than the
+		# bound). Once the bound exceeds the best path found, no later (farther)
+		# candidate can win — skip its A* queries.
+		if sqrt(c["d2"]) / PATH_EDGE_EUCLID_BOUND > best_dist:
+			break
+		var tile := target_tile(c["job"]["target"])
 		var dist = _get_pathlength(unit.location, tile)
 		if dist < best_dist:
 			best_dist = dist
-			best_job = job
+			best_job = c["job"]
 	if best_job != null:
 		_try_assign_job(best_job, unit)
 		return true

@@ -240,6 +240,10 @@ func _cmd_empower(player_number: int, building_id: int) -> void:
 	var b = bm.get_building_by_id(building_id)
 	if not _can_control_building(player_number, b):
 		return
+	# A blueprint/under-construction building must not activate the player's
+	# army-wide empower buffs — the buff must require a finished building.
+	if b.state != Building.State.CONSTRUCTED:
+		return
 	bm.set_empowered_for_player(player_number, b)
 
 func _cmd_clear_empower(player_number: int) -> void:

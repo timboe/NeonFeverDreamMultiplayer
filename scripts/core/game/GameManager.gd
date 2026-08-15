@@ -271,7 +271,11 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		var pnum = srv.peer_to_player.get(peer_id)
 		if pnum != null:
 			_ready_peers.erase(pnum)
-	_expected_clients = maxi(0, _expected_clients - 1)
+			# Only a registered player counts against the start gate. Rejected
+			# peers (no free slot / accepting_clients false) were never in
+			# peer_to_player — decrementing for them dropped _expected_clients
+			# and force-started the game before legit clients were ready.
+			_expected_clients = maxi(0, _expected_clients - 1)
 	_broadcast_progress()
 	_maybe_start_game()
 
@@ -449,6 +453,9 @@ func _pack_unit(data: PackedFloat32Array, u: Unit) -> void:
 			slots[5] = u.health
 			slots[6] = float(u.mode)
 			slots[7] = 1.0 if u.rallied else 0.0
+			# Slot 10: lifetime remaining — the client's _lifetime_timer never
+			# advances, so without this the lifetime bar stays full forever.
+			slots[10] = u._get_lifetime() - u._lifetime_timer
 		UnitManager.Type.VIRUS:
 			slots[0] = u.global_position.x
 			slots[1] = u.global_position.y
@@ -714,6 +721,7 @@ func _apply_interpolated_unit(u: Unit, e0: Dictionary, e1: Dictionary, t: float,
 			slots[3] = _lerp_angle(e0["slots"][3], e1["slots"][3], t)
 			for i in 6:
 				slots[4 + i] = e1["slots"][4 + i]
+			slots[10] = e1["slots"][10]
 		UnitManager.Type.VIRUS:
 			slots[0] = lerpf(e0["slots"][0], e1["slots"][0], t)
 			slots[1] = lerpf(e0["slots"][1], e1["slots"][1], t)
@@ -777,6 +785,7 @@ func _apply_unit(u: Unit, type_val: UnitManager.Type, slots: Array) -> void:
 			u.mode = int(slots[6])
 			u.apply_mode_visual()
 			u.set_rallied(slots[7] > 0.5)
+			u._synced_lifetime_remaining = slots[10]
 		UnitManager.Type.VIRUS:
 			u.global_position = Vector3(slots[0], slots[1], slots[2])
 			u.rotation.y = slots[3]

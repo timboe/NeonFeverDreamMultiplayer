@@ -104,15 +104,18 @@ func _energy_tick() -> void:
 			else:
 				tick_rates[b.player_owner] = tick_rates.get(b.player_owner, 0.0) + gen
 	for p in range(1, Global.MAX_PLAYERS + 1):
-		if capacity[p] <= 0.0:
-			continue
-		var tick_gen: float = tick_rates.get(p, 0.0)
-		# DESIGN: Desperation Meter — the behind player's MCP gains a stacking
-		# energy bonus per minute behind the leader (server-only state, already
-		# broadcast below through rpc_apply_energy).
-		tick_gen += Global.GM.desperation_energy_rate(p) * TICK_INTERVAL
-		if tick_gen > 0.0:
-			energy[p] = minf(energy[p] + tick_gen, capacity[p])
+		var tick_gen := 0.0
+		if capacity[p] > 0.0:
+			tick_gen = tick_rates.get(p, 0.0)
+			# DESIGN: Desperation Meter — the behind player's MCP gains a stacking
+			# energy bonus per minute behind the leader (server-only state, already
+			# broadcast below through rpc_apply_energy).
+			tick_gen += Global.GM.desperation_energy_rate(p) * TICK_INTERVAL
+			if tick_gen > 0.0:
+				energy[p] = minf(energy[p] + tick_gen, capacity[p])
+		# Always sample — even with capacity 0 (eliminated player). Skipping the
+		# push froze the rolling produced/consumed/requested sums and the supply
+		# ratio at their last values for the rest of the game.
 		_push_sample(_gen_history[p], _produced, p, tick_gen)
 		_push_sample(_cons_history[p], _consumed, p, _consumed_tick[p])
 		_consumed_tick[p] = 0.0

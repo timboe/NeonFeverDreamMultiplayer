@@ -32,6 +32,10 @@ func _input(event: InputEvent) -> void:
 	# the overhead camera (also keeps E = rotate in RTS vs E = jump in FPS).
 	if Global.VM.camera_status != VideoManager.CameraStatus.OVERHEAD:
 		return
+	# The statistics window is modal — the 3D world (physics picking doesn't
+	# respect Control mouse_filter) must not keep panning/zooming behind it.
+	if Global.stats_window_open():
+		return
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_mouse_offset = event.relative
 	if event is InputEventMouseButton:
@@ -41,6 +45,9 @@ func _input(event: InputEvent) -> void:
 
 func _poll() -> void:
 	if Global.VM.camera_status != VideoManager.CameraStatus.OVERHEAD:
+		return
+	# Keyboard pan/rotate/zoom are also swallowed while the stats modal is open.
+	if Global.stats_window_open():
 		return
 	# Q/E keyboard rotation feeds the same smoothed yaw path as right-drag.
 	var key_rot := Input.get_action_strength("ui_rotate_right") - Input.get_action_strength("ui_rotate_left")

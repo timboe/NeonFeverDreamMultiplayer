@@ -8,6 +8,9 @@ const CONSTRUCTION_TIME: float = 5.0
 const HEALTH_BAR_HEIGHT: float = 22.0
 const REPAIR_INTERVAL: float = 0.05
 const REPAIR_AMOUNT: float = 2.5
+# Terminal SubViewports render on demand (UPDATE_ONCE); re-render at this
+# cadence to match the 4 Hz terminal-HUD data refresh.
+const HUD_RERENDER_INTERVAL: float = 0.25
 # Squared XZ distance tolerance when matching shared pentagon edge vertices in
 # _compute_edge (0.1 world units at Cairo.UNIT = 10).
 const EDGE_MATCH_EPSILON: float = 0.01
@@ -77,6 +80,7 @@ var _production_enabled: bool = true
 # --- HUD ---
 
 var _hud: SubViewport = null
+var _hud_rerender_timer := 0.0
 
 # --- Lifecycle ---
 
@@ -172,7 +176,10 @@ func _process(delta: float) -> void:
 		var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 		var energy_per_tick := cost / CONSTRUCTION_TIME * delta * _drain_multiplier()
 		_construction_energy_spent += Global.EM.request_energy(player_owner, energy_per_tick)
-		if _construction_energy_spent >= cost:
+		# DESIGN empowered-Vat discount: _vat_spend_mult() discounts the drain,
+		# not the schedule — the completion threshold scales with it so the
+		# build takes CONSTRUCTION_TIME / _work_mult() and costs cost x mult.
+		if _construction_energy_spent >= cost * _vat_spend_mult():
 			set_constructed()
 
 	# Do production - accumulate energy over time
@@ -183,10 +190,13 @@ func _process(delta: float) -> void:
 			if not _can_produce():
 				_production_timer = 0.0
 		elif _production_enabled and _can_produce():
-			if _production_cost > 0.0:
+			if _production_cost > 0.0 and _production_energy < _production_cost * _vat_spend_mult():
 				var tick_amount := _production_cost * delta * _vat_spend_mult()
 				_production_energy += Global.EM.request_energy(player_owner, tick_amount)
-			if _production_energy >= _production_cost:
+			# Same empowered-Vat threshold scaling as construction. The strict
+			# drain gate above also stops no-op producers (Garage) from banking
+			# energy past the threshold between 1 Hz check_work ticks.
+			if _production_energy >= _production_cost * _vat_spend_mult():
 				_produce_unit()
 
 	# If under repair (on server)
@@ -229,13 +239,24 @@ func _process(delta: float) -> void:
 			State.UNDER_CONSTRUCTION:
 				var cost: float = Config.CONSTRUCTION_COST.get(type, 0.0)
 				if cost > 0.0:
-					_health_bar.set_health(_construction_energy_spent, cost)
+					_health_bar.set_health(_construction_energy_spent, cost * _vat_spend_mult())
 				else:
 					_health_bar.set_health(1.0, 1.0)
 			State.CONSTRUCTED:
 				_health_bar.set_health(health, max_health)
 			_:
 				_health_bar.set_health(0.0, 1.0)
+
+	# Terminal SubViewport re-render cadence (all peers). UPDATE_ONCE renders a
+	# single frame per assignment — progress bars only change at the 4 Hz HUD
+	# refresh, so re-rendering at 4 Hz is visually identical to a per-frame
+	# render at a fraction of the cost. Hover switches the viewport back to
+	# full-rate rendering (see _setup_hud) while the cursor is over it.
+	if _hud and is_instance_valid(_hud):
+		_hud_rerender_timer += delta
+		if _hud_rerender_timer >= HUD_RERENDER_INTERVAL:
+			_hud_rerender_timer = 0.0
+			_request_hud_rerender()
 
 # --- Queries ---
 
@@ -370,7 +391,21 @@ func refresh_terminal_ui() -> void:
 	for c in _hud.get_children():
 		if c.has_method("refresh_controls_from_building"):
 			c.refresh_controls_from_building()
+			_request_hud_rerender()
 			return
+
+# Terminal SubViewports render on demand: each assignment of UPDATE_ONCE
+# schedules exactly one render, then the mode self-reverts to UPDATE_DISABLED.
+func _request_hud_rerender() -> void:
+	if _hud and is_instance_valid(_hud) and _hud.render_target_update_mode != SubViewport.UPDATE_WHEN_VISIBLE:
+		_hud.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+func _on_hud_hover_begin() -> void:
+	if _hud and is_instance_valid(_hud):
+		_hud.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+
+func _on_hud_hover_end() -> void:
+	_request_hud_rerender()
 
 # --- Production ---
 
@@ -421,17 +456,24 @@ func _setup_hud() -> void:
 	if template:
 		remove_child(template)
 		template.queue_free()
-	# Create a fresh SubViewport with its own render target
+	# Create a fresh SubViewport with its own render target. UPDATE_ONCE renders
+	# a single frame (the initial paint); Building._process re-triggers it on the
+	# 4 Hz HUD data cadence, and hover switches to full-rate rendering.
 	_hud = SubViewport.new()
 	_hud.name = "BuildingHUD"
 	_hud.size = Vector2(480, 480)
-	_hud.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	_hud.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(_hud)
 	move_child(_hud, 0)
 	# Instantiate the HUD scene fresh — each building gets its own nodes
 	var ctrl = hud_scene.instantiate()
 	ctrl.building = self
 	_hud.add_child(ctrl)
+	# While a cursor is over the terminal (FPS TerminalCursor propagation) its
+	# hover glow tweens animate — render at full rate, then drop back to the
+	# 4 Hz cadence on exit.
+	ctrl.mouse_entered.connect(_on_hud_hover_begin)
+	ctrl.mouse_exited.connect(_on_hud_hover_end)
 	var screen = get_node_or_null("Terminal/Screen")
 	if screen:
 		var mat = screen.get_surface_override_material(0)

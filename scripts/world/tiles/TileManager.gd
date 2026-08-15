@@ -390,8 +390,6 @@ func apply_toggle(pnum: int, toggle_tile_id: int) -> void:
 		Global.JM.cancel_job(pnum, JobManager.Type.TOGGLE_TILE, tile)
 	tile.update_selection_and_aoe_visual()
 	rpc("rpc_broadcast_tile_selection", toggle_tile_id, tile.selected_by.duplicate())
-	# Tile state changes alter sight lines — drop cached combat LOS.
-	Global.CM.invalidate_los()
 
 # --- RPCs ---
 
