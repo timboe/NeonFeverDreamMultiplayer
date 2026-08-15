@@ -15,6 +15,12 @@ const LEVELS := {
 	"duel": preload("res://levels/duel.gd"),
 	"basin": preload("res://levels/basin.gd"),
 	"canyons": preload("res://levels/canyons.gd"),
+	"triad": preload("res://levels/triad.gd"),
+	"spokes": preload("res://levels/spokes.gd"),
+	"crescent": preload("res://levels/crescent.gd"),
+	"crossroads": preload("res://levels/crossroads.gd"),
+	"twinlanes": preload("res://levels/twinlanes.gd"),
+	"forge": preload("res://levels/forge.gd"),
 	"skirmish_01": preload("res://levels/skirmish_01.gd"),
 }
 const DEFAULT_LEVEL := "duel"

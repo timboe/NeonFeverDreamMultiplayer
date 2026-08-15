@@ -303,12 +303,12 @@ For toggle choice options, a new option is chosen for each unit. E.g. if a nest 
 
 #### Garage
 - ZOOMBA/TANK ratio slider (0–100%, per-Garage. Also displays read-only the sum over % of all garages, goes red if over 100%). If the total across all Garages exceeds 100%, Garages compete for available Zoombas but will never convert the last free Zoomba (minimum one Zoomba always remains free).
-- Production radio button (on/off)
+- Production toggle (on/off)
 - TANK stance radio buttom: Hold position (patrol within Garage AoE) / Wide Patrol
 
 #### Beacon
 - PATROL/STRIKE ratio slider (0–100%, per-Beacon)
-- Production radio button (on/off)
+- Production toggle (on/off)
 - Enemy player targetting toggle: Red, Blue, Green, Yellow (only hostile players are presented)
 - STRIKE targeting toggle: MCP, Vat, Generator, Garage, Beacon, Nest 
 - A STRIKE unit picks its target at random from the valid set of targets.
@@ -317,7 +317,7 @@ For toggle choice options, a new option is chosen for each unit. E.g. if a nest 
 
 #### Nest
 - VIRUS TANK/BUILDING ratio slider (0–100%, per-Nest, default 50/50). At 100%, all VIRUS target tanks. At 0%, all target buildings.
-- Production radio button (on/off)
+- Production toggle (on/off)
 - Enemy player targetting toggle: Red, Blue, Green, Yellow (only hostile players are presented)
 - Building targeting toggle: MCP, Vat, Generator, Garage, Beacon, Nest (visible when slider is not at 100% Tanks)
 - A VIRUS unit picks its target at random from the valid set of targets.
@@ -491,6 +491,8 @@ You cannot run everything from one Generator. With two Generators (~80-110e/sec)
 ---
 
 ### Catch-Up Mechanics (explicit, visible to all players)
+
+> **Implementation status: wired but tuned OFF.** The mechanics below are fully implemented (stacks accumulate and the multipliers are applied every tick), but `Config` currently ships them disabled — `CATCHUP_GRIT_WORK_MULT_PER_STACK = 1.0`, `CATCHUP_DESP_ENERGY_PER_STACK`/`CATCHUP_DESP_DAMAGE_PER_STACK = 0.0` (marked "off"; the DESIGN values below are preserved in Config comments). Flipping the constants back on re-enables them.
 
 **Underdog Grit:** Zoombas belonging to the player with the fewest tiles work faster. +3% speed per 10% tile deficit relative to the leader, capped at +30%. This speeds up terrain work and building construction without directly buffing combat.
 
