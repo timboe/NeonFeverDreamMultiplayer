@@ -22,8 +22,9 @@ const TRIPLETS_Z: int = 8
 const BORDER_TRIPLETS: int = 2
 const MOUNTAINS: int = 5
 
-# Both ends of the long axis.
-const MCP_ARRAY: Array[int] = [173, 892]
+# Both ends of the long axis. Chosen for equal starting AoE (96 tiles each,
+# radius-6 BFS).
+const MCP_ARRAY: Array[int] = [222, 935]
 
 # Base staging pads plus the central pre-lowered corridor — the only route
 # between the ends: the obsidian ridges below are unbroken except where they
@@ -33,8 +34,8 @@ const LOWERED: Array[int] = [
 	123, 124, 169, 170, 171, 172, 173, 174, 177, 178, 217, 218, 221, 222,
 	223, 224, 225, 226, 269, 270,
 	# p2 pad
-	844, 845, 888, 889, 890, 891, 892, 893, 896, 897, 935, 936, 939, 940,
-	941, 942, 943, 944, 986, 987,
+	840, 841, 884, 885, 886, 887, 888, 889, 892, 893, 931, 932, 935, 936,
+	937, 938, 939, 940, 982, 983,
 	# centre corridor (x 85-115, full length)
 	123, 124, 171, 172, 173, 174, 221, 222, 223, 224, 267, 268, 269, 270,
 	271, 272, 315, 316, 317, 318, 319, 320, 362, 363, 364, 365, 412, 413,
@@ -69,5 +70,5 @@ const INVISIBLE: Array[int] = [
 # generator tiles are deliberately scarce outside the corridor.
 const STARTING_BUILDINGS: Array = [
 	{"tile": 171, "pnum": 1, "type": BuildingManager.Type.GEN},
-	{"tile": 890, "pnum": 2, "type": BuildingManager.Type.GEN},
+	{"tile": 936, "pnum": 2, "type": BuildingManager.Type.GEN},
 ]

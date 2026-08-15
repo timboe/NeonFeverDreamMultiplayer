@@ -21,36 +21,38 @@ const TRIPLETS_Z: int = 5
 const BORDER_TRIPLETS: int = 2
 const MOUNTAINS: int = 5
 
-# Opposite diagonal corners of the 300x300 arena.
-const MCP_ARRAY: Array[int] = [110, 811]
+# Opposite diagonal corners of the 300x300 arena. Chosen for equal starting
+# AoE (96 tiles each, radius-6 BFS).
+const MCP_ARRAY: Array[int] = [238, 874]
 
-# Pre-lowered staging pads at both bases, the central bowl (a rich pre-lowered
-# building ground) and the three permanent gate floors through the obsidian
-# ring. Tile 64 was dropped from the p1 pad: it sits on the playable-area
-# border and generates as DISABLED_RAISED.
+# Pre-lowered staging pads at both bases, the bowl (a rich pre-lowered
+# building ground just south-east of the map centre) and the three permanent
+# gate floors through the obsidian ring.
 const LOWERED: Array[int] = [
 	# p1 pad
-	65, 106, 107, 108, 109, 110, 111, 114, 115, 167, 168, 171, 172,
-	173, 174, 175, 176, 237, 238,
+	110, 111, 169, 170, 171, 172, 173, 174, 177, 178, 233, 234, 237, 238,
+	239, 240, 241, 242, 304, 305,
 	# p2 pad
-	743, 744, 807, 808, 809, 810, 811, 812, 815, 816, 872, 873, 876,
-	877, 878, 879, 880, 881, 942, 943,
-	# central bowl
-	389, 390, 453, 454, 455, 456, 457, 458, 461, 462, 520, 521, 524,
-	525, 526, 527, 528, 529, 592, 593,
+	807, 808, 870, 871, 872, 873, 874, 875, 878, 879, 934, 935, 938, 939,
+	940, 941, 942, 943, 991,
+	# bowl (BFS rings 0-2 about tile 593)
+	520, 522, 523, 524, 525, 526, 527, 588, 589, 590, 591, 592, 593, 594,
+	595, 597, 660,
 	# obsidian-floor gates (also in IMMUTABLE)
-	314, 315, 383, 384, 465, 466, 532, 533, 598, 599, 663, 664,
+	451, 453, 454, 461, 521, 528, 529, 598, 599, 659, 661, 662, 663, 664,
+	665, 730,
 ]
 
-# A raised obsidian ring around the bowl (r 40-58 about the centre) with three
-# gaps: one toward each base and one toward the far side. The gap tiles are
-# obsidian FLOORS (IMMUTABLE + LOWERED) — permanent walkable gates that can
-# never be raised or built on.
+# A raised obsidian ring around the bowl (the full boundary band about tile
+# 593, kept tight so neither starting AoE touches it) with three gates: one
+# toward each base and one toward the far corner. The gate tiles are obsidian
+# FLOORS (IMMUTABLE + LOWERED) — permanent walkable gates that can never be
+# raised or built on.
 const IMMUTABLE: Array[int] = [
-	318, 319, 322, 323, 381, 382, 387, 388, 391, 392, 397, 398, 447, 448,
-	449, 450, 463, 464, 516, 517, 518, 519, 534, 535, 584, 585, 590, 591,
-	594, 595, 600, 601, 655, 656, 659, 660,
-	314, 315, 383, 384, 465, 466, 532, 533, 598, 599, 663, 664,
+	450, 455, 456, 457, 458, 516, 518, 519, 530, 531, 584, 585, 586, 587,
+	596, 601, 651, 655, 656, 657, 658,
+	451, 453, 454, 461, 521, 528, 529, 598, 599, 659, 661, 662, 663, 664,
+	665, 730,
 ]
 
 const INVISIBLE: Array[int] = []

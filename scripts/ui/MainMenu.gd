@@ -159,6 +159,8 @@ func _start_dump_run() -> void:
 	get_tree().change_scene_to_file("res://scenes/world/World.tscn")
 
 func _on_tab_changed(_tab_index: int) -> void:
+	# The map preview belongs to the host tab — hide it while connecting.
+	preview_panel.visible = mode_tabs.current_tab == 0
 	_update_start_button()
 
 func _update_start_button() -> void:
